@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gem Shape Viewer</title>
+  <script type="importmap">
+    { "imports": { "three": "./vendor/three/three.module.js" } }
+  </script>
+  <style>
+    :root {
+      --bg: #ffffff; --panel: #f4f4f5; --border: #d4d4d8; --text: #18181b; --muted: #71717a;
+      --accent: #2563eb; --accent-text: #ffffff;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+      font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    #app { display: grid; grid-template-columns: 280px 1fr; height: 100%; }
+    #panel { background: var(--panel); border-right: 1px solid var(--border); padding: 16px;
+      overflow-y: auto; display: flex; flex-direction: column; gap: 18px; }
+    #panel h1 { font-size: 16px; margin: 0 0 4px; }
+    #panel h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 8px; }
+    .group { display: flex; flex-direction: column; gap: 8px; }
+    select, button, input[type=number] { font: inherit; padding: 6px 8px; border: 1px solid var(--border);
+      border-radius: 6px; background: #fff; color: var(--text); }
+    button { cursor: pointer; }
+    button:hover { border-color: var(--accent); }
+    button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+    .views { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .views button.active { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+    .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .row label { color: var(--text); }
+    input[type=range] { width: 120px; }
+    .hint { color: var(--muted); font-size: 12px; }
+    #stage { position: relative; min-width: 0; }
+    #stage canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+    #stage canvas:active { cursor: grabbing; }
+    #info { position: absolute; left: 12px; bottom: 10px; color: var(--muted); font-size: 12px; pointer-events: none; }
+    dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; font-size: 12px; }
+    dt { color: var(--muted); } dd { margin: 0; }
+    .gaps { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 12px; }
+    .gaps label { display: flex; flex-direction: column; gap: 2px; color: var(--muted); }
+    .gaps input { width: 100%; }
+    .viewrow { display: flex; align-items: center; gap: 6px; padding: 4px 0; border-top: 1px solid var(--border); font-size: 12px; }
+    .viewrow .viewname { flex: 1; }
+    .viewrow input[type=number] { width: 58px; padding: 3px 4px; }
+    .viewbtns button { padding: 2px 6px; margin-left: 2px; font-size: 12px; }
+    body.noui #app { grid-template-columns: 1fr; }
+    body.noui #panel, body.noui #info { display: none; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <aside id="panel">
+      <div>
+        <h1>Gem Shape Viewer</h1>
+        <div class="hint">Drag to rotate. Shift-drag to roll. Scroll to zoom.</div>
+      </div>
+
+      <div class="group">
+        <h2>Shape</h2>
+        <select id="shape"></select>
+        <dl id="props"></dl>
+        <div class="hint" id="notes"></div>
+      </div>
+
+      <div class="group">
+        <h2>View</h2>
+        <div class="views" id="views"></div>
+        <button id="fit">Fit to window</button>
+      </div>
+
+      <div class="group">
+        <h2>Projection</h2>
+        <select id="proj"><option value="orthographic">Orthographic (as on lab diagrams)</option><option value="perspective">Perspective</option></select>
+        <div class="row"><label for="fov">Field of view</label>
+          <span><input type="range" id="fov" min="10" max="70" step="1" value="30"> <span id="fovv">30&deg;</span></span></div>
+      </div>
+
+      <div class="group">
+        <h2>Drawing sheet</h2>
+        <select id="standard"><option value="third">Third-angle projection</option><option value="first">First-angle projection</option></select>
+        <div class="gaps">
+          <label>Gap left <input type="number" id="gap-left" step="0.05" min="0"></label>
+          <label>Gap right <input type="number" id="gap-right" step="0.05" min="0"></label>
+          <label>Gap above <input type="number" id="gap-above" step="0.05" min="0"></label>
+          <label>Gap below <input type="number" id="gap-below" step="0.05" min="0"></label>
+        </div>
+        <div class="hint">Gaps are in stone widths, measured between view bounding boxes. Use the arrows on a view to project another view from it; projected views follow the base view as you rotate it. Sheets are always orthographic.</div>
+        <div id="viewlist"></div>
+        <button id="clearviews">Remove all projected views</button>
+      </div>
+
+      <div class="group">
+        <h2>Lines</h2>
+        <div class="row"><label for="lw">Edge thickness</label>
+          <span><input type="range" id="lw" min="0.5" max="8" step="0.25" value="1.5"> <span id="lwv">1.5 px</span></span></div>
+        <div class="row"><label for="girdle">Show all girdle facet lines</label><input type="checkbox" id="girdle"></div>
+      </div>
+
+      <div class="group">
+        <h2>Export</h2>
+        <div class="row"><label for="scale">Resolution</label>
+          <select id="scale"><option value="1">1x</option><option value="2" selected>2x</option><option value="4">4x</option><option value="8">8x</option></select></div>
+        <button id="export" class="primary">Export PNG</button>
+        <div class="hint">White background, black edges, current view and zoom.</div>
+      </div>
+    </aside>
+    <main id="stage">
+      <canvas id="c"></canvas>
+      <div id="info"></div>
+    </main>
+  </div>
+  <script type="module" src="./app/main.js"></script>
+</body>
+</html>

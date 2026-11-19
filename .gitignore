@@ -1,0 +1,5 @@
+# Extracted lab report artwork and source PDFs used only as references (not redistributed)
+references/
+node_modules/
+tools/out/
+.DS_Store
