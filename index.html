@@ -4,9 +4,6 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Gem Shape Viewer</title>
-  <script type="importmap">
-    { "imports": { "three": "./vendor/three/three.module.js" } }
-  </script>
   <style>
     :root {
       --bg: #ffffff; --panel: #f4f4f5; --border: #d4d4d8; --text: #18181b; --muted: #71717a;
@@ -16,7 +13,8 @@
     html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
       font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
     #app { display: grid; grid-template-columns: 280px 1fr; height: 100%; }
-    #panel { background: var(--panel); border-right: 1px solid var(--border); padding: 16px;
+    #panel { background: var(--panel); border-right: 1px solid var(--border); padding-block: 16px;
+      padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
       overflow-y: auto; display: flex; flex-direction: column; gap: 18px; }
     #panel h1 { font-size: 16px; margin: 0 0 4px; }
     #panel h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 8px; }
@@ -45,6 +43,11 @@
     .viewrow .viewname { flex: 1; }
     .viewrow input[type=number] { width: 58px; padding: 3px 4px; }
     .viewbtns button { padding: 2px 6px; margin-left: 2px; font-size: 12px; }
+    @media (max-width: 760px) {
+      #app { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+      #panel { border-right: 0; border-bottom: 1px solid var(--border); max-height: 45vh; }
+      #stage { min-height: 50vh; }
+    }
     body.noui #app { grid-template-columns: 1fr; }
     body.noui #panel, body.noui #info { display: none; }
   </style>

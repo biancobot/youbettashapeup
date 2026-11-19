@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import * as THREE from '../vendor/three/three.module.js';
 import { LineSegments2 } from '../vendor/three/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from '../vendor/three/lines/LineSegmentsGeometry.js';
 import { LineMaterial } from '../vendor/three/lines/LineMaterial.js';
@@ -281,10 +281,29 @@ function exportPNG(scaleFactor) {
   renderer.setPixelRatio(pr);
   lineMat.linewidth = lw;
   resize();
-  const a = document.createElement('a');
-  a.href = url;
   const suffix = state.sheet.views.length ? `sheet-${state.sheet.standard}-angle` : state.viewId;
-  a.download = `${state.shapeId}-${suffix}.png`;
+  const filename = `${state.shapeId}-${suffix}.png`;
+  saveFile(filename, url);
+}
+
+/** Hand a data: URL to the viewer: through the claude.ai downloads capability when the page runs as an artifact, otherwise a plain download. */
+async function saveFile(filename, dataUrl) {
+  if (window.claude && typeof window.claude.use === 'function') {
+    try {
+      const downloads = await window.claude.use('downloads');
+      if (downloads) {
+        const blob = await (await fetch(dataUrl)).blob();
+        await downloads.save({ filename, data: blob });
+        return;
+      }
+    } catch (e) {
+      if (e && e.code === 'declined') return;
+      console.warn('download capability failed, falling back', e);
+    }
+  }
+  const a = document.createElement('a');
+  a.href = dataUrl;
+  a.download = filename;
   document.body.appendChild(a);
   a.click();
   a.remove();

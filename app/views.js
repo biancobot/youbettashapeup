@@ -7,7 +7,7 @@
 // the two sides, each drawn with the table up as on a lab proportion diagram.
 // Isometric keeps the face-up view dominant and tilts the stone to reveal the crown and girdle.
 
-import * as THREE from 'three';
+import * as THREE from '../vendor/three/three.module.js';
 
 const q = (axis, deg) => new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(...axis).normalize(), (deg * Math.PI) / 180);
 const mul = (...qs) => qs.reduce((acc, x) => acc.multiply(x), new THREE.Quaternion()); // apply right-most first
