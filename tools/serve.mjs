@@ -12,7 +12,7 @@ const server = http.createServer((req, res) => {
   if (fs.existsSync(p) && fs.statSync(p).isDirectory()) p = path.join(p, 'index.html');
   fs.readFile(p, (err, data) => {
     if (err) { res.writeHead(404); res.end('not found'); return; }
-    res.writeHead(200, { 'content-type': types[path.extname(p)] || 'application/octet-stream' });
+    res.writeHead(200, { 'content-type': types[path.extname(p)] || 'application/octet-stream', 'cache-control': 'no-store' });
     res.end(data);
   });
 });

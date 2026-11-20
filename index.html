@@ -119,6 +119,17 @@
       <div id="info"></div>
     </main>
   </div>
-  <script type="module" src="./app/main.js"></script>
+  <noscript><p style="padding:16px">This app needs JavaScript.</p></noscript>
+  <script>
+    // Surface module load failures on the page instead of a silent blank canvas.
+    window.addEventListener('error', (e) => {
+      const el = document.getElementById('info'); if (!el) return;
+      el.style.color = '#b00020'; el.textContent = 'Load error: ' + (e.message || e.type) + (e.filename ? ' in ' + e.filename.split('/').slice(-2).join('/') : '');
+    });
+    window.addEventListener('unhandledrejection', (e) => {
+      const el = document.getElementById('info'); if (el) { el.style.color = '#b00020'; el.textContent = 'Load error: ' + (e.reason && e.reason.message || e.reason); }
+    });
+  </script>
+  <script type="module" src="./app/main.js?v=3"></script>
 </body>
 </html>
