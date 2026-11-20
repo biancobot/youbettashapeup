@@ -11,16 +11,20 @@ of adjustable thickness, no shading. Girdle surfaces are drawn with their silhou
 
 ## Running
 
-It is a static site with ES modules, so it needs to be served over HTTP (not opened from
-`file://`). Any static server works:
+It is a static site with ES modules, so it must be served over HTTP; opening `index.html`
+directly from the file system (a `file://` address) shows a blank page because browsers block
+module scripts there. Either of these works from the repo root:
+
+```bash
+npm start
+```
 
 ```bash
 python3 -m http.server 8000
 ```
 
-Then open `http://localhost:8000/`.
-
-No build step and no external dependencies: three.js r170 is vendored under `vendor/`.
+Then open `http://localhost:8000/`. There is no build step and no dependency to install:
+three.js is vendored under `vendor/`, and `npm start` runs a zero-dependency Node server.
 
 ## Shapes
 

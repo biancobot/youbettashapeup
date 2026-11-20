@@ -1,0 +1,9 @@
+{
+  "name": "youbettashapeup",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node tools/serve.mjs 8000",
+    "shots": "node tools/shot.mjs all front,back 2 700"
+  }
+}
