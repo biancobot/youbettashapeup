@@ -3,3 +3,6 @@ references/
 node_modules/
 tools/out/
 .DS_Store
+.venv/
+pipeline/out/
+__pycache__/

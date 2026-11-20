@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Gem Shape Viewer</title>
+  <title>Gem Facet Designer</title>
   <style>
     :root {
       --bg: #ffffff; --panel: #f4f4f5; --border: #d4d4d8; --text: #18181b; --muted: #71717a;
@@ -12,7 +12,7 @@
     * { box-sizing: border-box; }
     html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
       font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-    #app { display: grid; grid-template-columns: 280px 1fr; height: 100%; }
+    #app { display: grid; grid-template-columns: 420px 1fr; height: 100%; }
     #panel { background: var(--panel); border-right: 1px solid var(--border); padding-block: 16px;
       padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
       overflow-y: auto; display: flex; flex-direction: column; gap: 18px; }
@@ -36,6 +36,15 @@
     #info { position: absolute; left: 12px; bottom: 10px; color: var(--muted); font-size: 12px; pointer-events: none; }
     dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; font-size: 12px; }
     dt { color: var(--muted); } dd { margin: 0; }
+    #tiertable { width: 100%; border-collapse: collapse; font-size: 12px; }
+    #tiertable th { text-align: left; color: var(--muted); font-weight: 500; padding: 2px 2px; }
+    #tiertable td { padding: 2px 2px; border-top: 1px solid var(--border); }
+    #tiertable input { width: 100%; padding: 3px 4px; font-size: 12px; }
+    #tiertable td.acts { white-space: nowrap; }
+    #tiertable td.acts button { padding: 2px 5px; font-size: 11px; margin-left: 1px; }
+    #tiertable tr.sel td { background: #e0e7ff; }
+    .addtier { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 12px; }
+    details summary { cursor: pointer; color: var(--muted); font-size: 12px; margin-bottom: 6px; }
     .gaps { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 12px; }
     .gaps label { display: flex; flex-direction: column; gap: 2px; color: var(--muted); }
     .gaps input { width: 100%; }
@@ -56,15 +65,61 @@
   <div id="app">
     <aside id="panel">
       <div>
-        <h1>Gem Shape Viewer</h1>
-        <div class="hint">Drag to rotate. Shift-drag to roll. Scroll to zoom.</div>
+        <h1>Gem Facet Designer</h1>
+        <div class="hint">GemCad-style facet design: every facet is a plane by angle, index and distance; the stone is their intersection. Drag to rotate, shift-drag to roll, scroll to zoom, click a vertex to pick a meet point.</div>
       </div>
 
       <div class="group">
-        <h2>Shape</h2>
-        <select id="shape"></select>
+        <h2>Design</h2>
+        <div class="row"><label for="template">Start from</label>
+          <span><select id="template"></select> <button id="loadtemplate">Load</button></span></div>
+        <details>
+          <summary>Round brilliant from GIA proportions</summary>
+          <div class="gaps">
+            <label>Table % <input type="number" id="p-table" value="56" step="0.5"></label>
+            <label>Crown angle <input type="number" id="p-crown" value="34.5" step="0.1"></label>
+            <label>Pavilion angle <input type="number" id="p-pav" value="40.8" step="0.1"></label>
+            <label>Star length % <input type="number" id="p-star" value="50" step="1"></label>
+            <label>Lower girdle % <input type="number" id="p-lower" value="78" step="1"></label>
+            <label>Girdle % <input type="number" id="p-girdle" value="3" step="0.5"></label>
+            <label>Girdle facets <input type="number" id="p-gf" value="64" step="16"></label>
+          </div>
+          <button id="genround">Generate</button>
+        </details>
+        <details>
+          <summary>Girdle preform (outline)</summary>
+          <div class="gaps">
+            <label>Outline <select id="preform"></select></label>
+            <label>L:W <input type="number" id="pf-ratio" value="1.4" step="0.01"></label>
+            <label>Corner cut (fraction of W) <input type="number" id="pf-corner" value="0.12" step="0.01"></label>
+            <label>Girdle facets <input type="number" id="pf-count" value="64" step="8"></label>
+          </div>
+          <label class="hint"><input type="checkbox" id="pf-replace" checked> replace the existing preform tier</label>
+          <button id="applypreform">Apply preform</button>
+          <div class="hint">A preform is a tier of 90&deg; girdle facets whose distances follow the outline, as in GemCad. Design a fancy cut by adding tiers over it and cutting to meet points.</div>
+        </details>
+        <div class="row"><label for="dname">Name</label><input id="dname" style="width:150px"></div>
+        <div class="row"><label for="gear">Index gear</label><input type="number" id="gear" value="96" style="width:64px"></div>
+        <div class="row"><label for="fold">Symmetry</label>
+          <span><input type="number" id="fold" value="8" min="1" style="width:48px" title="n-fold rotation"> fold, mirror <input type="checkbox" id="mirror" checked></span></div>
+        <table id="tiertable">
+          <thead><tr><th>Name</th><th>Angle</th><th>Distance</th><th>Indices</th><th></th></tr></thead>
+          <tbody id="tiers"></tbody>
+        </table>
+        <div class="hint">Angle: 0 = table, 90 = girdle facet, negative = pavilion. Distance: centre to facet. Click a row to select it; click near a vertex in the view to select a meet point, then <b>meet</b> cuts the tier through it.</div>
+        <div class="addtier">
+          <input id="nname" placeholder="name" style="width:48px">
+          <input id="nangle" type="number" step="0.1" placeholder="angle" style="width:64px">
+          <input id="nindex" type="number" step="0.5" placeholder="index" style="width:60px">
+          <input id="ndist" type="number" step="0.001" placeholder="dist" style="width:64px">
+          <label><input type="checkbox" id="nsym" checked> symmetry</label>
+          <label><input type="checkbox" id="nmeet"> through meet point</label>
+          <button id="addtier">Add tier</button>
+        </div>
+        <div class="row"><label>GemCad .asc</label><span><input type="file" id="ascfile" accept=".asc,.txt,.gem" style="width:150px"></span></div>
+        <div class="row"><button id="exportasc">Export .asc</button><button id="exportjson">Export .json</button></div>
+        <div class="hint" id="estatus"></div>
         <dl id="props"></dl>
-        <div class="hint" id="notes"></div>
       </div>
 
       <div class="group">
@@ -104,6 +159,7 @@
         <div class="row"><label for="lw">Edge thickness</label>
           <span><input type="range" id="lw" min="0.5" max="8" step="0.25" value="1.5"> <span id="lwv">1.5 px</span></span></div>
         <div class="row"><label for="girdle">Girdle facet lines (off: silhouette only)</label><input type="checkbox" id="girdle" checked></div>
+        <div class="row"><label for="meet">Show meet points</label><input type="checkbox" id="meet" checked></div>
       </div>
 
       <div class="group">
@@ -130,6 +186,6 @@
       const el = document.getElementById('info'); if (el) { el.style.color = '#b00020'; el.textContent = 'Load error: ' + (e.reason && e.reason.message || e.reason); }
     });
   </script>
-  <script type="module" src="./app/main.js?v=3"></script>
+  <script type="module" src="./app/main.js?v=5"></script>
 </body>
 </html>

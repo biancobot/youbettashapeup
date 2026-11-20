@@ -1,4 +1,5 @@
-// Headless screenshot tool: node tools/shot.mjs [shape|all] [view,view,...] [lineWidth]
+// Headless screenshot tool: node tools/shot.mjs [design|all] [view,view,...] [lineWidth]
+// Designs are the built-in templates (round, blank) or a path to a .asc file.
 // Serves the repo over HTTP, renders each shape/view in Chromium and writes PNGs to tools/out/.
 import http from 'node:http';
 import fs from 'node:fs';
@@ -54,16 +55,20 @@ page.on('pageerror', (e) => errors.push(String(e)));
 await page.goto(`http://127.0.0.1:${port}/index.html?ui=0&lw=${lw}`);
 await page.waitForFunction(() => window.__viewer && window.__frames > 2);
 const shapes = shapeArg === 'all'
-  ? await page.evaluate(() => Array.from(document.querySelectorAll('#shape option')).map((o) => o.value))
+  ? await page.evaluate(() => Object.keys(window.__templates.templates))
   : shapeArg.split(',');
 
 for (const shape of shapes) {
   for (const view of views) {
-    const ok = await page.evaluate(({ shape, view, sheet, standard, projection }) => {
+    const ok = await page.evaluate(async ({ shape, view, sheet, standard, projection }) => {
       try {
         const v = window.__viewer;
         v.clearViews();
-        v.loadShape(shape);
+        if (shape.endsWith('.asc')) {
+          const txt = await (await fetch('/' + shape)).text();
+          const m = await import('./app/gemcad/design.js');
+          v.editor.design = m.parseAsc(txt);
+        } else v.loadShape(shape);
         v.snapTo(view, true);
         v.setStandard(standard);
         v.setProjection(projection);
@@ -75,7 +80,7 @@ for (const shape of shapes) {
     }, { shape, view, sheet, standard, projection });
     await page.waitForTimeout(60);
     const tag = sheet ? `-sheet-${standard}` : (projection === 'perspective' ? '-persp' : '');
-    const file = path.join(outDir, `${shape}-${view}${tag}.png`);
+    const file = path.join(outDir, `${path.basename(shape).replace(/\.asc$/, '')}-${view}${tag}.png`);
     await page.locator('#c').screenshot({ path: file });
     console.log(`${ok ? 'ok  ' : 'FAIL'} ${path.relative(root, file)}`);
   }

@@ -2,13 +2,16 @@ import * as THREE from '../vendor/three/three.module.js';
 import { LineSegments2 } from '../vendor/three/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from '../vendor/three/lines/LineSegmentsGeometry.js';
 import { LineMaterial } from '../vendor/three/lines/LineMaterial.js';
-import { SHAPES, buildShape } from './geometry/shapes.js';
+import { designMesh, stoneStats } from './gemcad/mesh.js';
+import { createEditor } from './editor.js';
+import { templates } from './gemcad/templates.js';
+window.__templates = { templates };
 import { VIEWS, getView } from './views.js';
 
 // ----------------------------------------------------------------------------- state
 const params = new URLSearchParams(location.search);
 const state = {
-  shapeId: params.get('shape') || 'round',
+  shapeId: 'design',
   viewId: params.get('view') || 'front',
   lineWidth: parseFloat(params.get('lw') || '1.5'),
   girdleLines: params.get('girdle') !== '0',
@@ -84,18 +87,53 @@ function disposeInstances() {
   instances.clear();
 }
 
-function loadShape(id) {
+let design = null;
+function setDesign(d) {
+  design = d;
   disposeInstances();
   if (meshGeometry) meshGeometry.dispose();
   if (hardGeometry) hardGeometry.dispose();
-  geo = buildShape(id);
+  geo = designMesh(d);
   meshGeometry = new THREE.BufferGeometry();
   meshGeometry.setAttribute('position', new THREE.BufferAttribute(geo.positions, 3));
   hardGeometry = new LineSegmentsGeometry().setPositions(geo.hardEdges);
   for (const vid of allViewIds()) makeInstance(vid);
-  state.shapeId = id;
+  state.shapeId = (d.name || 'design').replace(/[^\w-]+/g, '_').toLowerCase();
+  selectedVertex = null;
   updateProps();
   layout(true);
+  updateMeetPoints();
+}
+
+// ----------------------------------------------------------------------------- meet points
+let selectedVertex = null;
+let meetPoints = null, meetMarker = null;
+const meetMat = new THREE.PointsMaterial({ color: 0x2563eb, size: 7, sizeAttenuation: false, depthTest: false });
+const markerMat = new THREE.PointsMaterial({ color: 0xdc2626, size: 13, sizeAttenuation: false, depthTest: false });
+function updateMeetPoints() {
+  const base = instances.get('base');
+  if (!base || !geo) return;
+  if (meetPoints) { base.group.remove(meetPoints); meetPoints.geometry.dispose(); meetPoints = null; }
+  if (meetMarker) { base.group.remove(meetMarker); meetMarker.geometry.dispose(); meetMarker = null; }
+  if (!state.showMeet) return;
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(geo.vertices, 3));
+  meetPoints = new THREE.Points(g, meetMat); meetPoints.renderOrder = 10; base.group.add(meetPoints);
+  if (selectedVertex) {
+    const m = new THREE.BufferGeometry(); m.setAttribute('position', new THREE.BufferAttribute(new Float32Array(selectedVertex), 3));
+    meetMarker = new THREE.Points(m, markerMat); meetMarker.renderOrder = 11; base.group.add(meetMarker);
+  }
+}
+function pickVertex(clientX, clientY) {
+  const base = instances.get('base'); if (!base || !geo) return null;
+  const rect = canvas.getBoundingClientRect();
+  const v = new THREE.Vector3(); let best = null, bd = 14;
+  for (let i = 0; i < geo.verts.length; i++) {
+    v.set(...geo.verts[i]).applyQuaternion(base.q).add(new THREE.Vector3(base.pos[0], base.pos[1], 0)).project(camera);
+    const sx = rect.left + (v.x + 1) / 2 * rect.width, sy = rect.top + (1 - v.y) / 2 * rect.height;
+    const d = Math.hypot(sx - clientX, sy - clientY);
+    if (d < bd) { bd = d; best = geo.verts[i]; }
+  }
+  return best;
 }
 
 function syncInstances() {
@@ -228,12 +266,14 @@ new ResizeObserver(resize).observe(stage);
 // ----------------------------------------------------------------------------- rotation
 let drag = null;
 canvas.addEventListener('pointerdown', (e) => {
-  drag = { x: e.clientX, y: e.clientY, roll: e.shiftKey };
+  drag = { x: e.clientX, y: e.clientY, roll: e.shiftKey, moved: false };
   canvas.setPointerCapture(e.pointerId);
 });
 canvas.addEventListener('pointermove', (e) => {
   if (!drag) return;
   const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+  if (Math.abs(dx) + Math.abs(dy) > 2) drag.moved = true;
+  if (!drag.moved) return;
   const rect = canvas.getBoundingClientRect();
   if (drag.roll) {
     const cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
@@ -250,8 +290,17 @@ canvas.addEventListener('pointermove', (e) => {
   markView();
   layout(false);
 });
+canvas.addEventListener('pointerup', (e) => {
+  if (drag && !drag.moved) {
+    const v = pickVertex(e.clientX, e.clientY);
+    selectedVertex = v;
+    updateMeetPoints();
+    const info = document.getElementById('info');
+    if (info) info.textContent = v ? `Meet point: (${v.map((c) => c.toFixed(4)).join(', ')})` : '';
+  }
+  drag = null;
+});
 const endDrag = () => { drag = null; };
-canvas.addEventListener('pointerup', endDrag);
 canvas.addEventListener('pointercancel', endDrag);
 canvas.addEventListener('wheel', (e) => {
   e.preventDefault();
@@ -381,15 +430,6 @@ function renderViewList() {
 }
 
 // ----------------------------------------------------------------------------- UI
-const shapeSel = document.getElementById('shape');
-for (const s of SHAPES) {
-  const o = document.createElement('option');
-  o.value = s.id; o.textContent = s.name;
-  shapeSel.appendChild(o);
-}
-shapeSel.value = state.shapeId;
-shapeSel.addEventListener('change', () => loadShape(shapeSel.value));
-
 const viewsDiv = document.getElementById('views');
 for (const v of VIEWS) {
   const b = document.createElement('button');
@@ -400,7 +440,7 @@ for (const v of VIEWS) {
 function markView() {
   for (const b of viewsDiv.querySelectorAll('button')) b.classList.toggle('active', b.dataset.view === state.viewId);
   const info = document.getElementById('info');
-  if (info && geo) info.textContent = `${geo.shape.name} · ${state.viewId} · ${geo.faceCount} facets`;
+  if (info && geo && design) info.textContent = `${design.name} · ${state.viewId} · ${geo.faceCount} facets`;
   const baseName = document.querySelector('#viewlist .viewname');
   if (baseName) baseName.textContent = viewLabel('base');
 }
@@ -452,26 +492,35 @@ document.getElementById('export').addEventListener('click', () => exportPNG(stat
 
 function updateProps() {
   const dl = document.getElementById('props');
-  if (!dl || !geo) return;
-  const p = geo.proportions;
-  const pct = (v) => (v === undefined ? '-' : `${(v * 100).toFixed(1)}%`);
+  if (!dl || !geo || !design) return;
+  const st = stoneStats(geo, design);
+  const pct = (v) => (v === null || v === undefined ? '-' : `${(v * 100).toFixed(1)}%`);
   const rows = [
-    ['Lab name', geo.shape.lab],
-    ['L:W', p.ratio.toFixed(2)],
-    ['Table', p.table !== undefined ? `${Math.round(p.table * 100)}%` : '-'],
-    ['Crown angle', p.crownAngle !== undefined ? `${p.crownAngle}°` : '-'],
-    ['Crown height', pct(p.crownHeight)],
-    ['Girdle', pct(p.girdle)],
-    ['Pavilion depth', pct(p.pavilionDepth)],
-    ['Total depth', pct(p.crownHeight + p.girdle + p.pavilionDepth)],
+    ['Design', design.name],
+    ['Facets', String(st.facets)],
+    ['L:W', st.ratio.toFixed(3)],
+    ['Table', pct(st.table)],
+    ['Crown height', pct(st.crown)],
+    ['Girdle', pct(st.girdle)],
+    ['Pavilion depth', pct(st.pavilion)],
+    ['Total depth', pct(st.depth)],
   ];
   dl.innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
-  const notes = document.getElementById('notes');
-  if (notes) notes.textContent = p.notes || '';
+  const info = document.getElementById('info');
+  if (info) info.textContent = `${design.name} \u00b7 ${st.facets} facets`;
 }
 
 // ----------------------------------------------------------------------------- loop
-loadShape(state.shapeId);
+const editor = createEditor({
+  onChange: (d) => setDesign(d),
+  getSelectedVertex: () => selectedVertex,
+  saveText: (filename, text) => saveFile(filename, 'data:text/plain;charset=utf-8,' + encodeURIComponent(text)),
+});
+state.showMeet = params.get('meet') !== '0';
+const meetCb = document.getElementById('meet');
+meetCb.checked = state.showMeet;
+meetCb.addEventListener('change', () => { state.showMeet = meetCb.checked; updateMeetPoints(); });
+setDesign(editor.design);
 snapTo(state.viewId, true);
 renderViewList();
 resize();
@@ -492,7 +541,8 @@ requestAnimationFrame(frame);
 
 // Exposed for the screenshot tool and for scripting.
 window.__viewer = {
-  state, loadShape, snapTo, exportPNG, resize, addView, removeView, clearViews,
+  state, setDesign, snapTo, exportPNG, resize, addView, removeView, clearViews, editor,
+  loadShape(id) { const { templates } = window.__templates; if (templates[id]) editor.design = templates[id].make(); },
   setLineWidth(v) { state.lineWidth = v; lineMat.linewidth = v; },
   setGirdleLines(v) { state.girdleLines = v; layout(true); },
   setSpin,
