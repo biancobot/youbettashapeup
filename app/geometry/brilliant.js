@@ -18,9 +18,10 @@
 // position. Lower-half junctions sit on the lines where neighbouring mains meet.
 
 import {
-  MeshBuilder, planeFrom3, planeNoTwist, planeZ, intersectPlanes, pointOnLineNearestXY,
+  MeshBuilder, planeFrom3, planeNoTwist, planeZ, intersectPlanes, pointOnLineNearestXY, pointOnLineAtPlane,
   normalize, GIRDLE,
 } from './core.js';
+import { buildByCutting, cutPlane } from './clip.js';
 
 const rad = (d) => (d * Math.PI) / 180;
 
@@ -32,6 +33,59 @@ export function outlineNormal(outline, k) {
   const n2 = normalize([c[1] - b[1], -(c[0] - b[0]), 0]);
   const n = normalize([n1[0] + n2[0], n1[1] + n2[1], 0]);
   return [n[0], n[1]];
+}
+
+/** Slope (tan of the angle to the girdle plane) of a plane. */
+export function planeSlope(pl) { return Math.hypot(pl.n[0], pl.n[1]) / Math.abs(pl.n[2]); }
+
+/**
+ * Plane with slope tanA that passes through the girdle point G and the point S (S inward and
+ * above/below G). Of the two possible azimuths the one closest to `prefer` is used.
+ * Returns null when no such plane exists.
+ */
+export function planeThroughWithAngle(G, S, tanA, prefer) {
+  const d = [S[0] - G[0], S[1] - G[1]];
+  const L = Math.hypot(d[0], d[1]);
+  const c = -(S[2] - G[2]) / tanA;
+  if (L < 1e-12 || Math.abs(c) > L) return null;
+  const dh = [d[0] / L, d[1] / L];
+  const perp = [-dh[1], dh[0]];
+  const a = c / L, bb = Math.sqrt(Math.max(0, 1 - a * a));
+  const u1 = [dh[0] * a + perp[0] * bb, dh[1] * a + perp[1] * bb];
+  const u2 = [dh[0] * a - perp[0] * bb, dh[1] * a - perp[1] * bb];
+  const u = (u1[0] * prefer[0] + u1[1] * prefer[1]) >= (u2[0] * prefer[0] + u2[1] * prefer[1]) ? u1 : u2;
+  return planeFromAngle(G, u, tanA, G[2]);
+}
+
+/**
+ * Half-facet plane: contains the girdle chord from Ga to Gb (both at zBase) and descends
+ * outwards (away from the origin) with slope tanA. This is how upper and lower girdle facets
+ * are cut: at a set angle, until they meet the girdle at both ends.
+ */
+export function chordPlane(Ga, Gb, zBase, tanA) {
+  const cx = (Ga[0] + Gb[0]) / 2, cy = (Ga[1] + Gb[1]) / 2;
+  const dx = Gb[0] - Ga[0], dy = Gb[1] - Ga[1];
+  let u = normalize([dy, -dx, 0]);
+  if (u[0] * cx + u[1] * cy < 0) u = [-u[0], -u[1], 0];
+  return planeFromAngle([cx, cy], [u[0], u[1]], tanA, zBase);
+}
+
+/**
+ * Slope for a half facet between the girdle points Ga and Gb: at least `delta` degrees steeper
+ * than both neighbouring kites, and steep enough that the plane, extended inwards, clears the
+ * apex point (table centre for the crown, culet for the pavilion) by `margin`.
+ */
+export function halfSlope(Ga, Gb, kiteA, kiteB, delta, apex, zBase, margin = 0.02) {
+  const cx = (Ga[0] + Gb[0]) / 2, cy = (Ga[1] + Gb[1]) / 2;
+  const dx = Gb[0] - Ga[0], dy = Gb[1] - Ga[1];
+  let u = normalize([dy, -dx, 0]);
+  if (u[0] * cx + u[1] * cy < 0) u = [-u[0], -u[1], 0];
+  const run = (cx - apex[0]) * u[0] + (cy - apex[1]) * u[1];   // horizontal distance from the apex to the chord along u
+  const rise = Math.abs(apex[2] - zBase) + margin;
+  const need = run > 0.05 ? rise / run : 0;                       // chords beside the apex cannot be governed this way
+  const a = Math.atan(planeSlope(kiteA)) + (delta * Math.PI) / 180;
+  const b = Math.atan(planeSlope(kiteB)) + (delta * Math.PI) / 180;
+  return Math.min(5, Math.max(Math.tan(a), Math.tan(b), need));
 }
 
 /** Plane through G (z = zBase) descending outwards along unit direction u with slope tanAlpha. */
@@ -54,11 +108,13 @@ export function buildBrilliant(spec) {
   const topZ = new Array(N).fill(null);
   const botZ = new Array(N).fill(null);
 
-  const setArc = (indices, plane, arr, base) => {
-    for (const k of indices) {
-      const z = GIRDLE.flat ? base : planeZ(plane, pts[k][0], pts[k][1]);
-      arr[k] = (k === indices[0] || k === indices[indices.length - 1]) ? base : z;
-    }
+  const flat = GIRDLE.mode === 'flat';
+  // Heights of the girdle points along an arc: from the facet plane, with the two end anchors
+  // pinned to the given heights.
+  const setArc = (indices, plane, arr, z0, z1 = z0) => {
+    for (const k of indices) arr[k] = flat ? z0 : planeZ(plane, pts[k][0], pts[k][1]);
+    arr[indices[0]] = z0;
+    arr[indices[indices.length - 1]] = flat ? z0 : z1;
   };
   const arcPoints = (indices, arr) => indices.map((k) => [pts[k][0], pts[k][1], arr[k]]);
   const P3 = (gi, z) => [pts[gi][0], pts[gi][1], z];
@@ -67,7 +123,7 @@ export function buildBrilliant(spec) {
    * Assemble the kites and side facets of one half from solved planes and tips.
    * apex[i]: 3D apex of kite i. anchors[i]: { gi, G }. tips[i]: { pt, gi, onGirdle } between kite i and i+1.
    */
-  function assembleHalf({ apex, apexEnd, anchors, planes, tips, zBase, arr, tags, apexFaces }) {
+  function assembleHalf({ apex, apexEnd, anchors, planes, tips, zBase, arr, tags, apexFaces, halfDelta = 0, sign = 1 }) {
     const n = planes.length;
     for (let i = 0; i < n; i++) {
       const prev = (i + n - 1) % n;
@@ -93,18 +149,30 @@ export function buildBrilliant(spec) {
       if (apexFaces) mb.face([apex[i], apex[j], tips[i].pt], 'star');
       if (tips[i].onGirdle) continue;
       const S = tips[i].pt;
-      const Gj = P3(tips[i].gi, zBase);
-      {
-        const idx = outline.range(anchors[i].gi, tips[i].gi);
-        const pl = planeFrom3(S, anchors[i].G, Gj);
-        setArc(idx, pl, arr, zBase);
-        mb.face([S, ...arcPoints(idx, arr)], tags.half);
+      const idxL = outline.range(anchors[i].gi, tips[i].gi);
+      const idxR = outline.range(tips[i].gi, anchors[j].gi);
+      let Gj = P3(tips[i].gi, zBase);
+      let plL = tips[i].half || null;
+      if (plL) Gj = [Gj[0], Gj[1], planeZ(plL, Gj[0], Gj[1])];
+      if (!plL) plL = planeFrom3(S, anchors[i].G, Gj);
+      setArc(idxL, plL, arr, zBase, Gj[2]);
+      const fl = mb.face([S, ...arcPoints(idxL, arr)], tags.half);
+      let plR = planeFrom3(S, Gj, anchors[j].G);
+      let plRcut = null;
+      if (tips[i].half) {
+        // the right-hand half is cut at the same angle through its own chord
+        const apexPt = sign > 0 ? [0, 0, apex[i][2]] : apex[i];
+        const tanH = halfSlope(pts[tips[i].gi], pts[anchors[j].gi], planes[i], planes[j], halfDelta, apexPt, zBase);
+        plRcut = chordPlane(pts[tips[i].gi], pts[anchors[j].gi], zBase, tanH * sign);
       }
-      {
-        const idx = outline.range(tips[i].gi, anchors[j].gi);
-        const pl = planeFrom3(S, Gj, anchors[j].G);
-        setArc(idx, pl, arr, zBase);
-        mb.face([S, ...arcPoints(idx, arr)], tags.half);
+      setArc(idxR, plR, arr, Gj[2], zBase);
+      const fr = mb.face([S, ...arcPoints(idxR, arr)], tags.half);
+      if (tips[i].half) {
+        mb.cutHalves = mb.cutHalves || [];
+        mb.cutSkip = mb.cutSkip || new Set();
+        mb.cutHalves.push({ plane: tips[i].half, tag: tags.half }, { plane: plRcut, tag: tags.half });
+        if (fl >= 0) mb.cutSkip.add(mb.faces[fl]);
+        if (fr >= 0) mb.cutSkip.add(mb.faces[fr]);
       }
     }
   }
@@ -196,7 +264,11 @@ export function buildBrilliant(spec) {
     // Table corner: on the z = H contour of the plane, by default straight inward from the anchor.
     const inset = H / tanA;
     let Ti = [G[0] - u[0] * inset, G[1] - u[1] * inset, H];
-    if (b.tableTarget) {
+    if (b.tableTarget === 'axis') {
+      // table corner where the bezel's table-level contour crosses the stone's axis (x = 0)
+      const pl = crownPlanes[i];
+      Ti = [0, (pl.d - pl.n[2] * H) / pl.n[1], H];
+    } else if (b.tableTarget) {
       const h = [-u[1], u[0]];
       const dd = (b.tableTarget[0] - Ti[0]) * h[0] + (b.tableTarget[1] - Ti[1]) * h[1];
       Ti = [Ti[0] + h[0] * dd, Ti[1] + h[1] * dd, H];
@@ -222,8 +294,17 @@ export function buildBrilliant(spec) {
     }
     if (!crownPlanes[i] || !crownPlanes[j]) return false;
     const line = intersectPlanes(crownPlanes[i], crownPlanes[j]);
-    const pt = pointOnLineNearestXY(line, target);
-    tips[i] = { pt, gi: s.gi, onGirdle: false };
+    let pt = null, half = null;
+    if (GIRDLE.mode !== 'flat' && (C.halfDelta ?? 7) > 0 && !s.length && !s.target) {
+      // upper girdle facet cut at kite angle + delta through its two girdle points;
+      // the star tip is where it meets the line between the two bezels
+      const tanH = halfSlope(pts[crownAnchors[i].gi], pts[s.gi], crownPlanes[i], crownPlanes[j], C.halfDelta ?? 7, [tc[0], tc[1], H], 0);
+      half = chordPlane(pts[crownAnchors[i].gi], pts[s.gi], 0, tanH);
+      pt = pointOnLineAtPlane(line, half);
+      if (pt && (pt[2] > H + 1e-6 || pt[2] < 0)) { console.warn(`crown star ${i}: half facet meets the bezels at z=${pt[2].toFixed(3)}`); }
+    }
+    if (!pt) { pt = pointOnLineNearestXY(line, target); half = null; }
+    tips[i] = { pt, gi: s.gi, onGirdle: false, half };
     return true;
   };
 
@@ -248,7 +329,7 @@ export function buildBrilliant(spec) {
   mb.face(T, 'table');
   assembleHalf({
     apex: T, anchors: crownAnchors, planes: crownPlanes, tips: crownTips, zBase: 0, arr: topZ,
-    tags: { kite: 'bezel', half: 'upper' }, apexFaces: true,
+    tags: { kite: 'bezel', half: 'upper' }, apexFaces: true, halfDelta: C.halfDelta ?? 7, sign: 1,
   });
   mb.meta = { tableCorners: T, crownAngles, crownAzimuths: crownU.map((u) => (Math.atan2(u[1], u[0]) * 180) / Math.PI) };
   }
@@ -289,9 +370,16 @@ export function buildBrilliant(spec) {
     }
     const target = jn.target || [pts[gi][0] + (towards[0] - pts[gi][0]) * f, pts[gi][1] + (towards[1] - pts[gi][1]) * f];
     const line = intersectPlanes(pavPlanes[i], pavPlanes[j]);
-    const pt = pointOnLineNearestXY(line, target);
+    let pt = null, half = null;
+    if (GIRDLE.mode !== 'flat' && (V.halfDelta ?? 1.5) > 0 && !jn.length && !jn.target) {
+      const tanH = halfSlope(pts[pavAnchors[i].gi], pts[gi], pavPlanes[i], pavPlanes[j], V.halfDelta ?? 1.5, culet, zb);
+      half = chordPlane(pts[pavAnchors[i].gi], pts[gi], zb, -tanH);   // lower girdle facets descend inward
+      pt = pointOnLineAtPlane(line, half);
+      if (pt && (pt[2] > zb || pt[2] < zb - P - 1e-6)) { console.warn(`pavilion junction ${i}: lower facet meets the mains at z=${pt[2].toFixed(3)}`); }
+    }
+    if (!pt) { pt = pointOnLineNearestXY(line, target); half = null; }
     if (pt[2] > zb + 1e-6 || pt[2] < zb - P - 1e-6) console.warn(`pavilion junction ${i}: z=${pt[2].toFixed(4)} outside the pavilion`);
-    return { pt, gi, onGirdle: false };
+    return { pt, gi, onGirdle: false, half };
   });
   // Kite apexes: the culet, or the keel end(s). A main attached to both ends becomes a pentagon
   // whose first apex is the keel end nearest the previous junction.
@@ -310,10 +398,55 @@ export function buildBrilliant(spec) {
   }
   assembleHalf({
     apex, apexEnd, anchors: pavAnchors, planes: pavPlanes, tips: pavTips, zBase: zb, arr: botZ,
-    tags: { kite: 'main', half: 'lower' }, apexFaces: false,
+    tags: { kite: 'main', half: 'lower' }, apexFaces: false, halfDelta: V.halfDelta ?? 1.5, sign: -1,
   });
   }
 
+  if (spec.cut !== false) {
+    // Rebuild the stone by cutting the girdle prism with the plane of every facet found above.
+    // The explicit construction only served to find consistent facet planes; the cut decides
+    // the real topology and the girdle outline. Half facets cut at an angle keep their own
+    // plane; the others take the plane of their explicit polygon.
+    const inside = [0, 0, -g / 2];
+    const planes = [];
+    // Crown facets keep the material below their plane, pavilion facets the material above.
+    const PAVILION = new Set(['main', 'lower', 'fan', 'v', 'corner', 'chevron', 'pavilion-step', 'pavilion-keel']);
+    const orient = (pl, tag) => {
+      let n = pl.n, d = pl.d;
+      const wantDown = PAVILION.has(tag);           // kept side n.p - d <= 0 is "above" when n points down
+      if ((n[2] < 0) !== wantDown) { n = [-n[0], -n[1], -n[2]]; d = -d; }
+      return { n, d, tag };
+    };
+    for (const t of (mb.cutHalves || [])) planes.push(orient(t.plane, t.tag));
+    for (const f of mb.faces) {
+      if (f.tag === 'girdle' || (mb.cutSkip && mb.cutSkip.has(f))) continue;
+      if (f.tag === 'girdle') continue;
+      const v = f.idx.map((i) => mb.verts[i]);
+      // first three non-collinear vertices define the plane (apex and tips come first)
+      let pl = null;
+      for (let a = 0; a < v.length && !pl; a++) for (let b = a + 1; b < v.length && !pl; b++) for (let c = b + 1; c < v.length && !pl; c++) {
+        const n = normalize([
+          (v[b][1] - v[a][1]) * (v[c][2] - v[a][2]) - (v[b][2] - v[a][2]) * (v[c][1] - v[a][1]),
+          (v[b][2] - v[a][2]) * (v[c][0] - v[a][0]) - (v[b][0] - v[a][0]) * (v[c][2] - v[a][2]),
+          (v[b][0] - v[a][0]) * (v[c][1] - v[a][1]) - (v[b][1] - v[a][1]) * (v[c][0] - v[a][0]),
+        ]);
+        const l = Math.hypot(...n);
+        if (l > 0.5) {
+          const area = Math.hypot(
+            (v[b][1] - v[a][1]) * (v[c][2] - v[a][2]) - (v[b][2] - v[a][2]) * (v[c][1] - v[a][1]),
+            (v[b][2] - v[a][2]) * (v[c][0] - v[a][0]) - (v[b][0] - v[a][0]) * (v[c][2] - v[a][2]),
+            (v[b][0] - v[a][0]) * (v[c][1] - v[a][1]) - (v[b][1] - v[a][1]) * (v[c][0] - v[a][0]));
+          if (area > 1e-6) pl = orient(cutPlane(v[a], v[b], v[c], inside), f.tag);
+        }
+      }
+      if (pl) planes.push({ ...pl, tag: f.tag });
+    }
+    const cutMb = buildByCutting(outline, planes);
+    cutMb.meta = mb.meta;
+    cutMb.cutPlanes = planes;
+    cutMb.cutOutline = outline;
+    return cutMb;
+  }
   addGirdle(mb, outline, topZ, botZ);
   return mb;
 }

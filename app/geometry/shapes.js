@@ -67,11 +67,11 @@ export const SHAPES = [
       // Lab plots put a star (upper-half junction) at 12 o'clock and bezels at 1:30, 3:00 ...
       const bezelsAt = Array.from({ length: 8 }, (_, i) => 22.5 + 45 * i);
       const starsAt = Array.from({ length: 8 }, (_, i) => 45 * (i + 1));
-      const outline = makeOutline(circlePolyline(0.5, 128), ring(bezelsAt, starsAt));
+      const outline = makeOutline(circlePolyline(0.5, 256), ring(bezelsAt, starsAt), { segments: p.girdleFacets });
       return buildBrilliant({
         outline, crownHeight: p.crownHeight, girdle: p.girdle, pavilionDepth: p.pavilionDepth,
-        crown: { crownAngle: p.crownAngle, starLength: p.starLength, ...ringSpec(8) },
-        pavilion: { culet: [0, 0], mains: names('b', 8), junctions: names('s', 8), lowerLength: p.lowerLength },
+        crown: { crownAngle: p.crownAngle, starLength: p.starLength, halfDelta: p.upperHalfDelta, ...ringSpec(8) },
+        pavilion: { halfDelta: p.lowerHalfDelta, culet: [0, 0], mains: names('b', 8), junctions: names('s', 8), lowerLength: p.lowerLength },
       });
     },
   },
@@ -95,12 +95,12 @@ export const SHAPES = [
       const anchors = ring(bezT.map((t) => ellipsePolar(a, b, t)), starT.map((t) => ellipsePolar(a, b, t)));
       addAnchors(anchors, 'm', starT.map((t) => ellipsePolar(a, b, t)));
       addAnchors(anchors, 'j', bezT.map((t) => ellipsePolar(a, b, t)));
-      const outline = makeOutline(ellipsePolyline(a, b, 160), anchors);
+      const outline = makeOutline(ellipsePolyline(a, b, 320), anchors, { segments: p.girdleFacets });
       return buildBrilliant({
         outline, crownHeight: p.crownHeight, girdle: p.girdle, pavilionDepth: p.pavilionDepth,
-        crown: { crownAngle: p.crownAngle, starLength: p.starLength, ...ringSpec(8) },
+        crown: { crownAngle: p.crownAngle, starLength: p.starLength, halfDelta: p.upperHalfDelta, ...ringSpec(8) },
         // main i sits between junction i and junction i+1
-        pavilion: { culet: [0, 0], mains: names('m', 8), junctions: names('j', 8).map((_, i) => `j${(i + 1) % 8}`), lowerLength: p.lowerLength },
+        pavilion: { halfDelta: p.lowerHalfDelta, culet: [0, 0], mains: names('m', 8), junctions: names('j', 8).map((_, i) => `j${(i + 1) % 8}`), lowerLength: p.lowerLength },
       });
     },
   },
@@ -125,7 +125,7 @@ export const SHAPES = [
       const anchors = ring(bez, stars);
       addAnchors(anchors, 'm', mains);
       addAnchors(anchors, 'j', juncs);
-      const outline = makeOutline(pearPolyline(1, L, { wingStart: p.wingStart, n: 160 }), anchors);
+      const outline = makeOutline(pearPolyline(1, L, { wingStart: p.wingStart, n: 320 }), anchors, { segments: p.girdleFacets });
       // Bezel azimuths (direction of steepest descent) read from the kite axes of the IGI template.
       // The point bezel runs along the axis at its own angle; its star tips are placed from the
       // plot and the wing bezels take whatever angle meets them.
@@ -135,7 +135,7 @@ export const SHAPES = [
       return buildBrilliant({
         outline, crownHeight: p.crownHeight, girdle: p.girdle, pavilionDepth: p.pavilionDepth,
         crown: {
-          crownAngle: p.crownAngle, starLength: p.starLength,
+          crownAngle: p.crownAngle, starLength: p.starLength, halfDelta: p.upperHalfDelta,
           ...ringSpec(8, {
             bezel: (i) => ({
               azimuth: az[i],
@@ -144,7 +144,13 @@ export const SHAPES = [
             star: (i) => ({ 3: { mode: 'onNext', target: tipL }, 4: { mode: 'onPrev', target: tipR } }[i] || {}),
           }),
         },
-        pavilion: { culet: [0, p.culetY * L], mains: names('m', 8), junctions: names('j', 8), lowerLength: p.lowerLength },
+        // mains beside the point pass through the point itself (French tip), so their planes
+        // cannot slice the point off
+        pavilion: {
+          halfDelta: p.lowerHalfDelta, culet: [0, p.culetY * L],
+          mains: names('m', 8).map((g, i) => (i === 3 || i === 4 ? { girdle: g, third: 'j3' } : g)),
+          junctions: names('j', 8), lowerLength: p.lowerLength,
+        },
       });
     },
   },
@@ -168,7 +174,7 @@ export const SHAPES = [
       const anchors = ring(bez, stars);
       addAnchors(anchors, 'm', mains);
       addAnchors(anchors, 'j', juncs);
-      const outline = makeOutline(marquisePolyline(1, L, { n: 160 }), anchors);
+      const outline = makeOutline(marquisePolyline(1, L, { n: 320 }), anchors, { segments: p.girdleFacets });
       // Side bezels descend straight outwards, wings a little towards the points, points along the axis.
       const az = [90, 160, 180, 200, 270, 340, 0, 20];
       const tableY = L / 2 - p.crownHeight / Math.tan((p.pointAngle * Math.PI) / 180);
@@ -177,7 +183,7 @@ export const SHAPES = [
       return buildBrilliant({
         outline, crownHeight: p.crownHeight, girdle: p.girdle, pavilionDepth: p.pavilionDepth,
         crown: {
-          crownAngle: p.crownAngle, starLength: p.starLength,
+          crownAngle: p.crownAngle, starLength: p.starLength, halfDelta: p.upperHalfDelta,
           ...ringSpec(8, {
             bezel: (i) => ({
               azimuth: az[i],
@@ -193,7 +199,11 @@ export const SHAPES = [
             }[i] || {}),
           }),
         },
-        pavilion: { culet: [0, 0], mains: names('m', 8), junctions: names('j', 8), lowerLength: p.lowerLength },
+        pavilion: {
+          halfDelta: p.lowerHalfDelta, culet: [0, 0],
+          mains: names('m', 8).map((g, i) => ({ girdle: g, ...({ 0: { third: 'j7' }, 7: { third: 'j7' }, 3: { third: 'j3' }, 4: { third: 'j3' } }[i] || {}) })),
+          junctions: names('j', 8), lowerLength: p.lowerLength,
+        },
       });
     },
   },
@@ -204,7 +214,8 @@ export const SHAPES = [
     lab: 'Heart Brilliant',
     family: 'brilliant',
     proportions: {
-      ratio: 0.95, crownAngle: 34.5, pointAngle: 30, lobeAngle: 50, lobeTableX: 0.17, crownHeight: 0.13, girdle: 0.035, pavilionDepth: 0.41,
+      ratio: 0.95, crownAngle: 34.5, pointAngle: 30, lobeAngle: 50, crownHeight: 0.13, girdle: 0.045, pavilionDepth: 0.41,
+      upperHalfDelta: 0, lowerHalfDelta: 0,   // assembled explicitly: half facets meet the star tips and junctions directly
       starLength: 0.5, pointStarDown: 0.24, pointStarWide: 0.42, lowerLength: 0.78, culetY: 0.06, lobeR: 0.27, wingStart: 15,
       notes: 'IGI Excellent: L:W 0.85-0.95, table 58-64%, crown height 11.5-14%, crown angle 32-38, pavilion depth 39-43%, pavilion angle 39-42.5.',
     },
@@ -219,8 +230,7 @@ export const SHAPES = [
       const anchors = ring(bez, stars);
       addAnchors(anchors, 'm', mains);
       addAnchors(anchors, 'j', juncs);
-      const outline = makeOutline(heartPolyline(1, L, { lobeR: p.lobeR, wingStart: p.wingStart, n: 200 }), anchors);
-      const lobeCorner = p.lobeTableX;
+      const outline = makeOutline(heartPolyline(1, L, { lobeR: p.lobeR, wingStart: p.wingStart, n: 400 }), anchors, { segments: p.girdleFacets });
       const tableY = -L / 2 + p.crownHeight / Math.tan((p.pointAngle * Math.PI) / 180);
       const [tipL, tipR] = pointTips(outline, -L / 2, tableY, p.pointStarDown, p.pointStarWide);
       // Lobe-top bezels contain the cleft chord; the others descend along the girdle normal.
@@ -228,11 +238,11 @@ export const SHAPES = [
       return buildBrilliant({
         outline, crownHeight: p.crownHeight, girdle: p.girdle, pavilionDepth: p.pavilionDepth,
         crown: {
-          crownAngle: p.crownAngle, starLength: p.starLength,
+          crownAngle: p.crownAngle, starLength: p.starLength, halfDelta: p.upperHalfDelta,
           ...ringSpec(9, {
             bezel: (i) => ({
-              0: { third: 's8', angle: p.lobeAngle, tableTarget: [-lobeCorner, 0] },
-              8: { third: 's8', angle: p.lobeAngle, tableTarget: [lobeCorner, 0] },
+              0: { third: 's8', angle: p.lobeAngle, tableTarget: 'axis' },
+              8: { third: 's8', angle: p.lobeAngle, tableTarget: 'axis' },
               4: { azimuth: 270, angle: p.pointAngle },
               3: { through: 'next', solve: 'angle' }, 5: { through: 'prev', solve: 'angle' },
             }[i] || {}),
@@ -243,7 +253,12 @@ export const SHAPES = [
             }[i] || {}),
           }),
         },
-        pavilion: { culet: [0, p.culetY * L], mains: names('m', 8), junctions: names('j', 8), lowerLength: p.lowerLength },
+        pavilion: {
+          halfDelta: p.lowerHalfDelta, culet: [0, p.culetY * L],
+          mains: names('m', 8).map((g, i) => ({ girdle: g, ...({ 0: { third: 'j7' }, 7: { third: 'j7' }, 3: { third: 'j3' }, 4: { third: 'j3' } }[i] || {}) })),
+          junctions: names('j', 8), lowerLength: p.lowerLength,
+        },
+        cut: false,   // the cleft makes the outline non-convex: facets are assembled explicitly
       });
     },
   },
@@ -266,15 +281,15 @@ export const SHAPES = [
       const mid = (a, b) => (a + b) / 2;
       const stars = bez.map((a, i) => mid(a, bez[(i + 1) % 8] + (i === 7 ? 360 : 0)));
       const anchors = ring(bez, stars);
-      const outline = makeOutline(cushionPolyline(1, L, { p: p.squareness, n: 192 }), anchors);
+      const outline = makeOutline(cushionPolyline(1, L, { p: p.squareness, n: 384 }), anchors, { segments: p.girdleFacets });
       const keel = { x: 0, y0: -p.keel * L / 2, y1: p.keel * L / 2 };
       // end mains on the keel ends, side mains on both, corner mains on the near end
       const ends = ['b', 'b', 'both', 'a', 'a', 'a', 'both', 'b'];
       return buildBrilliant({
         outline, crownHeight: p.crownHeight, girdle: p.girdle, pavilionDepth: p.pavilionDepth,
-        crown: { crownAngle: p.crownAngle, starLength: p.starLength, ...ringSpec(8) },
+        crown: { crownAngle: p.crownAngle, starLength: p.starLength, halfDelta: p.upperHalfDelta, ...ringSpec(8) },
         pavilion: {
-          keel, mains: names('b', 8).map((g, i) => ({ girdle: g, end: ends[i] })),
+          halfDelta: p.lowerHalfDelta, keel, mains: names('b', 8).map((g, i) => ({ girdle: g, end: ends[i] })),
           junctions: names('s', 8), lowerLength: p.lowerLength,
         },
       });
@@ -314,10 +329,11 @@ export const SHAPES = [
         chain.push(footB);
         quadrants.push({ first, second, chain, k: 3 });
       });
-      const outline = makeOutline(cushionPolyline(1, L, { p: p.squareness, n: 192 }), anchors);
+      const outline = makeOutline(cushionPolyline(1, L, { p: p.squareness, n: 384 }), anchors, { segments: p.girdleFacets });
       return buildBrilliant({
         outline, crownHeight: p.crownHeight, girdle: p.girdle, pavilionDepth: p.pavilionDepth,
-        crown: { crownAngle: p.crownAngle, starLength: p.starLength, ...ringSpec(8) },
+        crown: { crownAngle: p.crownAngle, starLength: p.starLength, halfDelta: p.upperHalfDelta, ...ringSpec(8) },
+        cut: false,
         customPavilion: (mb, o, botZ) => addCushionFanPavilion(mb, o, botZ, { W: 1, L, girdle: p.girdle, pavilionDepth: p.pavilionDepth, quadrants }),
       });
     },
@@ -344,6 +360,7 @@ export const SHAPES = [
         customCrown: (mb, o, topZ) => addXCrown(mb, o, topZ, {
           W: 1, L, crownHeight: p.crownHeight, tableInset: (1 - p.table) / 2, innerInset: p.innerInset, innerAngle: p.innerAngle,
         }),
+        cut: false,
         customPavilion: (mb, o, botZ) => addChevronPavilion(mb, o, botZ, { W: 1, L, girdle: p.girdle, pavilionDepth: p.pavilionDepth, tiers }),
       });
     },
@@ -380,6 +397,7 @@ export const SHAPES = [
         customCrown: (mb, o, topZ) => addXCrown(mb, o, topZ, {
           W: 1, L, crownHeight: p.crownHeight, tableInset: (1 - p.table) / 2, innerInset: p.innerInset,
         }),
+        cut: false,
         customPavilion: (mb, o, botZ) => addFanPavilion(mb, o, botZ, { W: 1, L, girdle: p.girdle, pavilionDepth: p.pavilionDepth, vInset: 0.12 }),
       });
     },
@@ -435,8 +453,8 @@ export function getShape(id) {
 /** Build a shape's mesh with optional proportion overrides. Returns the render buffers. */
 export function buildShape(id, overrides = {}) {
   const shape = getShape(id);
-  const p = { ...shape.proportions, ...overrides };
-  GIRDLE.flat = !p.scallopedGirdle;
+  const p = { upperHalfDelta: 7, lowerHalfDelta: 1.5, girdleFacets: 128, ...shape.proportions, ...overrides };
+  GIRDLE.mode = p.girdleMode === 'flat' ? 'flat' : 'hills';
   const mb = shape.build(p);
   const geo = mb.build();
   if (mb.meta && mb.meta.tableCorners) {

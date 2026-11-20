@@ -65,10 +65,17 @@ up), Z = table normal.
   pavilions are assembled from triangles and planar quads.
 - **Step cuts** (`stepcut.js`): concentric cut-cornered rings with parallel edges, so every
   step facet is a trapezoid.
-- **Girdle**: drawn as a flat band as on lab diagrams. Facets that meet the girdle along a
-  curved arc are then non-planar by the arc's sagitta (a fraction of a percent of the
-  width). Set `scallopedGirdle: true` in a shape's proportions to keep those facets exactly
-  planar and let the girdle edges scallop instead.
+- **Cutting** (`clip.js`): once the facet planes are known, every convex shape is rebuilt the
+  way a cutter works: start from the faceted girdle prism, cut the table and bezels, then cut
+  the stars, the upper girdle facets, the pavilion mains and the lower girdle facets. Each cut
+  is a half-space clip, so the result is always a physically possible solid and the girdle is
+  whatever is left of the prism: thick where the facet junctions meet it and dipping in the
+  middle of every half facet, exactly as on a real stone. Upper and lower girdle facets are
+  cut at a set angle (steeper than their kites) through their two girdle points; the star tips
+  and lower junctions are where those planes meet the kite ridges. The heart's cleft makes it
+  non-convex, so the heart is still assembled facet by facet.
+- **Girdle facets**: the outline is resampled so the girdle has evenly spaced facets between
+  facet junctions (128 around a round brilliant), and their lines are drawn by default.
 
 ## Views
 
@@ -76,14 +83,17 @@ up), Z = table normal.
 - **Top / Bottom / Left / Right**: profile views from the head end, point end and the two
   sides, drawn table-up like a lab proportion diagram.
 - **Isometric**: face-up view kept dominant, tilted to reveal the crown and girdle.
+- **Spin about table axis**: rotates the stone about its own axis before the view is applied,
+  with quick 22.5 and 45 degree turns. On a round brilliant 22.5 degrees centres a bezel in
+  the side views and shows the upper and lower bezels edge-on.
 - Drag to rotate freely, shift-drag to roll, scroll to zoom.
 - Projection: orthographic (as on lab diagrams) or perspective with an adjustable field of
   view.
 
 ## Drawing sheets
 
-Choose third-angle or first-angle projection, then use the arrows on any view in the list
-to project a view to its left, right, above or below. Projected views can be projected from
+Choose third-angle or first-angle projection, then click L, R, A or B beside any view in the
+list to project a new view to its left, right, above or below. Projected views can be projected from
 again. Gaps between views are measured between bounding boxes in stone widths, with a
 default per direction and an override per projected view. Projected views follow the base
 view when you rotate it. Sheets are always orthographic.

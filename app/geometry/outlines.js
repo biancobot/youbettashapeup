@@ -39,7 +39,7 @@ function rayHit(pts, c, deg) {
  * Build an outline object from a dense polyline and a map of anchor name -> polar angle.
  * Anchors are inserted into the polyline (or snapped to an existing vertex within eps).
  */
-export function makeOutline(polyline, anchorAngles, { center = [0, 0], eps = 2e-4 } = {}) {
+export function makeOutline(polyline, anchorAngles, { center = [0, 0], eps = 2e-4, segments = 0 } = {}) {
   let pts = polyline.map((p) => [p[0], p[1]]);
   if (signedArea(pts) < 0) pts.reverse();
   const anchors = {};
@@ -58,6 +58,40 @@ export function makeOutline(polyline, anchorAngles, { center = [0, 0], eps = 2e-
       pts.splice(hit.i + 1, 0, [x, y]);
       names.splice(hit.i + 1, 0, [name]);
     }
+  }
+  if (segments > 0 && Object.keys(anchorAngles).length > 0) {
+    // Resample so that every anchor is a vertex and the girdle facets between consecutive
+    // anchors are evenly spaced (about `segments` facets around the whole outline).
+    const anchorIdx = [];
+    names.forEach((list, i) => { if (list.length) anchorIdx.push(i); });
+    const M = pts.length;
+    const segLen = (a, b) => Math.hypot(pts[b % M][0] - pts[a % M][0], pts[b % M][1] - pts[a % M][1]);
+    let total = 0;
+    for (let i = 0; i < M; i++) total += segLen(i, i + 1);
+    const newPts = [], newNames = [];
+    for (let a = 0; a < anchorIdx.length; a++) {
+      const i0 = anchorIdx[a], i1 = anchorIdx[(a + 1) % anchorIdx.length];
+      // arc from i0 to i1 (counter-clockwise, wrapping)
+      const idx = [i0];
+      let k = i0;
+      while (k !== i1) { k = (k + 1) % M; idx.push(k); }
+      const cum = [0];
+      for (let j = 1; j < idx.length; j++) cum.push(cum[j - 1] + segLen(idx[j - 1], idx[j]));
+      const len = cum[cum.length - 1];
+      const n = Math.max(1, Math.round((segments * len) / total));
+      newPts.push(pts[i0]); newNames.push(names[i0]);
+      for (let t = 1; t < n; t++) {
+        const d = (len * t) / n;
+        let j = 1;
+        while (j < cum.length - 1 && cum[j] < d) j++;
+        const p0 = pts[idx[j - 1]], p1 = pts[idx[j]];
+        const u = (cum[j] - cum[j - 1]) > 0 ? (d - cum[j - 1]) / (cum[j] - cum[j - 1]) : 0;
+        newPts.push([p0[0] + (p1[0] - p0[0]) * u, p0[1] + (p1[1] - p0[1]) * u]);
+        newNames.push([]);
+      }
+    }
+    pts = newPts;
+    names.length = 0; names.push(...newNames);
   }
   names.forEach((list, i) => { for (const n of list) anchors[n] = i; });
   for (const name of Object.keys(anchorAngles)) {

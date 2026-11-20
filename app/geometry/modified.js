@@ -136,7 +136,7 @@ export function addFanPavilion(mb, outline, botZ, {
   const V = { up: [0, l * (1 - vInset), zV], down: [0, -l * (1 - vInset), zV], left: [-w * (1 - vInset), 0, zV], right: [w * (1 - vInset), 0, zV] };
   const vert = ['up', 'up', 'down', 'down'], horiz = ['right', 'left', 'left', 'right'];
   const setArc = (indices, plane) => {
-    for (const k of indices) botZ[k] = GIRDLE.flat ? zb : planeZ(plane, pts[k][0], pts[k][1]);
+    for (const k of indices) botZ[k] = GIRDLE.mode === 'flat' ? zb : planeZ(plane, pts[k][0], pts[k][1]);
   };
   const arcPoly = (iFrom, iTo, plane) => {
     const idx = outline.range(iFrom, iTo);
@@ -204,7 +204,7 @@ export function addCushionFanPavilion(mb, outline, botZ, {
   const C = [0, 0, zc];
   const A = {};
   const sidePos = { up: [0, apex * l], down: [0, -apex * l], left: [-apex * w, 0], right: [apex * w, 0] };
-  const setArc = (indices, plane) => { for (const k of indices) botZ[k] = GIRDLE.flat ? zb : planeZ(plane, pts[k][0], pts[k][1]); };
+  const setArc = (indices, plane) => { for (const k of indices) botZ[k] = GIRDLE.mode === 'flat' ? zb : planeZ(plane, pts[k][0], pts[k][1]); };
   const arcPoly = (iFrom, iTo, plane) => {
     const idx = outline.range(iFrom, iTo);
     setArc(idx, plane);

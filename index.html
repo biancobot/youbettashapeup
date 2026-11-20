@@ -44,9 +44,9 @@
     .viewrow input[type=number] { width: 58px; padding: 3px 4px; }
     .viewbtns button { padding: 2px 6px; margin-left: 2px; font-size: 12px; }
     @media (max-width: 760px) {
-      #app { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
-      #panel { border-right: 0; border-bottom: 1px solid var(--border); max-height: 45vh; }
-      #stage { min-height: 50vh; }
+      body:not(.noui) #app { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+      body:not(.noui) #panel { border-right: 0; border-bottom: 1px solid var(--border); max-height: 45vh; }
+      body:not(.noui) #stage { min-height: 50vh; }
     }
     body.noui #app { grid-template-columns: 1fr; }
     body.noui #panel, body.noui #info { display: none; }
@@ -71,6 +71,11 @@
         <h2>View</h2>
         <div class="views" id="views"></div>
         <button id="fit">Fit to window</button>
+        <div class="row"><label for="spin">Spin about table axis</label>
+          <span><input type="range" id="spin" min="0" max="360" step="0.5" value="0"> <input type="number" id="spinnum" step="0.5" value="0" style="width:64px"></span></div>
+        <div class="row"><span class="hint">Quick turns</span>
+          <span><button data-spin="-22.5">-22.5&deg;</button> <button data-spin="22.5">+22.5&deg;</button> <button data-spin="45">+45&deg;</button></span></div>
+        <div class="hint">22.5&deg; on a round brilliant centres a bezel in the side views and shows the upper and lower bezels edge-on.</div>
       </div>
 
       <div class="group">
@@ -89,7 +94,7 @@
           <label>Gap above <input type="number" id="gap-above" step="0.05" min="0"></label>
           <label>Gap below <input type="number" id="gap-below" step="0.05" min="0"></label>
         </div>
-        <div class="hint">Gaps are in stone widths, measured between view bounding boxes. Use the arrows on a view to project another view from it; projected views follow the base view as you rotate it. Sheets are always orthographic.</div>
+        <div class="hint">To add a projected view, click L, R, A or B beside a view in the list below: it projects a new view to the Left, Right, Above or Below that view under the selected standard. Projected views can be projected from again, and all of them follow the base view as you rotate it. Gaps are in stone widths between view bounding boxes. Sheets are always orthographic.</div>
         <div id="viewlist"></div>
         <button id="clearviews">Remove all projected views</button>
       </div>
@@ -98,7 +103,7 @@
         <h2>Lines</h2>
         <div class="row"><label for="lw">Edge thickness</label>
           <span><input type="range" id="lw" min="0.5" max="8" step="0.25" value="1.5"> <span id="lwv">1.5 px</span></span></div>
-        <div class="row"><label for="girdle">Show all girdle facet lines</label><input type="checkbox" id="girdle"></div>
+        <div class="row"><label for="girdle">Girdle facet lines (off: silhouette only)</label><input type="checkbox" id="girdle" checked></div>
       </div>
 
       <div class="group">

@@ -7,12 +7,15 @@
 //   All sizes are normalised so that the stone width is 1.
 
 /**
- * Girdle mode. Lab diagrams draw the girdle as a flat band, so by default every girdle point
- * sits at the reference heights (crown edge at 0, pavilion edge at -g) and the facets that
- * meet the girdle along a curved arc are very slightly non-planar (by the arc's sagitta).
- * With flat = false the facets stay exactly planar and the girdle edges scallop instead.
+ * Girdle mode.
+ *   'hills': the upper and lower girdle facets are cut steeper than the bezels and mains, so
+ *            they meet the girdle higher (crown) and lower (pavilion) at the half-facet
+ *            junctions: the girdle is thinnest at the kite points and thickest between them,
+ *            as on a real stone. Every facet is exactly planar.
+ *   'flat':  every girdle point sits at the reference heights, as on a lab plotting diagram;
+ *            facets meeting the girdle along a curved arc are then slightly non-planar.
  */
-export const GIRDLE = { flat: true };
+export const GIRDLE = { mode: 'hills' };
 
 export const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 export const add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
@@ -68,6 +71,14 @@ export function pointOnLineNearestXY(line, target) {
   const dd = dx * dx + dy * dy;
   if (dd < 1e-12) return [target[0], target[1], line.pt[2]];
   const t = ((target[0] - line.pt[0]) * dx + (target[1] - line.pt[1]) * dy) / dd;
+  return add(line.pt, scale(line.dir, t));
+}
+
+/** Intersection of a line with a plane (null if parallel). */
+export function pointOnLineAtPlane(line, pl) {
+  const den = dot(pl.n, line.dir);
+  if (Math.abs(den) < 1e-12) return null;
+  const t = (pl.d - dot(pl.n, line.pt)) / den;
   return add(line.pt, scale(line.dir, t));
 }
 

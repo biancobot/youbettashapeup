@@ -11,7 +11,8 @@ const state = {
   shapeId: params.get('shape') || 'round',
   viewId: params.get('view') || 'front',
   lineWidth: parseFloat(params.get('lw') || '1.5'),
-  girdleLines: params.get('girdle') === '1',
+  girdleLines: params.get('girdle') !== '0',
+  spin: parseFloat(params.get('spin') || '0'),
   exportScale: 2,
   zoom: parseFloat(params.get('zoom') || '1'),
   projection: params.get('proj') === 'perspective' ? 'perspective' : 'orthographic',
@@ -159,7 +160,8 @@ function layout(force) {
   if (!geo) return;
   syncInstances();
   const base = instances.get('base');
-  base.q.copy(baseQ);
+  // spin about the stone's own table axis, applied before the view rotation
+  base.q.copy(baseQ).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), (state.spin * Math.PI) / 180));
   base.pos = [0, 0];
   base.bbox = bboxFor(base.q);
   for (const v of state.sheet.views) {
@@ -361,9 +363,9 @@ function renderViewList() {
     }
     const btns = document.createElement('span');
     btns.className = 'viewbtns';
-    for (const [dir, glyph] of [['left', '←'], ['right', '→'], ['above', '↑'], ['below', '↓']]) {
+    for (const [dir, glyph] of [['left', '← L'], ['right', 'R →'], ['above', '↑ A'], ['below', '↓ B']]) {
       const b = document.createElement('button');
-      b.textContent = glyph; b.title = `Project a view ${dir} of this one`;
+      b.textContent = glyph; b.title = `Project a new view ${dir} of this one`;
       b.addEventListener('click', () => addView(id, dir));
       btns.appendChild(b);
     }
@@ -403,6 +405,17 @@ function markView() {
   if (baseName) baseName.textContent = viewLabel('base');
 }
 document.getElementById('fit').addEventListener('click', () => { state.zoom = 1; resize(); });
+
+const spinIn = document.getElementById('spin'), spinNum = document.getElementById('spinnum');
+function setSpin(v) {
+  state.spin = ((v % 360) + 360) % 360;
+  spinIn.value = state.spin; spinNum.value = state.spin;
+  layout(true);
+}
+spinIn.value = state.spin; spinNum.value = state.spin;
+spinIn.addEventListener('input', () => setSpin(parseFloat(spinIn.value) || 0));
+spinNum.addEventListener('change', () => setSpin(parseFloat(spinNum.value) || 0));
+for (const b of document.querySelectorAll('[data-spin]')) b.addEventListener('click', () => setSpin(state.spin + parseFloat(b.dataset.spin)));
 
 const lw = document.getElementById('lw'), lwv = document.getElementById('lwv');
 lw.value = state.lineWidth;
@@ -482,6 +495,7 @@ window.__viewer = {
   state, loadShape, snapTo, exportPNG, resize, addView, removeView, clearViews,
   setLineWidth(v) { state.lineWidth = v; lineMat.linewidth = v; },
   setGirdleLines(v) { state.girdleLines = v; layout(true); },
+  setSpin,
   setZoom(z) { state.zoom = z; resize(); },
   setProjection(p, fov) { state.projection = p; if (fov) state.fov = fov; resize(); },
   setStandard(s) { state.sheet.standard = s; standardSel.value = s; layout(true); },
