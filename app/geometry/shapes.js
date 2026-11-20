@@ -144,11 +144,10 @@ export const SHAPES = [
             star: (i) => ({ 3: { mode: 'onNext', target: tipL }, 4: { mode: 'onPrev', target: tipR } }[i] || {}),
           }),
         },
-        // mains beside the point pass through the point itself (French tip), so their planes
-        // cannot slice the point off
         pavilion: {
           halfDelta: p.lowerHalfDelta, culet: [0, p.culetY * L],
-          mains: names('m', 8).map((g, i) => (i === 3 || i === 4 ? { girdle: g, third: 'j3' } : g)),
+          // mains beside the point pass just under it so their planes do not slice the point off
+          mains: names('m', 8).map((g, i) => (i === 3 || i === 4 ? { girdle: g, third: 'j3', thirdDrop: 0.03 } : g)),
           junctions: names('j', 8), lowerLength: p.lowerLength,
         },
       });
@@ -201,7 +200,8 @@ export const SHAPES = [
         },
         pavilion: {
           halfDelta: p.lowerHalfDelta, culet: [0, 0],
-          mains: names('m', 8).map((g, i) => ({ girdle: g, ...({ 0: { third: 'j7' }, 7: { third: 'j7' }, 3: { third: 'j3' }, 4: { third: 'j3' } }[i] || {}) })),
+          // mains beside the points pass just under the point so their planes do not slice it off
+          mains: names('m', 8).map((g, i) => ({ girdle: g, ...({ 0: { third: 'j7', thirdDrop: 0.03 }, 7: { third: 'j7', thirdDrop: 0.03 }, 3: { third: 'j3', thirdDrop: 0.03 }, 4: { third: 'j3', thirdDrop: 0.03 } }[i] || {}) })),
           junctions: names('j', 8), lowerLength: p.lowerLength,
         },
       });
@@ -345,7 +345,7 @@ export const SHAPES = [
     lab: 'Square Modified Brilliant',
     family: 'modified',
     proportions: {
-      ratio: 1.0, crownHeight: 0.11, girdle: 0.035, pavilionDepth: 0.58, table: 0.70, innerInset: 0.06, innerAngle: 45,
+      ratio: 1.0, crownHeight: 0.11, girdle: 0.035, pavilionDepth: 0.58, table: 0.70, innerInset: 0.06, bandAngle: 45,
       chevrons: 4,
       notes: 'IGI Excellent: L:W 1.00-1.05, table 65-74%, crown height 8-14.5%, pavilion depth 54.5-62%, total depth 65-73%. Crown of 25 facets; pavilion with four chevron tiers.',
     },
@@ -358,7 +358,7 @@ export const SHAPES = [
       return buildBrilliant({
         outline, crownHeight: p.crownHeight, girdle: p.girdle, pavilionDepth: p.pavilionDepth,
         customCrown: (mb, o, topZ) => addXCrown(mb, o, topZ, {
-          W: 1, L, crownHeight: p.crownHeight, tableInset: (1 - p.table) / 2, innerInset: p.innerInset, innerAngle: p.innerAngle,
+          W: 1, L, crownHeight: p.crownHeight, tableInset: (1 - p.table) / 2, innerInset: p.innerInset, bandAngle: p.bandAngle,
         }),
         cut: false,
         customPavilion: (mb, o, botZ) => addChevronPavilion(mb, o, botZ, { W: 1, L, girdle: p.girdle, pavilionDepth: p.pavilionDepth, tiers }),
@@ -453,7 +453,7 @@ export function getShape(id) {
 /** Build a shape's mesh with optional proportion overrides. Returns the render buffers. */
 export function buildShape(id, overrides = {}) {
   const shape = getShape(id);
-  const p = { upperHalfDelta: 7, lowerHalfDelta: 1.5, girdleFacets: 128, ...shape.proportions, ...overrides };
+  const p = { upperHalfDelta: 0, lowerHalfDelta: 0, girdleFacets: 128, ...shape.proportions, ...overrides };
   GIRDLE.mode = p.girdleMode === 'flat' ? 'flat' : 'hills';
   const mb = shape.build(p);
   const geo = mb.build();

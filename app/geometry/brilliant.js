@@ -82,7 +82,7 @@ export function halfSlope(Ga, Gb, kiteA, kiteB, delta, apex, zBase, margin = 0.0
   if (u[0] * cx + u[1] * cy < 0) u = [-u[0], -u[1], 0];
   const run = (cx - apex[0]) * u[0] + (cy - apex[1]) * u[1];   // horizontal distance from the apex to the chord along u
   const rise = Math.abs(apex[2] - zBase) + margin;
-  const need = run > 0.05 ? rise / run : 0;                       // chords beside the apex cannot be governed this way
+  const need = run > 0.15 ? rise / run : 0;                       // chords beside the apex cannot be governed this way
   const a = Math.atan(planeSlope(kiteA)) + (delta * Math.PI) / 180;
   const b = Math.atan(planeSlope(kiteB)) + (delta * Math.PI) / 180;
   return Math.min(5, Math.max(Math.tan(a), Math.tan(b), need));
@@ -160,10 +160,12 @@ export function buildBrilliant(spec) {
       let plR = planeFrom3(S, Gj, anchors[j].G);
       let plRcut = null;
       if (tips[i].half) {
-        // the right-hand half is cut at the same angle through its own chord
+        // right-hand half: through the tip and its own girdle chord, steepened like the left one if needed
+        const Ga = pts[tips[i].gi], Gb = pts[anchors[j].gi];
+        plRcut = planeFrom3([Ga[0], Ga[1], zBase], [Gb[0], Gb[1], zBase], S);
         const apexPt = sign > 0 ? [0, 0, apex[i][2]] : apex[i];
-        const tanH = halfSlope(pts[tips[i].gi], pts[anchors[j].gi], planes[i], planes[j], halfDelta, apexPt, zBase);
-        plRcut = chordPlane(pts[tips[i].gi], pts[anchors[j].gi], zBase, tanH * sign);
+        const minTan = halfSlope(Ga, Gb, planes[i], planes[j], halfDelta, apexPt, zBase, 0.005);
+        if (planeSlope(plRcut) + 1e-9 < minTan) plRcut = chordPlane(Ga, Gb, zBase, minTan * sign);
       }
       setArc(idxR, plR, arr, Gj[2], zBase);
       const fr = mb.face([S, ...arcPoints(idxR, arr)], tags.half);
@@ -294,16 +296,26 @@ export function buildBrilliant(spec) {
     }
     if (!crownPlanes[i] || !crownPlanes[j]) return false;
     const line = intersectPlanes(crownPlanes[i], crownPlanes[j]);
-    let pt = null, half = null;
-    if (GIRDLE.mode !== 'flat' && (C.halfDelta ?? 7) > 0 && !s.length && !s.target) {
-      // upper girdle facet cut at kite angle + delta through its two girdle points;
-      // the star tip is where it meets the line between the two bezels
-      const tanH = halfSlope(pts[crownAnchors[i].gi], pts[s.gi], crownPlanes[i], crownPlanes[j], C.halfDelta ?? 7, [tc[0], tc[1], H], 0);
-      half = chordPlane(pts[crownAnchors[i].gi], pts[s.gi], 0, tanH);
-      pt = pointOnLineAtPlane(line, half);
-      if (pt && (pt[2] > H + 1e-6 || pt[2] < 0)) { console.warn(`crown star ${i}: half facet meets the bezels at z=${pt[2].toFixed(3)}`); }
+    // Star tip at the star length on the ridge between the two bezels; the upper girdle facet is
+    // the plane through the two girdle points and the tip. If that plane is not at least
+    // halfDelta steeper than both bezels it is steepened (rotated about its girdle chord) and
+    // the tip moves to where the steeper plane meets the ridge.
+    let pt = pointOnLineNearestXY(line, target);
+    let half = null;
+    if (GIRDLE.mode !== 'flat' && !s.target) {
+      const Ga = pts[crownAnchors[i].gi], Gb = pts[s.gi];
+      const minTan = halfSlope(Ga, Gb, crownPlanes[i], crownPlanes[j], C.halfDelta ?? 0, [tc[0], tc[1], H], 0, 0.005);
+      // shorten the star (tip nearer the table edge) until the upper girdle facet is steep enough,
+      // never letting the tip leave the crown
+      half = planeFrom3([Ga[0], Ga[1], 0], [Gb[0], Gb[1], 0], pt);
+      for (let ff = f - 0.02; ff >= 0.05; ff -= 0.02) {
+        if (planeSlope(half) + 1e-9 >= minTan) break;
+        const tg = [pts[s.gi][0] - nrm[0] * (1 - ff) * nominalInset, pts[s.gi][1] - nrm[1] * (1 - ff) * nominalInset];
+        const p2 = pointOnLineNearestXY(line, tg);
+        if (p2[2] > H - 1e-6 || p2[2] < 0) break;
+        pt = p2; half = planeFrom3([Ga[0], Ga[1], 0], [Gb[0], Gb[1], 0], p2);
+      }
     }
-    if (!pt) { pt = pointOnLineNearestXY(line, target); half = null; }
     tips[i] = { pt, gi: s.gi, onGirdle: false, half };
     return true;
   };
@@ -329,7 +341,7 @@ export function buildBrilliant(spec) {
   mb.face(T, 'table');
   assembleHalf({
     apex: T, anchors: crownAnchors, planes: crownPlanes, tips: crownTips, zBase: 0, arr: topZ,
-    tags: { kite: 'bezel', half: 'upper' }, apexFaces: true, halfDelta: C.halfDelta ?? 7, sign: 1,
+    tags: { kite: 'bezel', half: 'upper' }, apexFaces: true, halfDelta: C.halfDelta ?? 0.5, sign: 1,
   });
   mb.meta = { tableCorners: T, crownAngles, crownAzimuths: crownU.map((u) => (Math.atan2(u[1], u[0]) * 180) / Math.PI) };
   }
@@ -354,7 +366,7 @@ export function buildBrilliant(spec) {
       if (m.end === 'both') return planeFrom3(keel[0], keel[1], pavAnchors[i].G);
       return planeNoTwist(keelEnd(m), pavAnchors[i].G);
     }
-    if (m.third) return planeFrom3(culet, pavAnchors[i].G, P3(need(m.third), zb));
+    if (m.third) return planeFrom3(culet, pavAnchors[i].G, P3(need(m.third), zb - (m.thirdDrop || 0)));
     return planeNoTwist(culet, pavAnchors[i].G);
   });
   const pavTips = juncSpecs.map((jn, i) => {
@@ -370,14 +382,20 @@ export function buildBrilliant(spec) {
     }
     const target = jn.target || [pts[gi][0] + (towards[0] - pts[gi][0]) * f, pts[gi][1] + (towards[1] - pts[gi][1]) * f];
     const line = intersectPlanes(pavPlanes[i], pavPlanes[j]);
-    let pt = null, half = null;
-    if (GIRDLE.mode !== 'flat' && (V.halfDelta ?? 1.5) > 0 && !jn.length && !jn.target) {
-      const tanH = halfSlope(pts[pavAnchors[i].gi], pts[gi], pavPlanes[i], pavPlanes[j], V.halfDelta ?? 1.5, culet, zb);
-      half = chordPlane(pts[pavAnchors[i].gi], pts[gi], zb, -tanH);   // lower girdle facets descend inward
-      pt = pointOnLineAtPlane(line, half);
-      if (pt && (pt[2] > zb || pt[2] < zb - P - 1e-6)) { console.warn(`pavilion junction ${i}: lower facet meets the mains at z=${pt[2].toFixed(3)}`); }
+    let pt = pointOnLineNearestXY(line, target);
+    let half = null;
+    if (GIRDLE.mode !== 'flat' && !jn.target) {
+      const Ga = pts[pavAnchors[i].gi], Gb = pts[gi];
+      const minTan = halfSlope(Ga, Gb, pavPlanes[i], pavPlanes[j], V.halfDelta ?? 0, culet, zb, 0.005);
+      half = planeFrom3([Ga[0], Ga[1], zb], [Gb[0], Gb[1], zb], pt);
+      for (let ff = f + 0.01; ff <= 0.985; ff += 0.01) {
+        if (planeSlope(half) + 1e-9 >= minTan) break;
+        const tg = [pts[gi][0] + (towards[0] - pts[gi][0]) * ff, pts[gi][1] + (towards[1] - pts[gi][1]) * ff];
+        const p2 = pointOnLineNearestXY(line, tg);
+        if (p2[2] > zb || p2[2] < zb - P) break;
+        pt = p2; half = planeFrom3([Ga[0], Ga[1], zb], [Gb[0], Gb[1], zb], p2);
+      }
     }
-    if (!pt) { pt = pointOnLineNearestXY(line, target); half = null; }
     if (pt[2] > zb + 1e-6 || pt[2] < zb - P - 1e-6) console.warn(`pavilion junction ${i}: z=${pt[2].toFixed(4)} outside the pavilion`);
     return { pt, gi, onGirdle: false, half };
   });
@@ -398,7 +416,7 @@ export function buildBrilliant(spec) {
   }
   assembleHalf({
     apex, apexEnd, anchors: pavAnchors, planes: pavPlanes, tips: pavTips, zBase: zb, arr: botZ,
-    tags: { kite: 'main', half: 'lower' }, apexFaces: false, halfDelta: V.halfDelta ?? 1.5, sign: -1,
+    tags: { kite: 'main', half: 'lower' }, apexFaces: false, halfDelta: V.halfDelta ?? 0.5, sign: -1,
   });
   }
 

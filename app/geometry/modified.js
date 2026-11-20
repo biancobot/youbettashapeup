@@ -16,65 +16,64 @@ import { addGirdle } from './brilliant.js';
 const P3 = (p, z) => [p[0], p[1], z];
 
 /**
- * Crown for princess / radiant. outline must be a rectangle or cut-cornered rectangle whose
- * vertices are exactly the corners (no intermediate points) with anchors ka0..ka3 / kb0..kb3:
- * for corner q (0 = upper-right, 1 = upper-left, 2 = lower-left, 3 = lower-right), ka is the
- * cut-corner end on the side (left/right edge) and kb the end on the top/bottom edge; for a
- * plain rectangle both name the same corner vertex.
+ * Crown for princess / radiant, as on the lab plots: a band of facets all the way round next to
+ * the girdle (8 trapezoids for a cut-cornered outline, 4 for a plain rectangle), corner facets
+ * from the band's inner ring to the table corners, and four triangles meeting at an X on each
+ * side between the inner ring and the table edge.
+ * The outline must be the rectangle / cut-cornered rectangle with anchors ka{q} (corner end on
+ * the left/right side) and kb{q} (corner end on the top/bottom edge), q = 0 upper-right,
+ * 1 upper-left, 2 lower-left, 3 lower-right.
  */
 export function addXCrown(mb, outline, topZ, {
-  W, L, crownHeight: H, tableInset: t, innerInset: a, innerAngle = 45, xDrop = 0.08,
+  W, L, crownHeight: H, tableInset: t, innerInset: a, bandAngle = 45, xDrop = 0.08,
 }) {
   const w = W / 2, l = L / 2;
   const sx = [1, -1, -1, 1], sy = [1, 1, -1, -1];
-  const T = sx.map((x, q) => [x * (w - t), sy[q] * (l - t), H]);       // table corners per quadrant
-  const Atop = sx.map((x, q) => [x * (w - t), sy[q] * (l - a)]);        // inner-line ends on top/bottom sides
-  const Bside = sx.map((x, q) => [x * (w - a), sy[q] * (l - t)]);       // inner-line ends on left/right sides
   const Ka = sx.map((_, q) => outline.point(`ka${q}`));
   const Kb = sx.map((_, q) => outline.point(`kb${q}`));
-  const cut = Math.hypot(Ka[0][0] - Kb[0][0], Ka[0][1] - Kb[0][1]) > 1e-9;
-  // Corner facet planes: through both cut-corner ends (girdle) and the table corner; with a
-  // plain rectangle the kite is symmetric and the inner points take a chosen steepness.
-  const zA = new Array(4), zB = new Array(4);
+  const k = Math.abs(Ka[0][1] - Kb[0][1]);                  // corner cut (0 for a rectangle)
+  const cut = k > 1e-9;
+  const zA = a * Math.tan((bandAngle * Math.PI) / 180);
+  const kIn = k * (w - a) / w, kT = k * (w - t) / w;        // proportional cuts on the inner ring and the table
+  // inner ring and table ring, per quadrant: a = side-edge end, b = top/bottom-edge end
+  const Ia = sx.map((x, q) => [x * (w - a), sy[q] * (l - a - kIn), zA]);
+  const Ib = sx.map((x, q) => [x * (w - a - kIn), sy[q] * (l - a), zA]);
+  const Ta = sx.map((x, q) => [x * (w - t), sy[q] * (l - t - kT), H]);
+  const Tb = sx.map((x, q) => [x * (w - t - kT), sy[q] * (l - t), H]);
+  const G = (p) => [p[0], p[1], 0];
+  mb.face([Tb[0], Tb[1], ...(cut ? [Ta[1]] : []), Ta[2], Tb[2], Tb[3], ...(cut ? [Ta[3]] : []), Ta[0]].filter((p, i, arr) => i === 0 || Math.hypot(p[0] - arr[i - 1][0], p[1] - arr[i - 1][1]) > 1e-9), 'table');
+  // band: side trapezoids (top, left, bottom, right) and corner trapezoids
+  const sides = [[1, 0, Kb, Ib], [1, 2, Ka, Ia], [2, 3, Kb, Ib], [3, 0, Ka, Ia]];
+  for (const [q0, q1, K, I] of sides) mb.face([G(K[q0]), G(K[q1]), I[q1], I[q0]], 'band');
   for (let q = 0; q < 4; q++) {
-    if (cut) {
-      const pl = planeFrom3(P3(Ka[q], 0), P3(Kb[q], 0), T[q]);
-      zA[q] = planeZ(pl, Atop[q][0], Atop[q][1]);
-      zB[q] = planeZ(pl, Bside[q][0], Bside[q][1]);
-    } else {
-      zA[q] = zB[q] = a * Math.tan((innerAngle * Math.PI) / 180);
+    if (cut) mb.face([G(Ka[q]), G(Kb[q]), Ib[q], Ia[q]], 'band');
+    // corner facet inside the band
+    if (cut) mb.face([Ia[q], Ib[q], Tb[q], Ta[q]], 'corner');
+    else {
+      const A = [Ta[q][0], Ia[q][1], zA], B = [Ia[q][0], Ta[q][1], zA];
+      mb.face([Ia[q], A, Ta[q], B], 'corner');
     }
   }
-  mb.face(T, 'table');
-  for (let q = 0; q < 4; q++) {
-    const poly = [P3(Ka[q], 0)];
-    if (cut) poly.push(P3(Kb[q], 0));
-    poly.push(P3(Atop[q], zA[q]), T[q], P3(Bside[q], zB[q]));
-    mb.face(poly, 'corner');
-  }
-  // sides: top (q 1 -> 0), left (1 -> 2), bottom (2 -> 3), right (3 -> 0)
-  const sides = [
-    { ends: [1, 0], A: Atop, Kedge: Kb, xy: (z) => [0, (l - a) - (t - a) * 0.47] },
-    { ends: [1, 2], A: Bside, Kedge: Ka, xy: (z) => [-((w - a) - (t - a) * 0.47), 0] },
-    { ends: [2, 3], A: Atop, Kedge: Kb, xy: (z) => [0, -((l - a) - (t - a) * 0.47)] },
-    { ends: [3, 0], A: Bside, Kedge: Ka, xy: (z) => [(w - a) - (t - a) * 0.47, 0] },
+  // X on each side between the inner ring edge and the table edge
+  const xSides = [
+    { q: [1, 0], A: cut ? Ib : (q) => [Ta[q][0], Ia[q][1], zA], T: Tb, xy: [0, (l - a) - (t - a) * 0.47] },
+    { q: [1, 2], A: cut ? Ia : (q) => [Ia[q][0], Ta[q][1], zA], T: Ta, xy: [-((w - a) - (t - a) * 0.47), 0] },
+    { q: [2, 3], A: cut ? Ib : (q) => [Ta[q][0], Ia[q][1], zA], T: Tb, xy: [0, -((l - a) - (t - a) * 0.47)] },
+    { q: [3, 0], A: cut ? Ia : (q) => [Ia[q][0], Ta[q][1], zA], T: Ta, xy: [(w - a) - (t - a) * 0.47, 0] },
   ];
-  for (const s of sides) {
-    const [q0, q1] = s.ends;
-    const zAq = s.A === Atop ? zA : zB;
-    const A0 = P3(s.A[q0], zAq[q0]), A1 = P3(s.A[q1], zAq[q1]);
-    const K0 = P3(s.Kedge[q0], 0), K1 = P3(s.Kedge[q1], 0);
-    mb.face([K0, K1, A1, A0], 'upper');
-    const xy = s.xy();
-    const zX = (zAq[q0] + H) / 2 - xDrop * H;
-    const X = [xy[0], xy[1], zX];
+  for (const sd of xSides) {
+    const [q0, q1] = sd.q;
+    const A0 = typeof sd.A === 'function' ? sd.A(q0) : sd.A[q0];
+    const A1 = typeof sd.A === 'function' ? sd.A(q1) : sd.A[q1];
+    const T0 = sd.T[q0], T1 = sd.T[q1];
+    const X = [sd.xy[0], sd.xy[1], (zA + H) / 2 - xDrop * H];
     mb.face([A0, A1, X], 'x');
-    mb.face([T[q0], T[q1], X], 'x');
-    mb.face([A0, T[q0], X], 'x');
-    mb.face([A1, T[q1], X], 'x');
+    mb.face([T0, T1, X], 'x');
+    mb.face([A0, T0, X], 'x');
+    mb.face([A1, T1, X], 'x');
   }
-  for (let k = 0; k < topZ.length; k++) topZ[k] = 0;
-  mb.meta = { tableCorners: T };
+  for (let i = 0; i < topZ.length; i++) topZ[i] = 0;
+  mb.meta = { tableCorners: [...Ta, ...Tb] };
 }
 
 /** Princess pavilion: four tiers of chevrons, every facet a triangle fanning from a corner. */
