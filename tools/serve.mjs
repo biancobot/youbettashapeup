@@ -3,7 +3,10 @@ import http from 'node:http'; import fs from 'node:fs'; import path from 'node:p
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const port = parseInt(process.argv[2] || '8000', 10);
 const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.svg': 'image/svg+xml', '.json': 'application/json' };
-http.createServer((req, res) => {
+const server = http.createServer((req, res) => {
+  const started = Date.now();
+  res.on('finish', () => console.log(`${res.statusCode} ${req.method} ${req.url} (${Date.now() - started} ms)`));
+  if (req.url === '/health') { res.writeHead(200, { 'content-type': 'text/plain' }); res.end('ok'); return; }
   let p = path.normalize(path.join(root, decodeURIComponent(new URL(req.url, 'http://x').pathname)));
   if (!p.startsWith(root)) { res.writeHead(403); res.end(); return; }
   if (fs.existsSync(p) && fs.statSync(p).isDirectory()) p = path.join(p, 'index.html');
@@ -12,4 +15,11 @@ http.createServer((req, res) => {
     res.writeHead(200, { 'content-type': types[path.extname(p)] || 'application/octet-stream' });
     res.end(data);
   });
-}).listen(port, () => console.log(`Gem Shape Viewer: http://localhost:${port}/`));
+});
+server.on('error', (e) => { console.error(`Cannot listen on port ${port}: ${e.message}`); process.exit(1); });
+server.listen(port, () => {
+  console.log(`Gem Shape Viewer serving ${root}`);
+  console.log(`  http://localhost:${port}/`);
+  console.log(`  http://127.0.0.1:${port}/   (use this if localhost hangs)`);
+  console.log('Requests are logged below. Ctrl+C to stop.');
+});
