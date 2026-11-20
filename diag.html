@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Gem Shape Viewer diagnostics</title>
+<style>body{font:14px/1.5 system-ui,sans-serif;margin:24px;max-width:900px}pre{background:#f4f4f5;padding:12px;white-space:pre-wrap}.ok{color:#15803d}.bad{color:#b91c1c}</style></head>
+<body>
+<h1>Gem Shape Viewer diagnostics</h1>
+<p>Each step runs in order. Send a screenshot of this page.</p>
+<pre id="log">starting...</pre>
+<canvas id="c" width="300" height="200" style="border:1px solid #ccc"></canvas>
+<script>
+const log = document.getElementById('log'); log.textContent = '';
+const line = (msg, ok) => { const s = document.createElement('span'); s.className = ok === undefined ? '' : (ok ? 'ok' : 'bad'); s.textContent = msg + '\n'; log.appendChild(s); };
+line('browser: ' + navigator.userAgent);
+line('page URL: ' + location.href);
+(async () => {
+  for (const f of ['index.html', 'app/main.js', 'app/geometry/shapes.js', 'app/geometry/clip.js', 'vendor/three/three.module.js', 'vendor/three/lines/LineSegments2.js']) {
+    const t = performance.now();
+    try { const r = await fetch(f, { cache: 'no-store' }); const b = await r.text(); line(`fetch ${f}: ${r.status}, ${b.length} chars, ${(performance.now() - t).toFixed(0)} ms`, r.ok); }
+    catch (e) { line(`fetch ${f}: FAILED ${e}`, false); }
+  }
+  try {
+    const t = performance.now();
+    const THREE = await import('./vendor/three/three.module.js');
+    line(`import three.module.js: ok (r${THREE.REVISION}), ${(performance.now() - t).toFixed(0)} ms`, true);
+  } catch (e) { line('import three.module.js: FAILED ' + e, false); }
+  try {
+    const t = performance.now();
+    const { buildShape, SHAPES } = await import('./app/geometry/shapes.js');
+    line(`import shapes.js: ok, ${SHAPES.length} shapes`, true);
+    for (const s of SHAPES) {
+      const t2 = performance.now();
+      const g = buildShape(s.id);
+      line(`  build ${s.id}: ${g.faceCount} faces, ${(performance.now() - t2).toFixed(0)} ms`, true);
+    }
+    line(`all shapes built in ${(performance.now() - t).toFixed(0)} ms`, true);
+  } catch (e) { line('build shapes: FAILED ' + (e.stack || e), false); }
+  try {
+    const canvas = document.getElementById('c');
+    const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+    if (!gl) throw new Error('no WebGL context');
+    const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+    line('WebGL: ok, renderer ' + (dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER)), true);
+    gl.clearColor(0.2, 0.6, 0.3, 1); gl.clear(gl.COLOR_BUFFER_BIT);
+    line('the canvas below should be green', true);
+  } catch (e) { line('WebGL: FAILED ' + e, false); }
+  try {
+    const t = performance.now();
+    await import('./app/main.js?diag=1');
+    line(`import app/main.js: ok, ${(performance.now() - t).toFixed(0)} ms (it will complain about missing UI elements; that is expected here)`, true);
+  } catch (e) { line('import app/main.js: ' + (e.message || e) + ' (expected if it needs the real page)', undefined); }
+  line('done');
+})();
+</script>
+</body></html>
