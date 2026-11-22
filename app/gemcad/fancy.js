@@ -47,11 +47,17 @@ function pavilion(h, P, g) { const ang = Math.atan2(P, h); return { angle: -(ang
  */
 export function marquiseStart({ ratio = 1.97, crownAngle = 35, pointAngle = 25, crownHeight = 0.14, girdle = 0.035, pavilionDepth = 0.435, gear = 96, girdleFacets = 64, frenchTips = true } = {}) {
   const W = 2, l = ratio, h = marquiseSupport(1, l);
+  const Rarc = (l * l + 1) / 2, carc = Rarc - 1;
+  const tipHalfAngle = 90 - (Math.atan2(l, carc) * 180) / Math.PI;   // the edge normals at a point sit at the point azimuth +- this
+  const tipSetback = 0.12;
   const H = crownHeight * W, g = girdle * W, P = pavilionDepth * W;
   const tiers = [girdleFromSupport(h, girdleFacets, gear)];
   tiers.push(newTier({ name: 'T', angle: 0, distance: H, indices: [] }));
   // bezel azimuths read off the IGI plot (polar, head at 90): points, wings, sides
-  const points = [90, 270], wings = [121.6, 239.7, 300.3, 418.4 - 360], sides = [180, 0];
+  // Plot azimuths. With French tips the wing bezels sit further from the points (tangent to the
+  // arcs rather than passing through the point) so the tip facets have room along the edges.
+  const points = [90, 270], sides = [180, 0];
+  const wings = frenchTips ? [138, 222, 318, 42] : [121.6, 239.7, 300.3, 418.4 - 360];
   const mk = (name, angle, azs) => {
     const t = newTier({ name, angle, distance: 0, indices: [], distances: [] });
     for (const az of azs) { t.indices.push(idx(az, gear)); t.distances.push(crownDist(h(rad(az)), angle)); }
@@ -79,39 +85,44 @@ export function marquiseStart({ ratio = 1.97, crownAngle = 35, pointAngle = 25, 
     }
     return [bezList[0].plane, bezList[1].plane];
   };
-  // star tips: on the ridge between neighbouring bezels, half way from the table edge to the girdle
+  // upper girdle facet azimuths: half way between each star and its neighbouring bezels
+  const bezAz = bezList.map((b) => b.az);
+  const upAngle = crownAngle + 7;
+  const upperAzOf = (saz) => {
+    const left = bezAz.filter((a) => norm360(a - saz) > 180).sort((x, y) => norm360(saz - x) - norm360(saz - y))[0];
+    const right = bezAz.filter((a) => norm360(a - saz) <= 180 && a !== saz).sort((x, y) => norm360(x - saz) - norm360(y - saz))[0];
+    return [norm360(saz + (norm360(left - saz) - 360) / 2), norm360(saz + norm360(right - saz) / 2)];
+  };
+  // star tips. Ordinary stars: on the ridge between neighbouring bezels, half way from the table
+  // edge to the girdle. French tips: the two upper girdle facets pass through the point itself
+  // and meet along the axis; the star sits behind their ridge, so several small facets form the
+  // tip instead of one large one.
   const starAngle = crownAngle - 12;
   const star = newTier({ name: 'C', angle: starAngle, distance: 0, indices: [], distances: [] });
-  const tips = [];
+  const up = newTier({ name: 'B', angle: upAngle, distance: 0, indices: [], distances: [] });
   for (const az of starAz) {
     const hs = h(rad(az));
+    const [uL, uR] = upperAzOf(az);
     let tip;
     if (pointAz.has(az)) {
-      tip = [hs * Math.cos(rad(az)), hs * Math.sin(rad(az)), 0];      // French tip: the star's tip is the point itself, on the girdle
+      // French tip: the two tip facets run along the girdle edges that meet at the point, so their
+      // azimuths are the edge normals there; they pass through the point and meet along the axis.
+      const point = [hs * Math.cos(rad(az)), hs * Math.sin(rad(az)), 0];
+      const [eL, eR] = [norm360(az + tipHalfAngle), norm360(az - tipHalfAngle)];
+      const pL = planeOf(upAngle, eL, through(upAngle, eL, point)), pR = planeOf(upAngle, eR, through(upAngle, eR, point));
+      tip = ridgeAt(pL, pR, az, hs * (1 - tipSetback));      // star tip behind the point, on the tip facets' ridge
+      up.indices.push(idx(eL, gear), idx(eR, gear)); up.distances.push(pL.d, pR.d);
     } else {
       const [p, q] = between(az);
-      const top = ridgeAt(p, q, az, 0);                      // ridge line: find where it reaches z = H
+      const top = ridgeAt(p, q, az, 0);
       const gp = ridgeAt(p, q, az, hs);
-      // z along the ridge is linear in r: solve r where z = H
       const rTable = top[2] === gp[2] ? hs * 0.5 : (H - gp[2]) * (0 - hs) / (top[2] - gp[2]) + hs;
-      const r = rTable + 0.5 * (hs - rTable);
-      tip = ridgeAt(p, q, az, r);
+      tip = ridgeAt(p, q, az, rTable + 0.5 * (hs - rTable));
+      for (const naz of [uL, uR]) { up.indices.push(idx(naz, gear)); up.distances.push(through(upAngle, naz, tip)); }
     }
-    tips.push(tip);
     star.indices.push(idx(az, gear)); star.distances.push(through(starAngle, az, tip));
   }
   tiers.push(star);
-  // upper girdle facets: through each star tip and the girdle at the half azimuths on either side
-  const bezAz = bezList.map((b) => b.az);
-  const upAngle = crownAngle + 7;
-  const up = newTier({ name: 'B', angle: upAngle, distance: 0, indices: [], distances: [] });
-  starAz.forEach((saz, k) => {
-    const left = bezAz.filter((a) => norm360(a - saz) > 180).sort((x, y) => norm360(saz - x) - norm360(saz - y))[0];
-    const right = bezAz.filter((a) => norm360(a - saz) <= 180 && a !== saz).sort((x, y) => norm360(x - saz) - norm360(y - saz))[0];
-    for (const naz of [norm360(saz + (norm360(left - saz) - 360) / 2), norm360(saz + norm360(right - saz) / 2)]) {
-      up.indices.push(idx(naz, gear)); up.distances.push(through(upAngle, naz, tips[k]));
-    }
-  });
   tiers.push(up);
   // pavilion mains between the crown bezels (plot azimuths), through the culet and the girdle
   const mainAz = [125.5, 160.5, 199.5, 234.5, 305.5, 340.5, 19.5, 54.5].map(norm360);
