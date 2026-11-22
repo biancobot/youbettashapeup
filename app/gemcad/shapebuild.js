@@ -93,7 +93,7 @@ export function girdleFromPolygon(verts, gear) {
   const h = polygonSupport(verts);
   for (let i = 0; i < verts.length; i++) {
     const [x0, y0] = verts[i], [x1, y1] = verts[(i + 1) % verts.length];
-    const az = deg(Math.atan2(x1 - x0, -(y1 - y0)));   // outward normal of the edge
+    const az = deg(Math.atan2(-(x1 - x0), y1 - y0));   // outward normal of a counter-clockwise edge
     tier.indices.push(indexOf(az, gear)); tier.distances.push(h(rad(az)));
   }
   return tier;

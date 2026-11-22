@@ -46,7 +46,7 @@ export const preforms = {
       const tier = newTier({ name: 'G', angle: 90, distance: 1, indices: [], distances: [] });
       for (let i = 0; i < verts.length; i++) {
         const [x0, y0] = verts[i], [x1, y1] = verts[(i + 1) % verts.length];
-        const az = (Math.atan2(x1 - x0, -(y1 - y0)) * 180) / Math.PI;   // outward normal of the edge (counter-clockwise polygon)
+        const az = (Math.atan2(-(x1 - x0), y1 - y0) * 180) / Math.PI;   // outward normal of the edge (counter-clockwise polygon)
         const azr = (az * Math.PI) / 180;
         tier.indices.push(idx(az, gear)); tier.distances.push(h(azr));
       }
