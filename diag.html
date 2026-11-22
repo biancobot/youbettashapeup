@@ -12,7 +12,10 @@ const line = (msg, ok) => { const s = document.createElement('span'); s.classNam
 line('browser: ' + navigator.userAgent);
 line('page URL: ' + location.href);
 (async () => {
-  for (const f of ['index.html', 'app/main.js', 'app/geometry/shapes.js', 'app/geometry/clip.js', 'vendor/three/three.module.js', 'vendor/three/lines/LineSegments2.js']) {
+  const files = ['index.html', 'app/main.js', 'app/editor.js', 'app/underlay.js', 'app/views.js', 'app/gemcad/design.js', 'app/gemcad/polytope.js', 'app/gemcad/mesh.js',
+    'app/gemcad/generators.js', 'app/gemcad/shapebuild.js', 'app/gemcad/fancy.js', 'app/gemcad/templates.js', 'app/gemcad/shapes/index.js',
+    'vendor/three/three.module.js', 'vendor/three/lines/LineSegments2.js'];
+  for (const f of files) {
     const t = performance.now();
     try { const r = await fetch(f, { cache: 'no-store' }); const b = await r.text(); line(`fetch ${f}: ${r.status}, ${b.length} chars, ${(performance.now() - t).toFixed(0)} ms`, r.ok); }
     catch (e) { line(`fetch ${f}: FAILED ${e}`, false); }
@@ -22,17 +25,26 @@ line('page URL: ' + location.href);
     const THREE = await import('./vendor/three/three.module.js');
     line(`import three.module.js: ok (r${THREE.REVISION}), ${(performance.now() - t).toFixed(0)} ms`, true);
   } catch (e) { line('import three.module.js: FAILED ' + e, false); }
+  // import each module on its own so a syntax error or a missing export names the file
+  for (const m of ['app/gemcad/design.js', 'app/gemcad/polytope.js', 'app/gemcad/generators.js', 'app/gemcad/shapebuild.js', 'app/gemcad/fancy.js',
+    'app/gemcad/shapes/marquise.js', 'app/gemcad/shapes/pear.js', 'app/gemcad/shapes/heart.js', 'app/gemcad/shapes/oval.js', 'app/gemcad/shapes/cushion.js',
+    'app/gemcad/shapes/cushionModified.js', 'app/gemcad/shapes/princess.js', 'app/gemcad/shapes/radiant.js', 'app/gemcad/shapes/emerald.js', 'app/gemcad/shapes/asscher.js',
+    'app/gemcad/shapes/index.js', 'app/gemcad/templates.js', 'app/gemcad/mesh.js', 'app/underlay.js', 'app/views.js']) {
+    const t = performance.now();
+    try { await import('./' + m); line(`import ${m}: ok, ${(performance.now() - t).toFixed(0)} ms`, true); }
+    catch (e) { line(`import ${m}: FAILED ${e.message || e}`, false); }
+  }
   try {
     const t = performance.now();
-    const { buildShape, SHAPES } = await import('./app/geometry/shapes.js');
-    line(`import shapes.js: ok, ${SHAPES.length} shapes`, true);
-    for (const s of SHAPES) {
+    const { templates } = await import('./app/gemcad/templates.js');
+    const { designMesh } = await import('./app/gemcad/mesh.js');
+    for (const [k, tpl] of Object.entries(templates)) {
       const t2 = performance.now();
-      const g = buildShape(s.id);
-      line(`  build ${s.id}: ${g.faceCount} faces, ${(performance.now() - t2).toFixed(0)} ms`, true);
+      try { const m = designMesh(tpl.make()); line(`  build ${k}: ${m.faceCount} faces, ${(performance.now() - t2).toFixed(0)} ms`, true); }
+      catch (e) { line(`  build ${k}: FAILED ${e.message || e}`, false); }
     }
-    line(`all shapes built in ${(performance.now() - t).toFixed(0)} ms`, true);
-  } catch (e) { line('build shapes: FAILED ' + (e.stack || e), false); }
+    line(`all templates built in ${(performance.now() - t).toFixed(0)} ms`, true);
+  } catch (e) { line('build templates: FAILED ' + (e.stack || e), false); }
   try {
     const canvas = document.getElementById('c');
     const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
