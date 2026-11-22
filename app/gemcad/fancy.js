@@ -45,7 +45,7 @@ function pavilion(h, P, g) { const ang = Math.atan2(P, h); return { angle: -(ang
  * bezels with junction lines at the points, sides and diagonals; 16 lower girdle facets.
  * Point bezels are cut shallower than the wing and side bezels, as on real stones.
  */
-export function marquiseStart({ ratio = 1.97, crownAngle = 35, pointAngle = 25, crownHeight = 0.14, girdle = 0.035, pavilionDepth = 0.435, gear = 96, girdleFacets = 64 } = {}) {
+export function marquiseStart({ ratio = 1.97, crownAngle = 35, pointAngle = 25, crownHeight = 0.14, girdle = 0.035, pavilionDepth = 0.435, gear = 96, girdleFacets = 64, frenchTips = true } = {}) {
   const W = 2, l = ratio, h = marquiseSupport(1, l);
   const H = crownHeight * W, g = girdle * W, P = pavilionDepth * W;
   const tiers = [girdleFromSupport(h, girdleFacets, gear)];
@@ -57,14 +57,19 @@ export function marquiseStart({ ratio = 1.97, crownAngle = 35, pointAngle = 25, 
     for (const az of azs) { t.indices.push(idx(az, gear)); t.distances.push(crownDist(h(rad(az)), angle)); }
     return t;
   };
-  tiers.push(mk('A pt', pointAngle, points));
-  tiers.push(mk('A wing', crownAngle, wings));
-  tiers.push(mk('A side', crownAngle, sides));
-  // bezel planes in azimuth order (points, wings, sides) for meet-point computations
+  // French tips (default): no bezel at the points; the point is formed by a star facet whose
+  // tip is the point itself, flanked by the two upper girdle facets meeting there.
+  // Uncorrected points: a shallow bezel at each point, with stars either side of it.
+  const bezelTiers = [];
+  if (!frenchTips) bezelTiers.push([mk('A pt', pointAngle, points), points]);
+  bezelTiers.push([mk('A wing', crownAngle, wings), wings], [mk('A side', crownAngle, sides), sides]);
+  for (const [t] of bezelTiers) tiers.push(t);
+  // bezel planes in azimuth order for meet-point computations
   const bezList = [];
-  for (const [t, azs] of [[tiers[2], points], [tiers[3], wings], [tiers[4], sides]]) azs.forEach((az, i) => bezList.push({ az: norm360(az), plane: planeOf(t.angle, az, t.distances[i]) }));
+  for (const [t, azs] of bezelTiers) azs.forEach((az, i) => bezList.push({ az: norm360(az), plane: planeOf(t.angle, az, t.distances[i]) }));
   bezList.sort((p, q) => p.az - q.az);
-  const starAz = [103.3, 148.5, 213.4, 256.7, 283.3, 328.5, 33.4, 76.7].map(norm360);
+  const starAz = (frenchTips ? [90, 148.5, 213.4, 270, 328.5, 33.4] : [103.3, 148.5, 213.4, 256.7, 283.3, 328.5, 33.4, 76.7]).map(norm360);
+  const pointAz = new Set(frenchTips ? [90, 270] : []);
   const between = (az) => {  // the two bezels on either side of azimuth az
     const n = bezList.length;
     for (let i = 0; i < n; i++) {
@@ -79,14 +84,20 @@ export function marquiseStart({ ratio = 1.97, crownAngle = 35, pointAngle = 25, 
   const star = newTier({ name: 'C', angle: starAngle, distance: 0, indices: [], distances: [] });
   const tips = [];
   for (const az of starAz) {
-    const [p, q] = between(az);
     const hs = h(rad(az));
-    const top = ridgeAt(p, q, az, 0);                      // ridge line: find where it reaches z = H
-    const gp = ridgeAt(p, q, az, hs);
-    // z along the ridge is linear in r: solve r where z = H
-    const rTable = top[2] === gp[2] ? hs * 0.5 : (H - gp[2]) * (0 - hs) / (top[2] - gp[2]) + hs;
-    const r = rTable + 0.5 * (hs - rTable);
-    const tip = ridgeAt(p, q, az, r); tips.push(tip);
+    let tip;
+    if (pointAz.has(az)) {
+      tip = [hs * Math.cos(rad(az)), hs * Math.sin(rad(az)), 0];      // French tip: the star's tip is the point itself, on the girdle
+    } else {
+      const [p, q] = between(az);
+      const top = ridgeAt(p, q, az, 0);                      // ridge line: find where it reaches z = H
+      const gp = ridgeAt(p, q, az, hs);
+      // z along the ridge is linear in r: solve r where z = H
+      const rTable = top[2] === gp[2] ? hs * 0.5 : (H - gp[2]) * (0 - hs) / (top[2] - gp[2]) + hs;
+      const r = rTable + 0.5 * (hs - rTable);
+      tip = ridgeAt(p, q, az, r);
+    }
+    tips.push(tip);
     star.indices.push(idx(az, gear)); star.distances.push(through(starAngle, az, tip));
   }
   tiers.push(star);
@@ -95,7 +106,6 @@ export function marquiseStart({ ratio = 1.97, crownAngle = 35, pointAngle = 25, 
   const upAngle = crownAngle + 7;
   const up = newTier({ name: 'B', angle: upAngle, distance: 0, indices: [], distances: [] });
   starAz.forEach((saz, k) => {
-    const [p, q] = between(saz);
     const left = bezAz.filter((a) => norm360(a - saz) > 180).sort((x, y) => norm360(saz - x) - norm360(saz - y))[0];
     const right = bezAz.filter((a) => norm360(a - saz) <= 180 && a !== saz).sort((x, y) => norm360(x - saz) - norm360(y - saz))[0];
     for (const naz of [norm360(saz + (norm360(left - saz) - 360) / 2), norm360(saz + norm360(right - saz) / 2)]) {
@@ -136,12 +146,13 @@ export function marquiseStart({ ratio = 1.97, crownAngle = 35, pointAngle = 25, 
   tiers.push(low);
   return {
     name: 'Marquise brilliant (starting point)', gear, fold: 2, mirror: true, ri: 2.42,
-    headings: ['Marquise brilliant starting point', `L:W ${ratio}, crown ${crownAngle} (points ${pointAngle}), pavilion depth ${pavilionDepth * 100}%`],
+    headings: ['Marquise brilliant starting point', `L:W ${ratio}, crown ${crownAngle}${frenchTips ? ', French tips' : ` (point bezels ${pointAngle})`}, pavilion depth ${pavilionDepth * 100}%`],
     footnotes: ['Starting point: lab plot pattern with typical angles. Trace against the plot underlay and cut meet points.'],
     notes: [
       'Ideal dimensions: none published as a complete parameter set. GIA assigns no cut grade to marquise diamonds.',
       'IGI Excellent ranges (marquise brilliant): L:W 1.80-2.20, table 57-62%, crown height 11.5-16.5%, crown angle 33-38.5, pavilion depth 41.5-46%, pavilion angle 39.5-42.5, girdle thin to slightly thick.',
-      'Trade practice: point bezels are cut shallower than wing and side bezels; pavilion mains beside the points are often brought to the point (French tips); bow-tie visibility depends on pavilion angles along the length.',
+      'Points: French tips by default. No bezel facet at the point; the point is formed by a star facet with its tip on the point and the two upper girdle facets meeting there, and on the pavilion by the lower girdle facets meeting at the point. The alternative (uncorrected point) has a shallow bezel at each point.',
+      'Trade practice: bow-tie visibility depends on the pavilion angles along the length; wing and side bezels at a common crown angle.',
       'Plot pattern (IGI template): 8 bezels (2 points, 4 wings, 2 sides), 8 stars, 16 upper girdle facets, 8 pavilion mains between the bezels, 16 lower girdle facets.',
     ],
     tiers,

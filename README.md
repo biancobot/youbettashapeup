@@ -46,7 +46,9 @@ is taken. The site is static ES modules, so it must be served over HTTP (not `fi
 
 Only the round brilliant ships as a finished design: it is the one cut whose proportions are
 published as a complete parameter set. The marquise ships as a starting point (the lab plot's
-facet pattern with typical angles) meant to be traced against the underlay. Other cuts are
+facet pattern with typical angles) meant to be traced against the underlay. Pointed shapes
+(marquise, pear, heart) default to French tips: no bezel at the point, the point formed by a
+star facet and the two upper girdle facets meeting there. Other cuts are
 designed in the app from a preform, or imported.
 
 ## Views and sheets
