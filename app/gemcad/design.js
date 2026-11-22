@@ -28,18 +28,34 @@ export function facetPlane(tier, index, gear, dist = tier.distance) {
   return { n, d: dist, tag: tier.id, tier: tier.id, index };
 }
 
-/** All facet planes of a design, in tier order. */
-export function designPlanes(design) {
+/**
+ * All facet planes of a design, in tier order.
+ *
+ * Non-convex stones (the heart's cleft): a tier may carry `half: 'right' | 'left'`, meaning its
+ * facets cut only that half of the stone (x >= 0 or x <= 0). Such a stone is built as the union
+ * of two convex halves, each the intersection of the common half-spaces, its own half's
+ * half-spaces and the splitting plane x = 0. With `half` given, this returns the planes for that
+ * half: common tiers, the tiers of that half, and the splitting plane tagged 'seam'. Without it,
+ * every tier is returned as before (convex designs are unaffected).
+ */
+export function designPlanes(design, half) {
   const planes = [];
   for (const tier of design.tiers) {
     if (tier.hidden) continue;
+    if (half && tier.half && tier.half !== half) continue;
     const idx = tier.indices.length ? tier.indices : [0];
     idx.forEach((k, i) => {
       const dist = tier.distances && tier.distances[i] !== undefined && tier.distances[i] !== null ? tier.distances[i] : tier.distance;
       planes.push(facetPlane(tier, k, design.gear, dist));
     });
   }
+  if (half) planes.push({ n: [half === 'right' ? -1 : 1, 0, 0], d: 0, tag: 'seam', tier: 'seam', index: 0 });
   return planes;
+}
+
+/** True when the design has half-only tiers and must be built as the union of two halves. */
+export function hasHalves(design) {
+  return design.tiers.some((t) => !t.hidden && (t.half === 'right' || t.half === 'left'));
 }
 
 /** Expand one index into its symmetric set: n-fold rotation and optional mirror. */
@@ -95,7 +111,7 @@ export function parseAsc(text) {
     if (tag === 'I') { design.ri = parseFloat(parts[1]) || 2.42; continue; }
     if (tag === 'H') { design.headings.push(line.slice(2).trim()); if (!design.headings.length || design.name === 'Imported') design.name = design.headings[0]; continue; }
     if (tag === 'F') { design.footnotes.push(line.slice(2).trim()); continue; }
-    if (tag === 'G') { if (current) current.instructions = (current.instructions ? current.instructions + ' ' : '') + line.slice(2).trim(); continue; }
+    if (tag === 'G') { if (current) { current.instructions = (current.instructions ? current.instructions + ' ' : '') + line.slice(2).trim(); readHalf(current); } continue; }
     if (tag === 'a') {
       const angle = parseFloat(parts[1].replace('−', '-'));
       const distance = parseFloat(parts[2]);
@@ -104,7 +120,7 @@ export function parseAsc(text) {
       while (i < parts.length) {
         const tok = parts[i];
         if (tok === 'n') { tier.name = parts[i + 1] || ''; i += 2; continue; }
-        if (tok === 'G') { tier.instructions = parts.slice(i + 1).join(' '); break; }
+        if (tok === 'G') { tier.instructions = parts.slice(i + 1).join(' '); readHalf(tier); break; }
         if (/^-?\d+(\.\d+)?$/.test(tok)) tier.indices.push(parseFloat(tok));
         i += 1;
       }
@@ -117,6 +133,14 @@ export function parseAsc(text) {
   return design;
 }
 
+/** A half-only tier is written as GemCad cutting instructions "half:right" / "half:left" (see designPlanes); read it back. */
+function readHalf(tier) {
+  const m = /^half:(right|left)\b\s*/.exec(tier.instructions || '');
+  if (!m) return;
+  tier.half = m[1];
+  tier.instructions = tier.instructions.slice(m[0].length) || undefined;
+}
+
 export function toAsc(design) {
   const L = ['GemCad 5.0', `g ${design.gear} 0.0`, `y ${design.fold} ${design.mirror ? 'y' : 'n'}`, `I ${design.ri}`];
   for (const h of (design.headings.length ? design.headings : [design.name])) L.push(`H ${h}`);
@@ -125,16 +149,18 @@ export function toAsc(design) {
       // GemCad has one distance per tier: per-index distances are written as one tier per index
       t.indices.forEach((k, i) => {
         const d = t.distances[i] ?? t.distance;
-        L.push(`a ${fmt(t.angle)} ${fmt(d, 8)} ${fmtIdx(k)}${i === 0 && t.name ? ' n ' + t.name : ''}`);
+        L.push(`a ${fmt(t.angle)} ${fmt(d, 8)} ${fmtIdx(k)}${i === 0 && t.name ? ' n ' + t.name : ''}${t.half ? ' G half:' + t.half : ''}`);
       });
       continue;
     }
     const idx = t.indices.map(fmtIdx);
     const first = idx.length ? idx[0] : '96';
-    L.push(`a ${fmt(t.angle)} ${fmt(t.distance, 8)} ${first}${t.name ? ' n ' + t.name : ''}${idx.length > 1 ? ' ' + idx.slice(1).join(' ') : ''}${t.instructions ? ' G ' + t.instructions : ''}`);
+    L.push(`a ${fmt(t.angle)} ${fmt(t.distance, 8)} ${first}${t.name ? ' n ' + t.name : ''}${idx.length > 1 ? ' ' + idx.slice(1).join(' ') : ''}${instr(t) ? ' G ' + instr(t) : ''}`);
   }
   for (const f of design.footnotes) L.push(`F ${f}`);
+  if (hasHalves(design)) L.push('F Tiers marked "half:right" / "half:left" cut only that half of the stone (non-convex outline built as the union of two convex halves). GemCad cannot express this: cut as plain tiers it would remove the cleft.');
   return L.join('\n') + '\n';
 }
+const instr = (t) => (t.half ? `half:${t.half}${t.instructions ? ' ' + t.instructions : ''}` : t.instructions || '');
 const fmt = (v, p = 6) => Number(v).toFixed(p);
 const fmtIdx = (k) => (Number.isInteger(k) ? String(k) : String(Math.round(k * 1000) / 1000));

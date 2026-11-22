@@ -111,3 +111,44 @@ export function topology(faces, tol = 1e-5) {
   });
   return { verts, faces: F, edges: [...edges.values()] };
 }
+
+/**
+ * Union of two convex halves built with designPlanes(design, 'right') and (design, 'left'): the
+ * faces on the splitting plane (tagged 'seam') are internal and dropped, and a facet that
+ * crosses the plane, present in both halves as two coplanar faces sharing a seam edge, is
+ * merged back into one polygon (possibly concave, like the heart's table with its notch).
+ * The result is a face list for topology(); edges along the seam then join the two halves.
+ */
+export function unionHalves(right, left, tol = 1e-6) {
+  const R = right.filter((f) => f.tag !== 'seam'), L = left.filter((f) => f.tag !== 'seam');
+  const out = [], used = new Set();
+  const coplanar = (a, b) => a.plane && b.plane && dotv(a.plane.n, b.plane.n) > 1 - 1e-9 && Math.abs(a.plane.d - b.plane.d) < 1e-7;
+  for (const a of R) {
+    let merged = null;
+    for (let i = 0; i < L.length && !merged; i++) {
+      const b = L[i];
+      if (used.has(i) || b.tag !== a.tag || !coplanar(a, b)) continue;
+      const pts = mergeAlongSeam(a.pts, b.pts, tol);
+      if (pts) { used.add(i); merged = { ...a, pts }; }
+    }
+    out.push(merged || a);
+  }
+  L.forEach((b, i) => { if (!used.has(i)) out.push(b); });
+  return out;
+}
+
+/** Polygons A and B (same orientation) sharing an edge on x = 0: one polygon, or null. */
+function mergeAlongSeam(A, B, tol) {
+  const seamEdge = (P) => { for (let i = 0; i < P.length; i++) if (Math.abs(P[i][0]) < tol && Math.abs(P[(i + 1) % P.length][0]) < tol) return i; return -1; };
+  const i = seamEdge(A), j = seamEdge(B);
+  if (i < 0 || j < 0) return null;
+  const p = A[i], q = A[(i + 1) % A.length];                                   // A runs p -> q along the seam
+  const bq = B[j], bp = B[(j + 1) % B.length];                                 // B runs q -> p (opposite direction)
+  const same = (u, v) => Math.hypot(u[1] - v[1], u[2] - v[2]) < 1e-5;
+  if (!(same(p, bp) && same(q, bq))) return null;
+  const out = [];
+  for (let k = 0; k < A.length; k++) out.push(A[(i + 1 + k) % A.length]);     // q ... p around A
+  for (let k = 2; k < B.length; k++) out.push(B[(j + k) % B.length]);         // then B after p, up to before q
+  return out;
+}
+
