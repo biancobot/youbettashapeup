@@ -28,6 +28,11 @@ is taken. The site is static ES modules, so it must be served over HTTP (not `fi
 - **Meet points.** Click near a vertex in the view to select it, then press **meet** on a tier:
   its distance is set so the facet passes through that point. Add-tier can do the same with
   "through meet point".
+- **Proportions.** Each template declares its parameters (L:W, corner cut or radius, table size,
+  crown and pavilion angles or heights, step positions, French-tip settings, and so on). They
+  appear as a form under the template list; changing one rebuilds the whole design, so every
+  facet follows the new outline and heights by the same meet-point rules. The round brilliant's
+  GIA proportion parameters are in the same form.
 - **Girdle facets.** Templates load with the girdle facet count set beside the template list
   (128 by default for fancy shapes, 64 for the round). Fancy-shape girdles are offset half a
   step so bezels and mains touch the girdle at a facet vertex, and the upper and lower girdle
