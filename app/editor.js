@@ -148,7 +148,7 @@ export function createEditor({ onChange, getSelectedVertex, saveText }) {
     try { design = resetIds(tpl.make(templateOptions())); selectedTier = null; setStatus(tpl.note || ''); changed(); }
     catch (err) { setStatus('Could not build with these proportions: ' + err.message); }
   }
-  sel.addEventListener('change', renderParams);
+  sel.addEventListener('change', () => { renderParams(); loadTemplate(); });
   el('loadtemplate').addEventListener('click', loadTemplate);
   renderParams();
   const psel = el('preform');
