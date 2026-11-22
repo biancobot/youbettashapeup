@@ -19,9 +19,11 @@
 // top-right quadrant. FDR715558200 is four-fold throughout: fold 4 + mirror, one facet per class
 // in the 0 to 45 degree octant.
 import { newTier } from '../design.js';
+import { cushionOutline as bowedCushionOutline } from './cushion.js';
+const BOW = 0.01;   // outward bow of the sides, fraction of the half-width (the plots' sides are not quite straight)
 import {
   deg, lift, vertexNear, girdleVertices, planeThrough, planeAz, mainThrough, yPlane, xPlane, classTier,
-  girdleFromSupport, plane3, intersect3, cushionOutline, pointOn, azOf,
+  girdleFromSupport, girdleEqualLength, plane3, intersect3, cushionOutline, pointOn, azOf,
 } from '../shapebuild.js';
 
 const IGI_RANGES = 'IGI Excellent ranges (square cushion modified brilliant): L:W 1.00-1.05 (1.06+ is graded as rectangular), total depth 62-68%, table 55-62%, crown height 8-16%, girdle 2-6% (thin to thick), pavilion depth 40-56%, culet pointed to small. IGI publishes no crown or pavilion angle for this shape.';
@@ -246,8 +248,8 @@ export function cushionModified({ variant = 'cushionMod1', ratio = 1, crownHeigh
   // the dense pavilion's feasible ring angle narrows with the L:W (63 at 1.00, 61 at 1.05)
   pavilionDepth ??= V.pavilionDepth; ringAngle ??= V.ringAngle + (V.ringPerRatio || 0) * (ratio - 1); sideAngle ??= V.sideAngle ?? ringAngle; mainAz ??= V.mainAz;
   const W = 2, l = ratio, H = crownHeight * W, g = girdle * W, Pd = pavilionDepth * W, zc = -g - Pd;
-  const outline = cushionOutline(V.r, l);
-  const girdleTier = girdleFromSupport(outline.support, girdleFacets, gear, 0.5);
+  const outline = bowedCushionOutline(ratio, V.r, BOW, BOW);   // slight bow on the sides so the girdle has no flats
+  const girdleTier = girdleEqualLength(outline, girdleFacets, gear, 0);
   const verts = girdleVertices(girdleTier, gear);
   const tiers = [girdleTier, newTier({ name: 'T', angle: 0, distance: H, indices: [] })];
   const add = (name, plane) => { tiers.push(classTier(name, plane, gear, V.fold, true)); return plane; };

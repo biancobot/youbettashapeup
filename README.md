@@ -14,7 +14,7 @@ companion produces STEP solids and exact vector SVG views with OpenCascade.
 npm start
 ```
 
-Then open `http://localhost:8000/`. The page header shows its build number (currently 20); if it
+Then open `http://localhost:8000/`. The page header shows its build number (currently 21); if it
 shows an older one after a `git pull`, hard-reload (Ctrl+Shift+R). Pass another port as `node tools/serve.mjs 8123` if 8000
 is taken. The site is static ES modules, so it must be served over HTTP (not `file://`).
 `diag.html` runs a step-by-step load check if the page does not come up.
@@ -35,9 +35,11 @@ is taken. The site is static ES modules, so it must be served over HTTP (not `fi
   facet follows the new outline and heights by the same meet-point rules. The round brilliant's
   GIA proportion parameters are in the same form.
 - **Girdle facets.** Templates load with the girdle facet count set beside the template list
-  (128 by default for fancy shapes, 64 for the round). Fancy-shape girdles are offset half a
-  step so bezels and mains touch the girdle at a facet vertex, and the upper and lower girdle
-  facets scallop the girdle between those points (hills at the bezels, valleys at the junctions).
+  (128 by default for fancy shapes, 64 for the round). Curved-outline shapes space their girdle facets by equal arc length along the outline (so every
+  facet has the same length, with vertices on the axes), bezels and mains touch the girdle at a
+  facet vertex, and the upper and lower girdle facets scallop the girdle between those points
+  (hills at the bezels, valleys at the junctions). Polygon girdles (step cuts, princess, radiant)
+  have one facet per edge.
 - **Preforms.** Fancy outlines are girdle tiers whose per-index distances follow the outline:
   round, ellipse at any L:W, rectangle or cut-cornered rectangle. Apply one and design over it.
 - **Round brilliant generator.** Builds the standard round brilliant from GIA's proportion

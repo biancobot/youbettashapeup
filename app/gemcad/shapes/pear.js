@@ -51,7 +51,7 @@ import { newTier } from '../design.js';
 import {
   rad, deg, norm360, girdleVertices, vertexNear, vertexNearY, lift,
   planeThrough, mirrorX, zPlane, yPlane, xPlane, azPlane, perpPlane, classTier,
-  girdleFromSupport, plane3, intersect3,
+  girdleFromSupport, girdleEqualLength, plane3, intersect3,
 } from '../shapebuild.js';
 
 /**
@@ -104,7 +104,7 @@ export function pearStart({
 } = {}) {
   const W = 2, L = ratio * W, H = crownHeight * W, g = girdle * W, Pd = pavilionDepth * W;
   const outline = pearOutline(ratio), yP = outline.yP;
-  const girdleTier = girdleFromSupport(outline.support, girdleFacets, gear, 0.5);
+  const girdleTier = girdleEqualLength(outline, girdleFacets, gear, 90);
   const verts = girdleVertices(girdleTier, gear);
   const tiers = [girdleTier, newTier({ name: 'T', angle: 0, distance: H, indices: [] })];
   const addClass = (name, plane) => { tiers.push(classTier(name, plane, gear, 1, true)); return plane; };

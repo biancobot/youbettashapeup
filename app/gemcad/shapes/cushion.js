@@ -20,7 +20,7 @@
 import { newTier } from '../design.js';
 import {
   rad, deg, marquiseSupport, outlineFromSupport, girdleVertices, vertexNear, lift,
-  planeThrough, zPlane, yPlane, xPlane, classTier, girdleFromSupport, plane3, intersect3,
+  planeThrough, zPlane, yPlane, xPlane, classTier, girdleFromSupport, girdleEqualLength, plane3, intersect3,
 } from '../shapebuild.js';
 
 /**
@@ -86,7 +86,7 @@ export function cushionBrilliant({
   const re = mix((ridgeEnd + ridgeSide) / 2, ridgeEnd), rs = mix((ridgeEnd + ridgeSide) / 2, ridgeSide);
   const H = (1 - tw) * Math.tan(rad(crownAngle));   // side bezels at crownAngle set the crown height
   const outline = cushionOutline(l, corner, bowX, bowY);
-  const girdleTier = girdleFromSupport(outline.support, girdleFacets, gear, 0.5);
+  const girdleTier = girdleEqualLength(outline, girdleFacets, gear, 0);
   const verts = girdleVertices(girdleTier, gear);
   const tiers = [girdleTier, newTier({ name: 'T', angle: 0, distance: H, indices: [] })];
   const addClass = (name, plane) => { const t = classTier(name, plane, gear, 2, true); tiers.push(t); return plane; };

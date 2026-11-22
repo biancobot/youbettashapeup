@@ -99,6 +99,65 @@ export function girdleFromPolygon(verts, gear) {
   return tier;
 }
 
+/**
+ * Girdle tier with `count` facets of equal length along the outline. The outline (an object with
+ * a support function, or the support function itself) is first polygonised finely by normal
+ * angle, which is exact on flats and arcs alike; the facets' tangent points are then spaced by
+ * equal arc length along that polygon, starting half a step from the point at radial azimuth
+ * `originAz` (so a polygon vertex falls on that azimuth, and by symmetry on the other axes when
+ * count is a multiple of 4). The polygon's vertices are spaced equally along the outline and each
+ * facet is the chord between consecutive vertices, so all facets have the same length and the
+ * vertices lie on the outline; collinear chords on a flat edge give one facet.
+ */
+export function girdleEqualLength(outline, count, gear, originAz = 0) {
+  const h = typeof outline === 'function' ? outline : outline.support;
+  const fine = 2880;
+  const f = [];
+  for (let k = 0; k < fine; k++) { const az = (360 * k) / fine; f.push({ az, h: h(rad(az)) }); }
+  // polygon vertices: V_k = facet k ∩ facet k+1; the edge on facet k runs from V_(k-1) to V_k
+  const V = [];
+  for (let k = 0; k < fine; k++) {
+    const a = f[k], b = f[(k + 1) % fine], det = Math.sin(rad(b.az - a.az));
+    V.push([(a.h * Math.sin(rad(b.az)) - b.h * Math.sin(rad(a.az))) / det, (b.h * Math.cos(rad(a.az)) - a.h * Math.cos(rad(b.az))) / det]);
+  }
+  const edges = [];   // { p0, p1, az, len } with cumulative length
+  let total = 0;
+  for (let k = 0; k < fine; k++) {
+    const p0 = V[(k - 1 + fine) % fine], p1 = V[k], len = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]);
+    if (len < 1e-9) continue;
+    edges.push({ p0, p1, az: f[k].az, len, s0: total }); total += len;
+  }
+  // arc-length position of the outline point at radial azimuth originAz (the edge the ray crosses)
+  const dir = [Math.cos(rad(originAz)), Math.sin(rad(originAz))];
+  let s0 = 0;
+  for (const e of edges) {
+    const c0 = dir[0] * e.p0[1] - dir[1] * e.p0[0], c1 = dir[0] * e.p1[1] - dir[1] * e.p1[0];   // cross products: sign change = crossing
+    if ((c0 <= 0 && c1 > 0) || (c0 >= 0 && c1 < 0)) { if (dir[0] * e.p0[0] + dir[1] * e.p0[1] > 0) { s0 = e.s0 + e.len * (Math.abs(c0) / (Math.abs(c0) + Math.abs(c1))); break; } }
+  }
+  // polygon vertices equally spaced by arc length (one on originAz); each facet is the chord
+  // between consecutive vertices, so the facet lengths are equal and the vertices lie on the outline
+  const at = (s) => {
+    s = ((s % total) + total) % total;
+    let ei = 0; while (ei < edges.length - 1 && edges[ei].s0 + edges[ei].len < s) ei++;
+    const e = edges[ei], t = (s - e.s0) / e.len;
+    return [e.p0[0] + t * (e.p1[0] - e.p0[0]), e.p0[1] + t * (e.p1[1] - e.p0[1])];
+  };
+  const tier = newTier({ name: 'G', angle: 90, distance: 1, indices: [], distances: [] });
+  let prev = null;
+  for (let k = 0; k < count; k++) {
+    const p = at(s0 + (k * total) / count), q = at(s0 + ((k + 1) * total) / count);
+    const nx = q[1] - p[1], ny = -(q[0] - p[0]), nl = Math.hypot(nx, ny);   // outward normal of a counter-clockwise chord
+    const az = norm360(deg(Math.atan2(ny, nx))), dist = (nx * p[0] + ny * p[1]) / nl;
+    if (prev && Math.abs(angDiff(az, prev)) < 1e-6) continue;   // collinear chords on a flat: one facet
+    prev = az;
+    tier.indices.push(indexOf(az, gear)); tier.distances.push(dist);
+  }
+  const order = tier.indices.map((v, i) => i).sort((a, b) => tier.indices[a] - tier.indices[b]);
+  tier.indices = order.map((i) => tier.indices[i]); tier.distances = order.map((i) => tier.distances[i]);
+  tier.distance = tier.distances[0];
+  return tier;
+}
+
 export const indexOf = (az, gear) => Math.round(((((90 - az) % 360) + 360) % 360) * gear / 360 * 1e6) / 1e6;
 
 // ---------------------------------------------------------------- girdle polygon

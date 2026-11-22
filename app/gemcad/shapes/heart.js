@@ -20,7 +20,7 @@
 import { newTier, tierFromPlane } from '../design.js';
 import {
   rad, deg, heartHalfOutline, mirrorSupport, chordAz, girdleVertices, vertexNear, vertexNearY, lift,
-  planeThrough, planeAz, mirrorX, zPlane, yPlane, azPlane, perpPlane, classTier, girdleFromSupport, plane3, intersect3,
+  planeThrough, planeAz, mirrorX, zPlane, yPlane, azPlane, perpPlane, classTier, girdleFromSupport, girdleEqualLength, plane3, intersect3,
 } from '../shapebuild.js';
 
 /*
@@ -121,8 +121,8 @@ export function heartStart({
   const W = 2, l = ratio, H = crownHeight * W, g = girdle * W, Pd = pavilionDepth * W;
   const outline = heartHalfOutline(l, lobe, lowerRadius);
   // Girdle: one tier per half, each the preform of that half's convex outline.
-  const gR = girdleFromSupport(outline.support, girdleFacets, gear, 0.5); gR.name = 'G right'; gR.half = 'right';
-  const gL = girdleFromSupport(mirrorSupport(outline.support), girdleFacets, gear, 0.5); gL.name = 'G left'; gL.half = 'left';
+  const gR = girdleEqualLength(outline.support, girdleFacets, gear, 270); gR.name = 'G right'; gR.half = 'right';
+  const gL = girdleEqualLength(mirrorSupport(outline.support), girdleFacets, gear, 270); gL.name = 'G left'; gL.half = 'left';
   const verts = girdleVertices(gR, gear).filter((v) => v.p[0] >= -1e-6);   // right half of the hull polygon
   const tiers = [gR, gL, newTier({ name: 'T', angle: 0, distance: H, indices: [] })];
   const table = zPlane(H);

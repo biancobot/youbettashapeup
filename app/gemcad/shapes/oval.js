@@ -6,7 +6,7 @@
 import { newTier } from '../design.js';
 import {
   ellipseOutline, girdleVertices, vertexNear, lift, planeThrough, planeAz, mainThrough,
-  mirrorX, mirrorY, zPlane, yPlane, xPlane, azPlane, perpPlane, classTier, girdleFromSupport, plane3, intersect3,
+  mirrorX, mirrorY, zPlane, yPlane, xPlane, azPlane, perpPlane, classTier, girdleFromSupport, girdleEqualLength, plane3, intersect3,
 } from '../shapebuild.js';
 
 /*
@@ -61,7 +61,7 @@ export function ovalStart({
 } = {}) {
   const W = 2, l = ratio, H = crownHeight * W, g = girdle * W, Pd = pavilionDepth * W;
   const outline = ellipseOutline(l);
-  const girdleTier = girdleFromSupport(outline.support, girdleFacets, gear, 0.5);
+  const girdleTier = girdleEqualLength(outline, girdleFacets, gear, 0);
   const verts = girdleVertices(girdleTier, gear);
   const tiers = [girdleTier, newTier({ name: 'T', angle: 0, distance: H, indices: [] })];
   const addClass = (name, plane) => { const t = classTier(name, plane, gear, 2, true); tiers.push(t); return t; };
