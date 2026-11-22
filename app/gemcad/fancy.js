@@ -80,7 +80,7 @@ const perpPlane = (az, r) => ({ n: [Math.cos(rad(az)), Math.sin(rad(az)), 0], d:
  */
 export function marquiseStart({
   ratio = 2.0, crownAngle = 35, wingAngle = crownAngle, pointAngle = 21.5, crownHeight = 0.14, girdle = 0.035, pavilionDepth = 0.435,
-  starHeight = 0.5, lowerDepth = 0, gear = 96, girdleFacets = 128,
+  starHeight = 0.65, lowerDepth = 0, gear = 96, girdleFacets = 128,
   frenchTips = true, tipHubHeight = 0.75, tipTable = 0.30, tipGirdle = 0.16,
 } = {}) {
   const W = 2, l = ratio, H = crownHeight * W, g = girdle * W, Pd = pavilionDepth * W;
@@ -108,7 +108,8 @@ export function marquiseStart({
   const M = intersect3(side, table, azPlane(0));
   const S = intersect3(wing, table, azPlane(72.2));
   const T = frenchTips ? [0, (1 - tipTable) * l, H] : intersect3(pt, table, azPlane(90));
-  // ---- stars: through the two table corners and a tip on the bezel ridge at starHeight of the crown
+  // ---- stars: through the two table corners and a tip on the bezel ridge at starHeight of the
+  // crown height (0.65 puts the tips where the IGI plot has them: side kites 0.74 of the half-width wide)
   const Wws = intersect3(wing, side, zPlane(starHeight * H));
   addClass('C wing-side', plane3(S, M, Wws, true));
   const Jws = lift(vertexNear(verts, 33.7), 0);
