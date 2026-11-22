@@ -14,7 +14,7 @@ companion produces STEP solids and exact vector SVG views with OpenCascade.
 npm start
 ```
 
-Then open `http://localhost:8000/`. The page header shows its build number (currently 17); if it
+Then open `http://localhost:8000/`. The page header shows its build number (currently 18); if it
 shows an older one after a `git pull`, hard-reload (Ctrl+Shift+R). Pass another port as `node tools/serve.mjs 8123` if 8000
 is taken. The site is static ES modules, so it must be served over HTTP (not `file://`).
 `diag.html` runs a step-by-step load check if the page does not come up.
@@ -46,7 +46,8 @@ is taken. The site is static ES modules, so it must be served over HTTP (not `fi
 - **Plot underlay.** Load a lab plotting diagram (the bundled IGI crown and pavilion plots, GIA's
   French-tip marquise wireframe, or your own image) and it is drawn in red over the stone in the front or back view, scaled so
   its girdle width matches the stone's. Trace a design against it by adjusting tiers and
-  cutting meet points. Opacity, scale trim, shift and mirror controls are provided.
+  cutting meet points. Opacity, scale trim, shift and mirror controls are provided, and "Stretch to stone L:W" also
+  scales the plot along the length so a design built at another L:W can be compared with it.
 - **Notes.** Each design carries notes listing published ideal dimensions and ranges where
   they exist (GIA Excellent for the round; IGI Excellent ranges for fancy shapes), the lab
   plot pattern, and trade practice. Notes are editable and saved with the design `.json`.

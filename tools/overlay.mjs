@@ -1,5 +1,5 @@
 // Render a template over a plot underlay (or without one) to a PNG, headless.
-//   node tools/overlay.mjs <templateKey> <view front|back|iso> <out.png> [plotId|-] [ratio] [girdleFacets]
+//   node tools/overlay.mjs <templateKey> <view front|back|iso> <out.png> [plotId|-] [ratio] [girdleFacets] [stretch]
 // Serves this checkout over HTTP (so it works in any worktree), loads the template with the
 // given L:W and girdle facet count, loads designs/plots/<plotId>.png as the underlay for that
 // view, and writes the canvas. Prints the stone info line and any console errors.
@@ -12,7 +12,7 @@ async function loadPlaywright() {
 }
 const { chromium } = await loadPlaywright();
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const [tpl, view = 'front', out = 'tools/out/overlay.png', plot = '-', ratio = '', gf = ''] = process.argv.slice(2);
+const [tpl, view = 'front', out = 'tools/out/overlay.png', plot = '-', ratio = '', gf = '', stretch = ''] = process.argv.slice(2);
 if (!tpl) { console.error('usage: node tools/overlay.mjs <templateKey> <view> <out.png> [plotId|-] [ratio] [girdleFacets]'); process.exit(1); }
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.asc': 'text/plain', '.json': 'application/json' };
 const server = http.createServer((req, res) => {
@@ -30,7 +30,7 @@ if (ratio && await page.locator('#tpl-params input[data-param="ratio"]').count()
 if (gf) await page.fill('#tpl-gf', gf);
 await page.click('#loadtemplate'); await page.waitForTimeout(300);
 if (plot && plot !== '-') {
-  await page.selectOption('#u-builtin', plot); await page.selectOption('#u-view', view === 'back' ? 'back' : 'front'); await page.click('#u-load');
+  await page.selectOption('#u-builtin', plot); await page.selectOption('#u-view', view === 'back' ? 'back' : 'front'); if (stretch) await page.check('#u-stretch'); await page.click('#u-load');
   await page.waitForTimeout(800);
 }
 await page.evaluate((v) => { window.__viewer.snapTo(v, true); window.__viewer.render(); }, view);

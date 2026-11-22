@@ -69,7 +69,7 @@
   <div id="app">
     <aside id="panel">
       <div>
-        <h1>Gem Facet Designer <span class="build" title="Build number; if it does not match the README, hard-reload or git pull">build 17</span></h1>
+        <h1>Gem Facet Designer <span class="build" title="Build number; if it does not match the README, hard-reload or git pull">build 18</span></h1>
         <div class="hint">GemCad-style facet design: every facet is a plane by angle, index and distance; the stone is their intersection. Drag to rotate, shift-drag to roll, scroll to zoom, click a vertex to pick a meet point.</div>
       </div>
 
@@ -135,6 +135,7 @@
         <div class="row"><label for="u-dx">Shift x</label><input type="range" id="u-dx" min="-0.2" max="0.2" step="0.002" value="0"></div>
         <div class="row"><label for="u-dy">Shift y</label><input type="range" id="u-dy" min="-0.2" max="0.2" step="0.002" value="0"></div>
         <div class="row"><label for="u-mirror">Mirror</label><input type="checkbox" id="u-mirror"></div>
+        <div class="row"><label for="u-stretch" title="Also scale the plot along the length to the stone's length, to compare a design built at another L:W than the plot's">Stretch to stone L:W</label><input type="checkbox" id="u-stretch"></div>
         <div class="hint" id="u-status">The plot's dark lines are drawn in red over the stone, scaled so its girdle width matches the stone's width. Use the front view for the crown plot and the back view for the pavilion plot.</div>
       </div>
 
@@ -202,6 +203,6 @@
       const el = document.getElementById('info'); if (el) { el.style.color = '#b00020'; el.textContent = 'Load error: ' + (e.reason && e.reason.message || e.reason); }
     });
   </script>
-  <script type="module" src="./app/main.js?v=17"></script>
+  <script type="module" src="./app/main.js?v=18"></script>
 </body>
 </html>

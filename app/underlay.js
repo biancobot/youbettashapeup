@@ -4,7 +4,7 @@
 import * as THREE from '../vendor/three/three.module.js';
 
 export function createUnderlay(scene, { color = [220, 0, 0] } = {}) {
-  const state = { visible: true, opacity: 0.6, view: 'front', scale: 1, dx: 0, dy: 0, mirror: false, bbox: null, aspect: 1, name: '' };
+  const state = { visible: true, opacity: 0.6, view: 'front', scale: 1, dx: 0, dy: 0, mirror: false, stretch: false, bbox: null, aspect: 1, name: '' };
   const mat = new THREE.MeshBasicMaterial({ transparent: true, opacity: state.opacity, depthTest: false, depthWrite: false, blending: THREE.MultiplyBlending });
   const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat);
   mesh.renderOrder = 20; mesh.visible = false;
@@ -49,13 +49,17 @@ export function createUnderlay(scene, { color = [220, 0, 0] } = {}) {
     const stoneW = stoneBox[1][0] - stoneBox[0][0];
     const plotW = b.x1 - b.x0;                       // plot girdle width in pixels
     const unitsPerPx = (stoneW / plotW) * state.scale;
-    const w = b.w * unitsPerPx, h = b.h * unitsPerPx;
+    // with `stretch`, the plot is also scaled along the length so its girdle length matches the
+    // stone's (an affine fit, for comparing a design built at another L:W than the plot's)
+    const stoneL = stoneBox[1][1] - stoneBox[0][1], plotL = b.y1 - b.y0;
+    const unitsPerPxY = state.stretch ? (stoneL / plotL) * state.scale : unitsPerPx;
+    const w = b.w * unitsPerPx, h = b.h * unitsPerPxY;
     // centre of the plot's girdle bbox goes to the stone's centre
     const cx = (b.x0 + b.x1) / 2 - b.w / 2, cy = (b.y0 + b.y1) / 2 - b.h / 2;   // offsets of the bbox centre from the image centre (px)
     const sx = state.mirror ? -1 : 1;
     mesh.scale.set(w * sx, h, 1);
     const stoneCx = (stoneBox[0][0] + stoneBox[1][0]) / 2, stoneCy = (stoneBox[0][1] + stoneBox[1][1]) / 2;
-    mesh.position.set(pos[0] + stoneCx - cx * unitsPerPx * sx + state.dx, pos[1] + stoneCy + cy * unitsPerPx + state.dy, 2.5);
+    mesh.position.set(pos[0] + stoneCx - cx * unitsPerPx * sx + state.dx, pos[1] + stoneCy + cy * unitsPerPxY + state.dy, 2.5);
     mat.opacity = state.opacity;
   }
 

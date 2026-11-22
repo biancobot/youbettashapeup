@@ -541,6 +541,7 @@ const bind = (id, key, parse = parseFloat) => { const el = document.getElementBy
 bind('u-opacity', 'opacity'); bind('u-scale', 'scale'); bind('u-dx', 'dx'); bind('u-dy', 'dy');
 document.getElementById('u-view').addEventListener('change', (e) => { underlay.state.view = e.target.value; layout(true); });
 document.getElementById('u-mirror').addEventListener('change', (e) => { underlay.state.mirror = e.target.checked; layout(true); });
+document.getElementById('u-stretch').addEventListener('change', (e) => { underlay.state.stretch = e.target.checked; layout(true); });
 document.getElementById('u-show').addEventListener('change', (e) => { underlay.state.visible = e.target.checked; layout(true); });
 
 state.showMeet = params.get('meet') === '1';   // off by default; ?meet=1 turns the markers on
