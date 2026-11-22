@@ -116,7 +116,17 @@ export const templates = {
   radiant: {
     name: 'Radiant (cut-cornered rectangular modified brilliant, starting point)',
     note: 'IGI plot pattern (cut-cornered rectangle girdle, break row, chevron pavilion) with typical proportions; trace against the underlay and cut meet points.',
-    make: ({ girdleFacets, ratio = PLOT_L } = {}) => radiantStart({ ratio }),   // girdleFacets: polygon girdle, ignored
+    params: [
+      { key: 'ratio', label: 'L:W', default: PLOT_L, step: 0.01, min: 1 },
+      { key: 'cornerX', label: 'Corner (ends)', default: 0.38, step: 0.01, title: 'Corner cut along the ends, fraction of the half-width' },
+      { key: 'cornerY', label: 'Corner (sides)', default: 0.49, step: 0.01, title: 'Corner cut along the sides, fraction of the half-width' },
+      { key: 'crownHeight', label: 'Crown height', default: 0.13, step: 0.005 }, { key: 'crownAngle', label: 'Crown angle', default: 35, step: 0.5 },
+      { key: 'girdle', label: 'Girdle', default: 0.03, step: 0.005 }, { key: 'pavilionDepth', label: 'Pavilion depth', default: 0.50, step: 0.005 },
+      { key: 'endAngle', label: 'End angle', default: 43, step: 0.5, title: 'Pavilion end facet angle (closes only in a window around 43)' },
+      { key: 'sideAngle', label: 'Side angle', default: 49, step: 0.5, title: 'Pavilion side facet angle (closes only in a window around 49)' },
+      { key: 'hubDepth', label: 'Hub depth', default: 0.92, step: 0.01, title: 'Pavilion hub, fraction of the pavilion depth' },
+    ],
+    make: ({ girdleFacets, ...o } = {}) => radiantStart(o),   // girdleFacets: polygon girdle, ignored
   },
 };
 

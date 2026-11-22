@@ -128,7 +128,14 @@ export const templates = {
     name: 'Emerald cut (starting point)',
     note: 'IGI plot pattern: octagonal girdle, three crown step rows, three pavilion step rows and a keel row, with typical step angles; trace against the underlay.',
     // girdleFacets is accepted and ignored: a polygon girdle has one facet per edge
-    make: ({ ratio = 1.58 } = {}) => emeraldStep({ ratio }),
+    params: [
+      { key: 'ratio', label: 'L:W', default: 1.58, step: 0.01, min: 1 },
+      { key: 'corner', label: 'Corner cut', default: 0.26, step: 0.01, min: 0.05, max: 0.6, title: 'Corner cut, fraction of the half-width' },
+      { key: 'girdle', label: 'Girdle', default: 0.03, step: 0.005, title: 'Girdle thickness, fraction of the width' },
+      { key: 'crownAngles', label: 'Crown rows', default: [40, 33, 26], list: true, title: 'Side facet angle of each crown row, girdle inwards' },
+      { key: 'pavilionAngles', label: 'Pavilion rows', default: [52, 46, 42, 39], list: true, title: 'Side facet angle of each pavilion row, girdle inwards, then the keel row' },
+    ],
+    make: ({ girdleFacets, ...o } = {}) => emeraldStep(o),
   },
 };
 

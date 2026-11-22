@@ -13,7 +13,16 @@ const idx = (az, gear) => Math.round(((((90 - az) % 360) + 360) % 360) * gear / 
 const mid = (a, b) => { let d = ((b - a) % 360 + 540) % 360 - 180; return ((a + d / 2) % 360 + 360) % 360; };
 
 export const templates = {
-  round: { name: 'Round brilliant (GIA proportions)', note: 'Built from GIA Diamond Cut Grading System proportion definitions.', make: ({ girdleFacets = 64 } = {}) => roundBrilliant({ girdleFacets }) },
+  round: {
+    name: 'Round brilliant (GIA proportions)', note: 'Built from GIA Diamond Cut Grading System proportion definitions.',
+    params: [
+      { key: 'table', label: 'Table', default: 0.56, step: 0.005, min: 0.4, max: 0.75, title: 'Table size, fraction of the diameter' },
+      { key: 'crownAngle', label: 'Crown angle', default: 34.5, step: 0.1 }, { key: 'pavilionAngle', label: 'Pavilion angle', default: 40.8, step: 0.1 },
+      { key: 'starLength', label: 'Star length', default: 0.5, step: 0.01, title: 'Fraction of the distance from the table edge to the girdle' },
+      { key: 'lowerLength', label: 'Lower girdle', default: 0.78, step: 0.01 }, { key: 'girdle', label: 'Girdle', default: 0.03, step: 0.005, title: 'Girdle thickness, fraction of the diameter' },
+    ],
+    make: ({ girdleFacets = 64, ...o } = {}) => roundBrilliant({ girdleFacets, ...o }),
+  },
   ...shapeTemplates,
   blank: { name: 'Blank: round preform only', note: 'A 64-facet round girdle and nothing else. Add tiers to design a cut.', make: ({ girdleFacets = 64 } = {}) => blank(girdleFacets) },
 };

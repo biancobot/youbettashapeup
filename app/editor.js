@@ -118,15 +118,39 @@ export function createEditor({ onChange, getSelectedVertex, saveText }) {
   for (const [key, tpl] of Object.entries(templates)) {
     const o = document.createElement('option'); o.value = key; o.textContent = tpl.name; sel.appendChild(o);
   }
-  el('loadtemplate').addEventListener('click', () => {
-    const tpl = templates[sel.value]; if (!tpl) return;
-    // blank fields leave the template's own defaults in place
-    const opts = {};
+  // Proportions form: each template declares `params` ([{ key, label, default, step, min, max, list }]);
+  // the inputs feed make(), and any change rebuilds the design from the template.
+  const pbox = el('tpl-params');
+  function renderParams() {
+    const tpl = templates[sel.value]; pbox.innerHTML = '';
+    for (const p of (tpl && tpl.params) || []) {
+      const lab = document.createElement('label'); lab.textContent = p.label + ' ';
+      const inp = document.createElement('input'); inp.dataset.param = p.key; inp.title = p.title || p.key;
+      if (p.list) { inp.type = 'text'; inp.className = 'list'; inp.value = p.default.join(', '); }
+      else { inp.type = 'number'; inp.value = p.default; if (p.step) inp.step = p.step; if (p.min != null) inp.min = p.min; if (p.max != null) inp.max = p.max; }
+      inp.addEventListener('change', () => loadTemplate());
+      lab.appendChild(inp); pbox.appendChild(lab);
+    }
+    pbox.style.display = pbox.children.length ? '' : 'none';
+  }
+  function templateOptions() {
+    const tpl = templates[sel.value]; const opts = {};
     const gf = parseInt(el('tpl-gf').value, 10); if (gf > 0) opts.girdleFacets = gf;
-    const ratio = parseFloat(el('tpl-ratio').value); if (ratio > 0) opts.ratio = ratio;
-    design = resetIds(tpl.make(opts)); selectedTier = null;
-    setStatus(tpl.note || ''); changed();
-  });
+    for (const p of (tpl && tpl.params) || []) {
+      const inp = pbox.querySelector(`input[data-param="${p.key}"]`); if (!inp) continue;
+      if (p.list) { const v = inp.value.split(/[\s,;]+/).filter(Boolean).map(Number); if (v.length && v.every(Number.isFinite)) opts[p.key] = v; }
+      else { const v = parseFloat(inp.value); if (Number.isFinite(v)) opts[p.key] = v; }
+    }
+    return opts;
+  }
+  function loadTemplate() {
+    const tpl = templates[sel.value]; if (!tpl) return;
+    try { design = resetIds(tpl.make(templateOptions())); selectedTier = null; setStatus(tpl.note || ''); changed(); }
+    catch (err) { setStatus('Could not build with these proportions: ' + err.message); }
+  }
+  sel.addEventListener('change', renderParams);
+  el('loadtemplate').addEventListener('click', loadTemplate);
+  renderParams();
   const psel = el('preform');
   for (const [key, pf] of Object.entries(preforms)) { const o = document.createElement('option'); o.value = key; o.textContent = pf.name; psel.appendChild(o); }
   el('applypreform').addEventListener('click', () => {
@@ -136,15 +160,6 @@ export function createEditor({ onChange, getSelectedVertex, saveText }) {
     if (gi >= 0 && el('pf-replace').checked) design.tiers[gi] = tier; else design.tiers.unshift(tier);
     setStatus(`Girdle preform: ${pf.name}, ${tier.indices.length} facets.`); changed();
   });
-  el('genround').addEventListener('click', () => {
-    design = resetIds(roundBrilliant({
-      table: parseFloat(el('p-table').value) / 100, crownAngle: parseFloat(el('p-crown').value), pavilionAngle: parseFloat(el('p-pav').value),
-      starLength: parseFloat(el('p-star').value) / 100, lowerLength: parseFloat(el('p-lower').value) / 100, girdle: parseFloat(el('p-girdle').value) / 100,
-      girdleFacets: parseInt(el('p-gf').value, 10) || 64,
-    }));
-    selectedTier = null; changed();
-  });
-
   // ---- import / export
   el('ascfile').addEventListener('change', async (e) => {
     const f = e.target.files[0]; if (!f) return;

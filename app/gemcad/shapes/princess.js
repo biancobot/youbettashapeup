@@ -105,7 +105,13 @@ export const templates = {
   princess: {
     name: 'Princess cut (starting point)',
     note: 'IGI plot pattern (square girdle, 4 corner kites, 3 chevron rows) with typical proportions; trace against the underlay and cut meet points. The girdle facet count and L:W fields are ignored (square outline).',
-    make: () => princessStart(),   // girdleFacets and ratio are accepted and ignored
+    params: [
+      { key: 'crownHeight', label: 'Crown height', default: 0.11, step: 0.005, title: 'Fraction of the width' },
+      { key: 'girdle', label: 'Girdle', default: 0.03, step: 0.005 },
+      { key: 'pavilionDepth', label: 'Pavilion depth', default: 0.56, step: 0.005, title: 'Fraction of the width' },
+      { key: 'ridge', label: 'Chevron depths', default: [0.52, 0.68, 0.81], list: true, title: 'Depth of the three chevron rows along the main ridges, fraction of the pavilion depth' },
+    ],
+    make: ({ girdleFacets, ratio, ...o } = {}) => princessStart(o),   // girdleFacets and ratio are accepted and ignored
   },
 };
 

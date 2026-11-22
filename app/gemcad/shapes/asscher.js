@@ -100,7 +100,16 @@ export const templates = {
   asscher: {
     name: 'Asscher / square emerald cut (IGI plot pattern)',
     note: 'IGI square emerald plot pattern (reports FDR691554158, FDR728551464, FDR728551753): 3 crown step rows, 3 pavilion step rows and a culet row to a point, corner cut 0.33; typical step angles. Square only (the L:W field is ignored).',
-    make: ({ girdleFacets = 128, ratio = 1 } = {}) => { void girdleFacets; return asscherStart({ ratio }); },
+    params: [
+      { key: 'corner', label: 'Corner cut', default: 0.33, step: 0.01, min: 0.05, max: 0.6, title: 'Corner cut, fraction of the half-width' },
+      { key: 'girdle', label: 'Girdle', default: 0.03, step: 0.005 },
+      { key: 'crownSteps', label: 'Crown steps', default: [0.85, 0.70, 0.55], list: true, title: 'Crown step polygons as a scale of the girdle octagon; the last is the table' },
+      { key: 'crownAngles', label: 'Crown rows', default: [36, 32, 28], list: true, title: 'Side facet angle per crown row' },
+      { key: 'pavilionSteps', label: 'Pavilion steps', default: [0.78, 0.555, 0.333], list: true },
+      { key: 'pavilionAngles', label: 'Pavilion rows', default: [50, 45, 42], list: true },
+      { key: 'culetAngle', label: 'Culet row', default: 40, step: 0.5 },
+    ],
+    make: ({ girdleFacets, ratio, ...o } = {}) => { void girdleFacets; void ratio; return asscherStart(o); },
   },
 };
 

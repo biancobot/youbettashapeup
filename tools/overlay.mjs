@@ -25,9 +25,10 @@ const page = await browser.newPage({ viewport: { width: 1400, height: 900 }, dev
 const errs = []; page.on('pageerror', (e) => errs.push(String(e))); page.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
 await page.goto(`http://127.0.0.1:${server.address().port}/?lw=1.5&meet=0`);
 await page.waitForFunction(() => window.__viewer && window.__frames > 3);
-if (ratio) await page.fill('#tpl-ratio', ratio);
+await page.selectOption('#template', tpl);
+if (ratio && await page.locator('#tpl-params input[data-param="ratio"]').count()) await page.fill('#tpl-params input[data-param="ratio"]', ratio);
 if (gf) await page.fill('#tpl-gf', gf);
-await page.selectOption('#template', tpl); await page.click('#loadtemplate'); await page.waitForTimeout(300);
+await page.click('#loadtemplate'); await page.waitForTimeout(300);
 if (plot && plot !== '-') {
   await page.selectOption('#u-builtin', plot); await page.selectOption('#u-view', view === 'back' ? 'back' : 'front'); await page.click('#u-load');
   await page.waitForTimeout(800);
