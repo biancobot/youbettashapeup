@@ -165,3 +165,17 @@ export function planeAz(p, q, az, up) {
   const h = [-Math.sin(rad(az)), Math.cos(rad(az)), 0];   // horizontal direction along the facet
   return plane3(p, q, [p[0] + h[0], p[1] + h[1], p[2]], up);
 }
+
+// ---------------------------------------------------------------- cushion outlines, plan points
+/** Support function of a cushion outline: Minkowski sum of a rectangle (half-sides a, b) and a circle of radius r. */
+export function cushionSupport(a, b, r) {
+  return (t) => a * Math.abs(Math.cos(t)) + b * Math.abs(Math.sin(t)) + r;
+}
+/** Cushion outline, half-width 1, half-length l, corner radius r: straight sides of half-length 1 - r (x) and l - r (y), quarter circles at the corners. */
+export function cushionOutline(r, l = 1) {
+  return { ...outlineFromSupport(cushionSupport(1 - r, l - r, r)), r, l };
+}
+/** Point of a plane at plan position (x, y): "cut to the plot position". */
+export const pointOn = (pl, x, y) => intersect3(pl, xPlane(x), yPlane(y));
+/** Radial azimuth (degrees) of a plan position. */
+export const azOf = ([x, y]) => norm360(deg(Math.atan2(y, x)));
