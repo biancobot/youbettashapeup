@@ -14,7 +14,8 @@ companion produces STEP solids and exact vector SVG views with OpenCascade.
 npm start
 ```
 
-Then open `http://localhost:8000/`. Pass another port as `node tools/serve.mjs 8123` if 8000
+Then open `http://localhost:8000/`. The page header shows its build number (currently 16); if it
+shows an older one after a `git pull`, hard-reload (Ctrl+Shift+R). Pass another port as `node tools/serve.mjs 8123` if 8000
 is taken. The site is static ES modules, so it must be served over HTTP (not `file://`).
 `diag.html` runs a step-by-step load check if the page does not come up.
 
