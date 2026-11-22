@@ -159,3 +159,9 @@ export function classTier(name, plane, gear, fold, mirror = true) {
   const t = tierFromPlane(plane.n, plane.d, gear);
   return newTier({ name, angle: t.angle, distance: t.distance, indices: expandIndex(t.index, gear, fold, mirror) });
 }
+
+/** Plane with the given azimuth (outward normal direction in plan) through two points p and q; `up` picks the crown (true) or pavilion (false) orientation. */
+export function planeAz(p, q, az, up) {
+  const h = [-Math.sin(rad(az)), Math.cos(rad(az)), 0];   // horizontal direction along the facet
+  return plane3(p, q, [p[0] + h[0], p[1] + h[1], p[2]], up);
+}
