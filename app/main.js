@@ -320,6 +320,8 @@ function snapTo(viewId, instant = false) {
 // ----------------------------------------------------------------------------- export
 function exportPNG(scaleFactor) {
   const w = stage.clientWidth, h = stage.clientHeight;
+  // never export the meet-point markers
+  const showMeet = state.showMeet; state.showMeet = false; updateMeetPoints();
   const pr = renderer.getPixelRatio();
   const lw = lineMat.linewidth;
   renderer.setPixelRatio(1);
@@ -332,6 +334,7 @@ function exportPNG(scaleFactor) {
   renderer.setPixelRatio(pr);
   lineMat.linewidth = lw;
   resize();
+  state.showMeet = showMeet; updateMeetPoints();
   const suffix = state.sheet.views.length ? `sheet-${state.sheet.standard}-angle` : state.viewId;
   const filename = `${state.shapeId}-${suffix}.png`;
   saveFile(filename, url);
