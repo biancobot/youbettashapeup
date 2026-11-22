@@ -1,13 +1,17 @@
-// Fancy-shape starting designs. These reproduce the facet pattern of the lab plotting template
-// with angles from the published proportion ranges; the free meet points are set by simple
-// rules and are meant to be adjusted against the plot underlay. They are labelled as such.
-import { newTier, azimuthDeg } from './design.js';
-import { girdleFromSupport } from './generators.js';
+// Fancy-shape starting designs. They reproduce the facet pattern of the lab plotting template
+// (vertex positions measured on the IGI plots) with angles from the published proportion ranges,
+// built the GemCad way: every facet is a plane that touches the girdle outline at a chosen point
+// (so its azimuth is the outline's normal there, not the radial direction) or passes through
+// three meet points. Each symmetry class is one tier expanded by the design's 2-fold mirror symmetry.
+import { newTier, tierFromPlane, expandIndex, azimuthDeg } from './design.js';
+import { girdleFromSupport, plane3, intersect3 } from './generators.js';
 
 const rad = (d) => (d * Math.PI) / 180;
-const idx = (az, gear) => Math.round(((((90 - az) % 360) + 360) % 360) * gear / 360 * 1e6) / 1e6;
+const deg = (r) => (r * 180) / Math.PI;
+const norm360 = (a) => ((a % 360) + 360) % 360;
+const angDiff = (a, b) => Math.abs(((a - b + 540) % 360) - 180);
 
-/** Support function of a marquise outline (two circular arcs), half-width 1, half-length l. */
+/** Support function of a marquise outline (two circular arcs), half-width w, half-length l. */
 export function marquiseSupport(w, l) {
   const R = (l * l + w * w) / (2 * w), c = R - w, sinMax = l / R;
   return (t) => {
@@ -16,145 +20,144 @@ export function marquiseSupport(w, l) {
   };
 }
 
-/** Facet plane (unit normal, distance) for angle (GemCad sign convention), azimuth and distance. */
-function planeOf(angle, az, dist) {
-  const a = rad(Math.abs(angle)), sign = angle >= 0 ? 1 : -1;
-  return { n: [Math.sin(a) * Math.cos(rad(az)), Math.sin(a) * Math.sin(rad(az)), sign * Math.cos(a)], d: dist };
+/** Two-arc marquise outline, half-width 1, half-length l: support, point and outward normal by radial azimuth. */
+export function marquiseOutline(l) {
+  const R = (l * l + 1) / 2, c = R - 1;
+  const point = (az) => {
+    const t = rad(az), ct = Math.cos(t), st = Math.sin(t), s = ct >= 0 ? 1 : -1;
+    const r = -s * c * ct + Math.sqrt(R * R - c * c * st * st);
+    return [r * ct, r * st];
+  };
+  const normalAz = (az) => {
+    const t = rad(az);
+    if (Math.abs(Math.cos(t)) < 1e-9) return Math.sin(t) > 0 ? 90 : 270;
+    const [x, y] = point(az), s = Math.cos(t) >= 0 ? 1 : -1;
+    return norm360(deg(Math.atan2(y, x + s * c)));
+  };
+  return { l, R, c, support: marquiseSupport(1, l), point, normalAz };
 }
-/** Point on the ridge of planes p, q at radial distance r along azimuth az (intersection with the vertical plane perpendicular to az). */
-function ridgeAt(p, q, az, r) {
-  const v = { n: [Math.cos(rad(az)), Math.sin(rad(az)), 0], d: r };
-  const [a, b, c] = [p.n, q.n, v.n];
-  const det = a[0] * (b[1] * c[2] - b[2] * c[1]) - a[1] * (b[0] * c[2] - b[2] * c[0]) + a[2] * (b[0] * c[1] - b[1] * c[0]);
-  const x = (p.d * (b[1] * c[2] - b[2] * c[1]) - a[1] * (q.d * c[2] - b[2] * v.d) + a[2] * (q.d * c[1] - b[1] * v.d)) / det;
-  const y = (a[0] * (q.d * c[2] - b[2] * v.d) - p.d * (b[0] * c[2] - b[2] * c[0]) + a[2] * (b[0] * v.d - q.d * c[0])) / det;
-  const z = (a[0] * (b[1] * v.d - q.d * c[1]) - a[1] * (b[0] * v.d - q.d * c[0]) + p.d * (b[0] * c[1] - b[1] * c[0])) / det;
-  return [x, y, z];
-}
-const through = (angle, az, pt) => { const { n } = planeOf(angle, az, 0); return n[0] * pt[0] + n[1] * pt[1] + n[2] * pt[2]; };
-const norm360 = (a) => ((a % 360) + 360) % 360;
 
-/** Plane through the girdle tangent line at azimuth az (support h) rising at `angle`: distance h sin(angle). */
-const crownDist = (h, angle) => h * Math.sin(rad(angle));
-/** Pavilion plane through the culet (depth P below the girdle base at z = -g) and the girdle tangent line at support h. */
-function pavilion(h, P, g) { const ang = Math.atan2(P, h); return { angle: -(ang * 180) / Math.PI, distance: h * Math.sin(ang) + g * Math.cos(ang) }; }
+/** Vertices of a girdle preform tier (consecutive tangent lines intersected), with radial azimuths. */
+export function girdleVertices(tier, gear) {
+  const f = tier.indices.map((k, i) => ({ az: rad(azimuthDeg(k, gear)), h: tier.distances[i] })).sort((p, q) => p.az - q.az);
+  const verts = [];
+  for (let i = 0; i < f.length; i++) {
+    const a = f[i], b = f[(i + 1) % f.length];
+    const det = Math.sin(b.az - a.az);
+    if (Math.abs(det) < 1e-12) continue;
+    const x = (a.h * Math.sin(b.az) - b.h * Math.sin(a.az)) / det;
+    const y = (b.h * Math.cos(a.az) - a.h * Math.cos(b.az)) / det;
+    verts.push({ p: [x, y, 0], az: norm360(deg(Math.atan2(y, x))) });
+  }
+  return verts;
+}
+const vertexNear = (verts, az) => verts.reduce((best, v) => (angDiff(v.az, az) < angDiff(best.az, az) ? v : best));
+const vertexNearY = (verts, y, side) => verts.filter((v) => Math.sign(v.p[0]) === side || v.p[0] === 0).reduce((b, v) => (Math.abs(v.p[1] - y) < Math.abs(b.p[1] - y) ? v : b));
+
+/** Plane at `angle` (GemCad sign convention) and azimuth az passing through point p. */
+function planeThrough(angle, az, p) {
+  const a = rad(Math.abs(angle)), sign = angle >= 0 ? 1 : -1;
+  const n = [Math.sin(a) * Math.cos(rad(az)), Math.sin(a) * Math.sin(rad(az)), sign * Math.cos(a)];
+  return { n, d: n[0] * p[0] + n[1] * p[1] + n[2] * p[2] };
+}
+const mirrorX = (pl) => ({ n: [-pl.n[0], pl.n[1], pl.n[2]], d: pl.d });   // reflection x -> -x
+const mirrorY = (pl) => ({ n: [pl.n[0], -pl.n[1], pl.n[2]], d: pl.d });   // reflection y -> -y
+const zPlane = (z) => ({ n: [0, 0, 1], d: z });
+const yPlane = (y) => ({ n: [0, 1, 0], d: y });
+const xPlane = (x) => ({ n: [1, 0, 0], d: x });
+/** Vertical plane containing the axis line at azimuth az. */
+const azPlane = (az) => ({ n: [-Math.sin(rad(az)), Math.cos(rad(az)), 0], d: 0 });
+/** Vertical plane perpendicular to azimuth az at distance r from the axis. */
+const perpPlane = (az, r) => ({ n: [Math.cos(rad(az)), Math.sin(rad(az)), 0], d: r });
 
 /**
- * Marquise brilliant starting point. Pattern (IGI plot): bezels at the two points, the two sides
- * and four wings; stars between; 16 upper girdle facets; 8 pavilion mains between the crown
- * bezels with junction lines at the points, sides and diagonals; 16 lower girdle facets.
- * Point bezels are cut shallower than the wing and side bezels, as on real stones.
+ * Marquise brilliant starting point, pattern of the IGI plotting template:
+ * crown: table, 8 bezels (2 points, 4 wings, 2 sides), 8 stars, 16 upper girdle facets;
+ * pavilion: 8 mains meeting at the culet, 16 lower girdle facets.
+ * French tips (default) replace each point bezel by the GIA arrangement: a hub vertex on the axis
+ * where eight facets meet (two tip facets at the point, two small upper girdle facets, the two
+ * wing bezels and two half-bezels reaching the table corner).
  */
-export function marquiseStart({ ratio = 1.97, crownAngle = 35, pointAngle = 25, crownHeight = 0.14, girdle = 0.035, pavilionDepth = 0.435, gear = 96, girdleFacets = 64, frenchTips = true } = {}) {
-  const W = 2, l = ratio, h = marquiseSupport(1, l);
-  const Rarc = (l * l + 1) / 2, carc = Rarc - 1;
-  const tipHalfAngle = 90 - (Math.atan2(l, carc) * 180) / Math.PI;   // the edge normals at a point sit at the point azimuth +- this
-  const tipSetback = 0.12;
-  const H = crownHeight * W, g = girdle * W, P = pavilionDepth * W;
-  const tiers = [girdleFromSupport(h, girdleFacets, gear)];
-  tiers.push(newTier({ name: 'T', angle: 0, distance: H, indices: [] }));
-  // bezel azimuths read off the IGI plot (polar, head at 90): points, wings, sides
-  // Plot azimuths. With French tips the wing bezels sit further from the points (tangent to the
-  // arcs rather than passing through the point) so the tip facets have room along the edges.
-  const points = [90, 270], sides = [180, 0];
-  const wings = frenchTips ? [138, 222, 318, 42] : [121.6, 239.7, 300.3, 418.4 - 360];
-  const mk = (name, angle, azs) => {
-    const t = newTier({ name, angle, distance: 0, indices: [], distances: [] });
-    for (const az of azs) { t.indices.push(idx(az, gear)); t.distances.push(crownDist(h(rad(az)), angle)); }
-    return t;
+export function marquiseStart({
+  ratio = 2.0, crownAngle = 35, wingAngle = crownAngle, pointAngle = 21.5, crownHeight = 0.14, girdle = 0.035, pavilionDepth = 0.435,
+  starHeight = 0.5, lowerDepth = 0, gear = 96, girdleFacets = 64,
+  frenchTips = true, tipHubHeight = 0.75, tipTable = 0.30, tipGirdle = 0.16,
+} = {}) {
+  const W = 2, l = ratio, H = crownHeight * W, g = girdle * W, Pd = pavilionDepth * W;
+  const outline = marquiseOutline(l);
+  const girdleTier = girdleFromSupport(outline.support, girdleFacets, gear);
+  const verts = girdleVertices(girdleTier, gear);
+  const tiers = [girdleTier, newTier({ name: 'T', angle: 0, distance: H, indices: [] })];
+  const addClass = (name, plane) => {
+    const t = tierFromPlane(plane.n, plane.d, gear);
+    tiers.push(newTier({ name, angle: t.angle, distance: t.distance, indices: expandIndex(t.index, gear, 2, true) }));
+    return plane;
   };
-  // French tips (default): no bezel at the points; the point is formed by a star facet whose
-  // tip is the point itself, flanked by the two upper girdle facets meeting there.
-  // Uncorrected points: a shallow bezel at each point, with stars either side of it.
-  const bezelTiers = [];
-  if (!frenchTips) bezelTiers.push([mk('A pt', pointAngle, points), points]);
-  bezelTiers.push([mk('A wing', crownAngle, wings), wings], [mk('A side', crownAngle, sides), sides]);
-  for (const [t] of bezelTiers) tiers.push(t);
-  // bezel planes in azimuth order for meet-point computations
-  const bezList = [];
-  for (const [t, azs] of bezelTiers) azs.forEach((az, i) => bezList.push({ az: norm360(az), plane: planeOf(t.angle, az, t.distances[i]) }));
-  bezList.sort((p, q) => p.az - q.az);
-  const starAz = (frenchTips ? [90, 148.5, 213.4, 270, 328.5, 33.4] : [103.3, 148.5, 213.4, 256.7, 283.3, 328.5, 33.4, 76.7]).map(norm360);
-  const pointAz = new Set(frenchTips ? [90, 270] : []);
-  const between = (az) => {  // the two bezels on either side of azimuth az
-    const n = bezList.length;
-    for (let i = 0; i < n; i++) {
-      const a0 = bezList[i].az, a1 = bezList[(i + 1) % n].az + (i === n - 1 ? 360 : 0);
-      const x = az < a0 ? az + 360 : az;
-      if (x >= a0 && x <= a1) return [bezList[i].plane, bezList[(i + 1) % n].plane];
-    }
-    return [bezList[0].plane, bezList[1].plane];
-  };
-  // upper girdle facet azimuths: half way between each star and its neighbouring bezels
-  const bezAz = bezList.map((b) => b.az);
-  const upAngle = crownAngle + 7;
-  const upperAzOf = (saz) => {
-    const left = bezAz.filter((a) => norm360(a - saz) > 180).sort((x, y) => norm360(saz - x) - norm360(saz - y))[0];
-    const right = bezAz.filter((a) => norm360(a - saz) <= 180 && a !== saz).sort((x, y) => norm360(x - saz) - norm360(y - saz))[0];
-    return [norm360(saz + (norm360(left - saz) - 360) / 2), norm360(saz + norm360(right - saz) / 2)];
-  };
-  // star tips. Ordinary stars: on the ridge between neighbouring bezels, half way from the table
-  // edge to the girdle. French tips: the two upper girdle facets pass through the point itself
-  // and meet along the axis; the star sits behind their ridge, so several small facets form the
-  // tip instead of one large one.
-  const starAngle = crownAngle - 12;
-  const star = newTier({ name: 'C', angle: starAngle, distance: 0, indices: [], distances: [] });
-  const up = newTier({ name: 'B', angle: upAngle, distance: 0, indices: [], distances: [] });
-  for (const az of starAz) {
-    const hs = h(rad(az));
-    const [uL, uR] = upperAzOf(az);
-    let tip;
-    if (pointAz.has(az)) {
-      // French tip: the two tip facets run along the girdle edges that meet at the point, so their
-      // azimuths are the edge normals there; they pass through the point and meet along the axis.
-      const point = [hs * Math.cos(rad(az)), hs * Math.sin(rad(az)), 0];
-      const [eL, eR] = [norm360(az + tipHalfAngle), norm360(az - tipHalfAngle)];
-      const pL = planeOf(upAngle, eL, through(upAngle, eL, point)), pR = planeOf(upAngle, eR, through(upAngle, eR, point));
-      tip = ridgeAt(pL, pR, az, hs * (1 - tipSetback));      // star tip behind the point, on the tip facets' ridge
-      up.indices.push(idx(eL, gear), idx(eR, gear)); up.distances.push(pL.d, pR.d);
-    } else {
-      const [p, q] = between(az);
-      const top = ridgeAt(p, q, az, 0);
-      const gp = ridgeAt(p, q, az, hs);
-      const rTable = top[2] === gp[2] ? hs * 0.5 : (H - gp[2]) * (0 - hs) / (top[2] - gp[2]) + hs;
-      tip = ridgeAt(p, q, az, rTable + 0.5 * (hs - rTable));
-      for (const naz of [uL, uR]) { up.indices.push(idx(naz, gear)); up.distances.push(through(upAngle, naz, tip)); }
-    }
-    star.indices.push(idx(az, gear)); star.distances.push(through(starAngle, az, tip));
+  const lift = (v, z) => [v.p[0], v.p[1], z];
+  // Girdle contacts, top-right quadrant (radial azimuths measured on the IGI plots)
+  const Pv = vertexNear(verts, 90), Sv = vertexNear(verts, 0), Uv = vertexNear(verts, 59.3);
+  const P = lift(Pv, 0), Sd = lift(Sv, 0), U = lift(Uv, 0);
+  const table = zPlane(H);
+
+  // ---- crown bezels: tangent to the girdle at the contact, azimuth = outline normal there
+  const side = addClass('A side', planeThrough(crownAngle, 0, Sd));
+  const wing = addClass('A wing', planeThrough(wingAngle, outline.normalAz(Uv.az), U));
+  const pt = planeThrough(pointAngle, 90, P);
+  if (!frenchTips) addClass('A point', pt);
+  // table corners: on the bezel's table line at the plot's radial azimuth
+  const M = intersect3(side, table, azPlane(0));
+  const S = intersect3(wing, table, azPlane(72.2));
+  const T = frenchTips ? [0, (1 - tipTable) * l, H] : intersect3(pt, table, azPlane(90));
+  // ---- stars: through the two table corners and a tip on the bezel ridge at starHeight of the crown
+  const Wws = intersect3(wing, side, zPlane(starHeight * H));
+  addClass('C wing-side', plane3(S, M, Wws, true));
+  const Jws = lift(vertexNear(verts, 33.7), 0);
+  addClass('B wing', plane3(Wws, U, Jws, true));
+  addClass('B side', plane3(Wws, Jws, Sd, true));
+  let hub = null;
+  if (!frenchTips) {
+    const Wpw = intersect3(pt, wing, zPlane(starHeight * H));
+    addClass('C point-wing', plane3(T, S, Wpw, true));
+    const Jpw = lift(vertexNear(verts, 76.7), 0);
+    addClass('B point', plane3(Wpw, P, Jpw, true));
+    addClass('B wing-point', plane3(Wpw, Jpw, U, true));
+  } else {
+    // hub on the ridge of the two wing bezels at tipHubHeight of the crown (kept inside the outline)
+    let V = intersect3(wing, mirrorX(wing), zPlane(tipHubHeight * H));
+    if (V[1] > 0.97 * l) V = intersect3(wing, mirrorX(wing), yPlane(0.97 * l));
+    hub = V;
+    const G = lift(vertexNearY(verts, (1 - tipGirdle) * l, 1), 0);
+    addClass('C half-bezel', plane3(V, T, S, true));
+    addClass('B tip', plane3(V, G, U, true));
+    addClass('tip', plane3(P, V, G, true));
   }
-  tiers.push(star);
-  tiers.push(up);
-  // pavilion mains between the crown bezels (plot azimuths), through the culet and the girdle
-  const mainAz = [125.5, 160.5, 199.5, 234.5, 305.5, 340.5, 19.5, 54.5].map(norm360);
-  const main = newTier({ name: 'P', angle: 0, distance: 0, indices: [], distances: [] });
-  const mainPlanes = [];
-  let mainAngle = 0;
-  for (const az of mainAz) { const pv = pavilion(h(rad(az)), P, g); mainAngle = pv.angle; main.indices.push(idx(az, gear)); main.distances.push(pv.distance); mainPlanes.push({ az, plane: planeOf(pv.angle, az, pv.distance) }); }
-  main.angle = mainAngle;
-  tiers.push(main);
-  // lower girdle facets: junction on the ridge between neighbouring mains at 78% of the way from the girdle to the culet
-  const juncAz = [143.8, 180, 216.2, 270, 323.8, 0, 36.2, 90].map(norm360);
-  const lowAngle = mainAngle - 1.5;
-  const low = newTier({ name: 'L', angle: lowAngle, distance: 0, indices: [], distances: [] });
-  const sortedMains = mainPlanes.slice().sort((p, q) => p.az - q.az);
-  const mainsAround = (az) => {
-    const n = sortedMains.length;
-    for (let i = 0; i < n; i++) {
-      const a0 = sortedMains[i].az, a1 = sortedMains[(i + 1) % n].az + (i === n - 1 ? 360 : 0);
-      const x = az < a0 ? az + 360 : az;
-      if (x >= a0 && x <= a1) return [sortedMains[i], sortedMains[(i + 1) % n]];
-    }
-    return [sortedMains[0], sortedMains[1]];
+
+  // ---- pavilion: mains tangent to the girdle at the plot contacts, through the culet
+  const culet = [0, 0, -g - Pd];
+  const Av = vertexNear(verts, 76), Cv = vertexNear(verts, 32.6), Bv = vertexNear(verts, 56.2);
+  const A = lift(Av, -g), C = lift(Cv, -g), B = lift(Bv, -g), Pg = lift(Pv, -g), Sg = lift(Sv, -g);
+  const mainThrough = (v, p) => {
+    const az = outline.normalAz(v.az), u = [Math.cos(rad(az)), Math.sin(rad(az))];
+    const h = u[0] * p[0] + u[1] * p[1];
+    const ang = deg(Math.atan2(Pd, h));
+    return planeThrough(-ang, az, p);
   };
-  for (const jaz of juncAz) {
-    const [m0, m1] = mainsAround(jaz);
-    const hs = h(rad(jaz));
-    const J = ridgeAt(m0.plane, m1.plane, jaz, hs * (1 - 0.78));
-    for (const naz of [norm360(jaz + (norm360(m0.az - jaz) - 360) / 2), norm360(jaz + norm360(m1.az - jaz) / 2)]) {
-      low.indices.push(idx(naz, gear)); low.distances.push(through(lowAngle, naz, J));
-    }
-  }
-  tiers.push(low);
+  const mA = addClass('P point', mainThrough(Av, A));
+  const mC = addClass('P side', mainThrough(Cv, C));
+  // lower girdle facets: junctions on the ridges between mains, at the plot's plan positions
+  // (axis: 17% of the half-length from the culet; diagonal: 0.31 of the half-width at 54 degrees;
+  // side: 0.305 of the half-width), or at lowerDepth of the pavilion depth when given
+  const jz = lowerDepth ? zPlane(-g - lowerDepth * Pd) : null;
+  const K = intersect3(mA, mirrorX(mA), jz || yPlane(0.171 * l));
+  const J = intersect3(mA, mC, jz || perpPlane(54, 0.311));
+  const K2 = intersect3(mC, mirrorY(mC), jz || xPlane(0.305));
+  addClass('L point', plane3(K, Pg, A, false));
+  addClass('L a', plane3(J, A, B, false));
+  addClass('L b', plane3(J, B, C, false));
+  addClass('L side', plane3(K2, C, Sg, false));
+
+  const pct = (v) => `${Math.round(v * 100)}%`;
+  const hubNote = hub ? `Hub at ${pct(1 - hub[1] / l)} of the half-length from the point, ${pct(hub[2] / H)} of the crown height.` : '';
   return {
     name: 'Marquise brilliant (starting point)', gear, fold: 2, mirror: true, ri: 2.42,
     headings: ['Marquise brilliant starting point', `L:W ${ratio}, crown ${crownAngle}${frenchTips ? ', French tips' : ` (point bezels ${pointAngle})`}, pavilion depth ${pavilionDepth * 100}%`],
@@ -162,9 +165,10 @@ export function marquiseStart({ ratio = 1.97, crownAngle = 35, pointAngle = 25, 
     notes: [
       'Ideal dimensions: none published as a complete parameter set. GIA assigns no cut grade to marquise diamonds.',
       'IGI Excellent ranges (marquise brilliant): L:W 1.80-2.20, table 57-62%, crown height 11.5-16.5%, crown angle 33-38.5, pavilion depth 41.5-46%, pavilion angle 39.5-42.5, girdle thin to slightly thick.',
-      'Points: French tips by default. No bezel facet at the point; the point is formed by a star facet with its tip on the point and the two upper girdle facets meeting there, and on the pavilion by the lower girdle facets meeting at the point. The alternative (uncorrected point) has a shallow bezel at each point.',
-      'Trade practice: bow-tie visibility depends on the pavilion angles along the length; wing and side bezels at a common crown angle.',
-      'Plot pattern (IGI template): 8 bezels (2 points, 4 wings, 2 sides), 8 stars, 16 upper girdle facets, 8 pavilion mains between the bezels, 16 lower girdle facets.',
+      `This design: L:W ${ratio}, crown height ${pct(crownHeight)}, wing and side bezels ${crownAngle}, pavilion depth ${pct(pavilionDepth)}, girdle ${pct(girdle)}. Bezel angles are measured in each facet's own slope direction; they vary around a fancy outline at a constant crown height.`,
+      `Points: ${frenchTips ? 'French tips (GIA 4Cs wireframe). No bezel at the point. Eight facets meet at a hub on the axis: two tip facets forming the point, two small upper girdle facets, the two wing bezels and two half-bezels that run to the table corner. ' + hubNote : 'uncorrected, a shallow bezel at each point (' + pointAngle + ') with a star either side.'}`,
+      'Plot pattern (IGI template): crown 8 bezels (2 points, 4 wings, 2 sides), 8 stars, 16 upper girdle facets; pavilion 8 mains meeting at the culet (contacts about 21% and 65% of the half-length from the point), 16 lower girdle facets with junctions on the axis, the diagonals and the sides.',
+      'Facets touch the girdle at the plot positions; each facet azimuth is the outline normal at its contact point.',
     ],
     tiers,
   };

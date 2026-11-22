@@ -8,7 +8,7 @@ const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 
 /** Plane through three points with the normal's z sign fixed. */
-function plane3(a, b, c, up) {
+export function plane3(a, b, c, up) {
   let n = unit(cross(sub(b, a), sub(c, a)));
   if ((n[2] > 0) !== up) n = n.map((v) => -v);
   return { n, d: dot(n, a) };
@@ -21,7 +21,7 @@ function planeAz(p, q, azDeg, up) {
   return plane3(p, q, [p[0] + h[0], p[1] + h[1], p[2]], up);
 }
 
-function intersect3(p1, p2, p3) {
+export function intersect3(p1, p2, p3) {
   // solve n_i . x = d_i
   const [a, b, c] = [p1.n, p2.n, p3.n];
   const det = a[0] * (b[1] * c[2] - b[2] * c[1]) - a[1] * (b[0] * c[2] - b[2] * c[0]) + a[2] * (b[0] * c[1] - b[1] * c[0]);

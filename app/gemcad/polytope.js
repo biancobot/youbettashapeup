@@ -79,10 +79,26 @@ export function build(planes, half = 4) {
 }
 
 /** Weld vertices and list unique points, faces as index lists, and edges with their two faces. */
-export function topology(faces) {
-  const verts = [], map = new Map();
-  const vid = (p) => { const k = key(p); if (!map.has(k)) { map.set(k, verts.length); verts.push(p.slice()); } return map.get(k); };
-  const F = faces.map((f) => ({ idx: f.pts.map(vid), tag: f.tag, plane: f.plane }));
+export function topology(faces, tol = 1e-5) {
+  // Weld vertices within `tol`: where many facets meet at one point, successive clips produce
+  // copies of it that differ by rounding error, and each copy would otherwise draw as a tiny edge.
+  const verts = [], cells = new Map();
+  const cell = (p) => p.map((c) => Math.floor(c / tol));
+  const vid = (p) => {
+    const c = cell(p);
+    for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) for (let dz = -1; dz <= 1; dz++) {
+      const k = `${c[0] + dx},${c[1] + dy},${c[2] + dz}`;
+      for (const i of cells.get(k) || []) if (Math.hypot(verts[i][0] - p[0], verts[i][1] - p[1], verts[i][2] - p[2]) <= tol) return i;
+    }
+    const k = `${c[0]},${c[1]},${c[2]}`;
+    if (!cells.has(k)) cells.set(k, []);
+    cells.get(k).push(verts.length); verts.push(p.slice());
+    return verts.length - 1;
+  };
+  const F = faces.map((f) => {
+    const idx = f.pts.map(vid).filter((v, i, arr) => v !== arr[(i + 1) % arr.length]);
+    return { idx, tag: f.tag, plane: f.plane };
+  }).filter((f) => f.idx.length >= 3);
   const edges = new Map();
   F.forEach((f, fi) => {
     for (let i = 0; i < f.idx.length; i++) {

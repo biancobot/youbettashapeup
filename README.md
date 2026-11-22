@@ -45,11 +45,18 @@ is taken. The site is static ES modules, so it must be served over HTTP (not `fi
   tier per index. `designs/` holds the generated round brilliant.
 
 Only the round brilliant ships as a finished design: it is the one cut whose proportions are
-published as a complete parameter set. The marquise ships as a starting point (the lab plot's
-facet pattern with typical angles) meant to be traced against the underlay. Pointed shapes
-(marquise, pear, heart) default to French tips: no bezel at the point, the point formed by a
-star facet and the two upper girdle facets meeting there. Other cuts are
-designed in the app from a preform, or imported.
+published as a complete parameter set. The marquise ships as a starting point: the IGI plot's
+facet pattern (vertex positions measured on the crown and pavilion plots) with typical angles,
+meant to be traced against the underlay. Fancy-shape facets are built the GemCad way: a facet
+that reaches the girdle touches the outline at the plot's contact point, so its azimuth is the
+outline normal there (not the radial direction), and the other facets pass through three meet
+points. Pointed shapes (marquise, pear, heart) default to French tips as drawn in GIA's 4Cs
+marquise wireframe: no bezel at the point; eight facets meet at a hub on the axis, two tip
+facets forming the point, two small upper girdle facets, the two wing bezels and two
+half-bezels running to the table corner. The hub sits on the wing bezels' ridge, so its
+position follows the wing angle (`wingAngle`, `tipHubHeight`, `tipTable` in `marquiseStart`).
+A second template keeps uncorrected points (a shallow bezel at each point). Other cuts are
+designed in the app from a preform, or imported. `designs/` holds `.asc` exports of all three.
 
 ## Views and sheets
 

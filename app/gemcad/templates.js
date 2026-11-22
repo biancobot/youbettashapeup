@@ -13,7 +13,8 @@ const mid = (a, b) => { let d = ((b - a) % 360 + 540) % 360 - 180; return ((a + 
 
 export const templates = {
   round: { name: 'Round brilliant (GIA proportions)', note: 'Built from GIA Diamond Cut Grading System proportion definitions.', make: () => roundBrilliant() },
-  marquise: { name: 'Marquise brilliant (starting point)', note: 'Facet pattern of the IGI plot with typical angles; trace against the underlay and cut meet points.', make: () => marquiseStart() },
+  marquise: { name: 'Marquise brilliant, French tips (starting point)', note: 'IGI plot pattern with typical angles and GIA-style French tips; trace against the underlay and cut meet points.', make: (opts) => marquiseStart({ ...opts }) },
+  marquiseStd: { name: 'Marquise brilliant, uncorrected points (starting point)', note: 'IGI plot pattern with typical angles and a shallow bezel at each point.', make: (opts) => marquiseStart({ frenchTips: false, ...opts }) },
   blank: { name: 'Blank: round preform only', note: 'A 64-facet round girdle and nothing else. Add tiers to design a cut.', make: () => blank() },
 };
 
