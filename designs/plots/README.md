@@ -8,6 +8,7 @@ app's underlay; they are the laboratories' artwork and are kept here only for th
 | --- | --- |
 | round-crown.png, round-pavilion.png | IGI FDR689584517 (Round Brilliant) |
 | marquise-crown.png, marquise-pavilion.png | IGI FDR689598882 (Marquise Brilliant) |
+| igi-report-plots-sheet.png | Contact sheet of every IGI report plot collected as reference (one per report, crown left, pavilion right), labelled by file name |
 | marquise-french-gia.png | GIA 4Cs, "How to Choose a Marquise Diamond" wireframe (French tips), crown view, callout removed |
 
 Report PDFs are at `https://pdf.igi.org/<report id>.pdf`. The GIA wireframe is at
