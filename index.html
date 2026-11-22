@@ -74,7 +74,8 @@
       <div class="group">
         <h2>Design</h2>
         <div class="row"><label for="template">Start from</label>
-          <span><select id="template"></select> <button id="loadtemplate">Load</button></span></div>
+          <span><select id="template"></select> <button id="loadtemplate">Load</button></span>
+            <label>Girdle facets <input type="number" id="tpl-gf" value="128" step="16" min="16" title="Number of girdle facets for the loaded template"></label></div>
         <details>
           <summary>Round brilliant from GIA proportions</summary>
           <div class="gaps">
@@ -213,6 +214,6 @@
       const el = document.getElementById('info'); if (el) { el.style.color = '#b00020'; el.textContent = 'Load error: ' + (e.reason && e.reason.message || e.reason); }
     });
   </script>
-  <script type="module" src="./app/main.js?v=8"></script>
+  <script type="module" src="./app/main.js?v=9"></script>
 </body>
 </html>

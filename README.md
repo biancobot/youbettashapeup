@@ -28,6 +28,10 @@ is taken. The site is static ES modules, so it must be served over HTTP (not `fi
 - **Meet points.** Click near a vertex in the view to select it, then press **meet** on a tier:
   its distance is set so the facet passes through that point. Add-tier can do the same with
   "through meet point".
+- **Girdle facets.** Templates load with the girdle facet count set beside the template list
+  (128 by default for fancy shapes, 64 for the round). Fancy-shape girdles are offset half a
+  step so bezels and mains touch the girdle at a facet vertex, and the upper and lower girdle
+  facets scallop the girdle between those points (hills at the bezels, valleys at the junctions).
 - **Preforms.** Fancy outlines are girdle tiers whose per-index distances follow the outline:
   round, ellipse at any L:W, rectangle or cut-cornered rectangle. Apply one and design over it.
 - **Round brilliant generator.** Builds the standard round brilliant from GIA's proportion

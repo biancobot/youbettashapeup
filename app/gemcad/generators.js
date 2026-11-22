@@ -114,10 +114,10 @@ function norm(idx, gear) {
  * axis to the tangent line), sampled at `count` indices. E.g. an ellipse with semi-axes a (x) and
  * b (y): h(t) = sqrt(a^2 cos^2 t + b^2 sin^2 t).
  */
-export function girdleFromSupport(h, count, gear) {
+export function girdleFromSupport(h, count, gear, offset = 0) {
   const indices = [], distances = [];
   for (let k = 0; k < count; k++) {
-    const idx = Math.round(((k * gear) / count) * 1e6) / 1e6;
+    const idx = Math.round((((k + offset) * gear) / count) * 1e6) / 1e6;
     const az = rad(azimuthDeg(idx, gear));
     indices.push(idx); distances.push(h(az));
   }

@@ -80,12 +80,12 @@ const perpPlane = (az, r) => ({ n: [Math.cos(rad(az)), Math.sin(rad(az)), 0], d:
  */
 export function marquiseStart({
   ratio = 2.0, crownAngle = 35, wingAngle = crownAngle, pointAngle = 21.5, crownHeight = 0.14, girdle = 0.035, pavilionDepth = 0.435,
-  starHeight = 0.5, lowerDepth = 0, gear = 96, girdleFacets = 64,
+  starHeight = 0.5, lowerDepth = 0, gear = 96, girdleFacets = 128,
   frenchTips = true, tipHubHeight = 0.75, tipTable = 0.30, tipGirdle = 0.16,
 } = {}) {
   const W = 2, l = ratio, H = crownHeight * W, g = girdle * W, Pd = pavilionDepth * W;
   const outline = marquiseOutline(l);
-  const girdleTier = girdleFromSupport(outline.support, girdleFacets, gear);
+  const girdleTier = girdleFromSupport(outline.support, girdleFacets, gear, 0.5);
   const verts = girdleVertices(girdleTier, gear);
   const tiers = [girdleTier, newTier({ name: 'T', angle: 0, distance: H, indices: [] })];
   const addClass = (name, plane) => {

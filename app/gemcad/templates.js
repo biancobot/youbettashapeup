@@ -12,10 +12,10 @@ const idx = (az, gear) => Math.round(((((90 - az) % 360) + 360) % 360) * gear / 
 const mid = (a, b) => { let d = ((b - a) % 360 + 540) % 360 - 180; return ((a + d / 2) % 360 + 360) % 360; };
 
 export const templates = {
-  round: { name: 'Round brilliant (GIA proportions)', note: 'Built from GIA Diamond Cut Grading System proportion definitions.', make: () => roundBrilliant() },
+  round: { name: 'Round brilliant (GIA proportions)', note: 'Built from GIA Diamond Cut Grading System proportion definitions.', make: ({ girdleFacets = 64 } = {}) => roundBrilliant({ girdleFacets }) },
   marquise: { name: 'Marquise brilliant, French tips (starting point)', note: 'IGI plot pattern with typical angles and GIA-style French tips; trace against the underlay and cut meet points.', make: (opts) => marquiseStart({ ...opts }) },
   marquiseStd: { name: 'Marquise brilliant, uncorrected points (starting point)', note: 'IGI plot pattern with typical angles and a shallow bezel at each point.', make: (opts) => marquiseStart({ frenchTips: false, ...opts }) },
-  blank: { name: 'Blank: round preform only', note: 'A 64-facet round girdle and nothing else. Add tiers to design a cut.', make: () => blank() },
+  blank: { name: 'Blank: round preform only', note: 'A 64-facet round girdle and nothing else. Add tiers to design a cut.', make: ({ girdleFacets = 64 } = {}) => blank(girdleFacets) },
 };
 
 /** Girdle preforms: a tier of 90-degree facets whose distances follow the outline's support function. */
@@ -51,6 +51,6 @@ export const preforms = {
   },
 };
 
-function blank() {
-  return { name: 'Blank design', gear: 96, fold: 8, mirror: true, ri: 2.42, headings: ['Blank design'], footnotes: [], tiers: [girdleFromSupport(() => 1, 64, 96)] };
+function blank(girdleFacets = 64) {
+  return { name: 'Blank design', gear: 96, fold: 8, mirror: true, ri: 2.42, headings: ['Blank design'], footnotes: [], tiers: [girdleFromSupport(() => 1, girdleFacets, 96)] };
 }

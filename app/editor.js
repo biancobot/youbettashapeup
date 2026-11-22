@@ -120,7 +120,8 @@ export function createEditor({ onChange, getSelectedVertex, saveText }) {
   }
   el('loadtemplate').addEventListener('click', () => {
     const tpl = templates[sel.value]; if (!tpl) return;
-    design = resetIds(tpl.make()); selectedTier = null;
+    const girdleFacets = parseInt(el('tpl-gf').value, 10) || 128;
+    design = resetIds(tpl.make({ girdleFacets })); selectedTier = null;
     setStatus(tpl.note || ''); changed();
   });
   const psel = el('preform');
