@@ -147,9 +147,18 @@ export function ovalStart({
   };
 }
 
+const params = [
+  { key: 'ratio', label: 'L:W', default: PLOT.ratio, step: 0.01, min: 1.1 },
+  { key: 'crownAngle', label: 'Crown angle', default: 38, step: 0.5, title: 'Side bezel angle' },
+  { key: 'crownHeight', label: 'Crown height', default: 0.135, step: 0.005, title: 'Fraction of the width' },
+  { key: 'starHeight', label: 'Star tips', default: 0.9, step: 0.05, min: 0.2, max: 0.98, title: 'Fraction of the crown height' },
+  { key: 'girdle', label: 'Girdle', default: 0.035, step: 0.005 },
+  { key: 'pavilionDepth', label: 'Pavilion depth', default: 0.43, step: 0.005 },
+];
+
 export const templates = {
-  oval: { name: 'Oval brilliant, 8-main pavilion (starting point)', note: 'IGI plot pattern (FDR749558450) with typical angles; trace against the underlay and cut meet points.', make: ({ girdleFacets = 128, ratio = PLOT.ratio } = {}) => ovalStart({ girdleFacets, ratio, pavilionMains: 8 }) },
-  oval4: { name: 'Oval brilliant, 4-main pavilion (starting point)', note: 'Same crown; the pavilion variant with four mains at the diagonals (IGI FDR733542179).', make: ({ girdleFacets = 128, ratio = PLOT.ratio } = {}) => ovalStart({ girdleFacets, ratio, pavilionMains: 4 }) },
+  oval: { name: 'Oval brilliant, 8-main pavilion (starting point)', note: 'IGI plot pattern (FDR749558450) with typical angles; trace against the underlay and cut meet points.', params, make: (o = {}) => ovalStart({ pavilionMains: 8, ...o }) },
+  oval4: { name: 'Oval brilliant, 4-main pavilion (starting point)', note: 'Same crown; the pavilion variant with four mains at the diagonals (IGI FDR733542179).', params, make: (o = {}) => ovalStart({ pavilionMains: 4, ...o }) },
 };
 
 /** Built-in plot underlays: { id, label }; the image is designs/plots/<id>.png. */
