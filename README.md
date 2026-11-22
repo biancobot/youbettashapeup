@@ -53,6 +53,19 @@ is taken. The site is static ES modules, so it must be served over HTTP (not `fi
   with GemCad and Gem Cut Studio. Preform tiers with per-index distances are written as one
   tier per index. `designs/` holds the generated round brilliant.
 
+## Shapes
+
+Every traditional shape ships as a starting design reproducing its IGI plotting template, one
+template per variant found on the reports (see `designs/plots/README.md` for the sources):
+round brilliant (GIA proportions); marquise (French tips, GIA-wireframe proportions,
+uncorrected points, and the side-hub crown variant); pear and heart (French tip and uncorrected
+point); oval (8-main and 4-main pavilions); cushion brilliant; square cushion modified
+brilliant (fan, ring-and-chevron, dense crushed-ice and square-culet pavilions); princess;
+radiant; emerald; asscher. The heart is the one non-convex stone: it is built as the union of
+two convex halves split on the mirror plane, with the cleft facets applied to one half each.
+`node tools/gallery.mjs && python3 tools/gallery.py` renders every template's front, back and
+iso views into one sheet.
+
 Only the round brilliant ships as a finished design: it is the one cut whose proportions are
 published as a complete parameter set. The marquise ships as a starting point: the IGI plot's
 facet pattern (vertex positions measured on the crown and pavilion plots) with typical angles,
@@ -103,5 +116,8 @@ app/views.js                 standard orientations
 app/geometry/core.js         small vector maths and triangulation helpers
 pipeline/asc_to_cad.py       .asc to STEP and hidden-line SVG (OpenCascade via build123d)
 tools/serve.mjs, shot.mjs    static server, headless screenshots
+tools/overlay.mjs, gallery.* template over a plot underlay; gallery of every template
+app/gemcad/shapebuild.js     outlines, girdle polygons, planes, symmetry-class tiers for fancy shapes
+app/gemcad/shapes/           one module per shape (templates, plots, measured plot data)
 vendor/three/                three.js r170 (MIT) and the fat-line add-ons
 ```
