@@ -134,7 +134,7 @@ export const templates = {
     name: 'Cushion brilliant (starting point)',
     note: 'IGI plot pattern (8 bezels, 8 stars, 16 uppers; 8 mains, 16 lowers, small culet) on a rounded-rectangle outline with typical angles; trace against the underlay and cut meet points.',
     params: [
-      { key: 'ratio', label: 'L:W', default: 1.25, step: 0.01, min: 1 },
+      { key: 'ratio', label: 'L:W', default: 1.1, step: 0.01, min: 1, title: 'Length to width; the IGI plot is 1.25' },
       { key: 'corner', label: 'Corner radius', default: 0.6, step: 0.02, min: 0.1, max: 1, title: 'Corner rounding, fraction of the half-width' },
       { key: 'bowSides', label: 'Bow (sides)', default: 0.07, step: 0.01, min: 0, title: 'Outward bow of the long sides, fraction of the half-width' },
       { key: 'bowEnds', label: 'Bow (ends)', default: 0.03, step: 0.01, min: 0 },
@@ -145,7 +145,7 @@ export const templates = {
       { key: 'girdle', label: 'Girdle', default: 0.05, step: 0.005 },
       { key: 'pavilionDepth', label: 'Pavilion depth', default: 0.435, step: 0.005 },
     ],
-    make: (o = {}) => cushionBrilliant({ ...o }),
+    make: (o = {}) => cushionBrilliant({ ratio: 1.1, ...o }),
   },
 };
 
