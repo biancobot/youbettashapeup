@@ -216,9 +216,25 @@ export function pearStart({
   };
 }
 
+const base = [
+  { key: 'ratio', label: 'L:W', default: 1.45, step: 0.01, min: 1.2 },
+  { key: 'crownAngle', label: 'Crown angle', default: 35, step: 0.5, title: 'Head and shoulder bezel angle' },
+  { key: 'bellyAngle', label: 'Belly bezels', default: 33.5, step: 0.5 },
+  { key: 'wingAngle', label: 'Wing bezels', default: 32, step: 0.5 },
+  { key: 'pointAngle', label: 'Point bezel', default: 23, step: 0.5, title: 'Point bezel angle (uncorrected point)' },
+  { key: 'crownHeight', label: 'Crown height', default: 0.15, step: 0.005, title: 'Fraction of the width' },
+  { key: 'girdle', label: 'Girdle', default: 0.035, step: 0.005 },
+  { key: 'pavilionDepth', label: 'Pavilion depth', default: 0.435, step: 0.005 },
+];
+const french = [
+  { key: 'tipHubHeight', label: 'Hub height', default: 0.85, step: 0.01, min: 0.5, max: 0.98, title: 'French tip hub, fraction of the crown height' },
+  { key: 'tipTable', label: 'Tip table corner', default: 0.23, step: 0.01, title: 'Table corner distance from the point, fraction of the length' },
+  { key: 'tipGirdle', label: 'Tip girdle point', default: 0.12, step: 0.01, title: 'Tip facet girdle point from the point, fraction of the length' },
+];
+
 export const templates = {
-  pear: { name: 'Pear brilliant, French tip (starting point)', note: 'IGI plot pattern with typical angles and a GIA-style French tip; trace against the underlay and cut meet points.', make: ({ girdleFacets = 128, ratio = 1.45 } = {}) => pearStart({ girdleFacets, ratio }) },
-  pearStd: { name: 'Pear brilliant, uncorrected point (starting point)', note: 'IGI plot pattern with typical angles and a shallow bezel at the point.', make: ({ girdleFacets = 128, ratio = 1.45 } = {}) => pearStart({ frenchTip: false, girdleFacets, ratio }) },
+  pear: { name: 'Pear brilliant, French tip (starting point)', note: 'IGI plot pattern with typical angles and a GIA-style French tip; trace against the underlay and cut meet points.', params: [...base, ...french], make: (o = {}) => pearStart({ ...o }) },
+  pearStd: { name: 'Pear brilliant, uncorrected point (starting point)', note: 'IGI plot pattern with typical angles and a shallow bezel at the point.', params: base, make: (o = {}) => pearStart({ frenchTip: false, ...o }) },
 };
 
 /** Built-in plot underlays: { id, label }; the image is designs/plots/<id>.png. */
