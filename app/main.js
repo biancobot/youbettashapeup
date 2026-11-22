@@ -543,7 +543,7 @@ document.getElementById('u-view').addEventListener('change', (e) => { underlay.s
 document.getElementById('u-mirror').addEventListener('change', (e) => { underlay.state.mirror = e.target.checked; layout(true); });
 document.getElementById('u-show').addEventListener('change', (e) => { underlay.state.visible = e.target.checked; layout(true); });
 
-state.showMeet = params.get('meet') !== '0';
+state.showMeet = params.get('meet') === '1';   // off by default; ?meet=1 turns the markers on
 const meetCb = document.getElementById('meet');
 meetCb.checked = state.showMeet;
 meetCb.addEventListener('change', () => { state.showMeet = meetCb.checked; updateMeetPoints(); });

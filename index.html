@@ -184,7 +184,7 @@
         <div class="row"><label for="lw">Edge thickness</label>
           <span><input type="range" id="lw" min="0.5" max="8" step="0.25" value="1.5"> <span id="lwv">1.5 px</span></span></div>
         <div class="row"><label for="girdle">Girdle facet lines (off: silhouette only)</label><input type="checkbox" id="girdle" checked></div>
-        <div class="row"><label for="meet">Show meet points (blue dots; never exported)</label><input type="checkbox" id="meet" checked></div>
+        <div class="row"><label for="meet">Show meet points (blue dots; never exported)</label><input type="checkbox" id="meet"></div>
       </div>
 
       <div class="group">
@@ -211,6 +211,6 @@
       const el = document.getElementById('info'); if (el) { el.style.color = '#b00020'; el.textContent = 'Load error: ' + (e.reason && e.reason.message || e.reason); }
     });
   </script>
-  <script type="module" src="./app/main.js?v=12"></script>
+  <script type="module" src="./app/main.js?v=13"></script>
 </body>
 </html>
