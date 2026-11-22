@@ -1,12 +1,15 @@
 // Polytope -> render buffers for the viewer. Girdle facets (angle 90 tiers) share "smooth" edges
 // that are drawn only on the silhouette unless the user asks for every girdle line.
-import { build, topology } from './polytope.js';
-import { designPlanes } from './design.js';
+import { build, topology, unionHalves } from './polytope.js';
+import { designPlanes, hasHalves } from './design.js';
 import { triangulate } from '../geometry/core.js';
 
 export function designMesh(design) {
   const planes = designPlanes(design);
-  const faces = build(planes, 6);
+  // A design with half-only tiers (the heart's cleft) is the union of two convex halves split
+  // along x = 0; see designPlanes. Faces crossing the seam are merged back, so no line is drawn
+  // down the middle of the table, and the seam edges that remain are real creases (the cleft).
+  const faces = hasHalves(design) ? unionHalves(build(designPlanes(design, 'right'), 6), build(designPlanes(design, 'left'), 6)) : build(planes, 6);
   const topo = topology(faces);
   const tierById = new Map(design.tiers.map((t) => [t.id, t]));
   const isGirdle = (f) => { const t = tierById.get(f.tag); return t && Math.abs(t.angle) === 90; };
@@ -17,8 +20,10 @@ export function designMesh(design) {
     const tris = triangulate(pts, f.plane ? f.plane.n : [0, 0, 1]);
     for (const t of tris) for (const k of t) positions.push(...pts[k]);
   }
+  const coplanar = (a, b) => a.plane && b.plane && a.plane.n[0] * b.plane.n[0] + a.plane.n[1] * b.plane.n[1] + a.plane.n[2] * b.plane.n[2] > 1 - 1e-9 && Math.abs(a.plane.d - b.plane.d) < 1e-7;
   for (const e of topo.edges) {
     const [fa, fb] = e.faces;
+    if (e.faces.length === 2 && coplanar(topo.faces[fa], topo.faces[fb])) continue;   // no crease between coplanar faces (a facet left in two parts across the seam)
     const smooth = e.faces.length === 2 && isGirdle(topo.faces[fa]) && isGirdle(topo.faces[fb]);
     const A = topo.verts[e.a], B = topo.verts[e.b];
     if (smooth) { sp.push(...A, ...B); na.push(...normals[fa]); nb.push(...normals[fb]); }

@@ -165,3 +165,41 @@ export function planeAz(p, q, az, up) {
   const h = [-Math.sin(rad(az)), Math.cos(rad(az)), 0];   // horizontal direction along the facet
   return plane3(p, q, [p[0] + h[0], p[1] + h[1], p[2]], up);
 }
+
+// ---------------------------------------------------------------- heart (right half)
+/**
+ * Right half of a heart outline (x >= 0), half-width 1, half-length l, point at -y and cleft at
+ * +y: a lobe circle of radius r tangent to x = 1 and y = l, and a lower arc of radius R2 through
+ * the point P = (0, -l) internally tangent to the lobe. The cleft is where the lobe circle
+ * crosses x = 0 (so r > 1/2). The support function is that of the convex hull of the lobe disk,
+ * the lower arc and P; its tangent planes with normals pointing to -x lie outside the half and
+ * are harmless once the half is clipped by x = 0. The whole heart is the union of this half and
+ * its mirror image, which is not convex: see designPlanes(design, half).
+ */
+export function heartHalfOutline(l, r, R2) {
+  const c = [1 - r, l - r], P = [0, -l];
+  // lower circle centre: at distance R2 from P and R2 - r from the lobe centre, on the upper-left
+  const dx = c[0] - P[0], dy = c[1] - P[1], dist = Math.hypot(dx, dy);
+  const a = (R2 * R2 - (R2 - r) ** 2 + dist * dist) / (2 * dist), hh = Math.sqrt(Math.max(0, R2 * R2 - a * a));
+  const c2 = [P[0] + (a * dx - hh * dy) / dist, P[1] + (a * dy + hh * dx) / dist];
+  const tdir = [c[0] - c2[0], c[1] - c2[1]], tl = Math.hypot(...tdir);
+  const T = [c[0] + r * tdir[0] / tl, c[1] + r * tdir[1] / tl];                 // tangency of the two arcs
+  const phiT = Math.atan2(T[1] - c[1], T[0] - c[0]), phiP = Math.atan2(P[1] - c2[1], P[0] - c2[0]);
+  const cleft = [0, c[1] + Math.sqrt(Math.max(0, r * r - c[0] * c[0]))];
+  const support = (t) => {
+    const ct = Math.cos(t), st = Math.sin(t);
+    let phi = Math.atan2(st, ct);
+    if (phi >= phiP && phi <= phiT) return c2[0] * ct + c2[1] * st + R2;
+    return Math.max(c[0] * ct + c[1] * st + r, P[0] * ct + P[1] * st);
+  };
+  const o = outlineFromSupport(support);
+  return { l, r, R2, c, c2, T, cleft, support, point: o.point, normalAz: o.normalAz };
+}
+/** Support function of the mirror image (x -> -x) of an outline given by its support function. */
+export const mirrorSupport = (h) => (t) => h(Math.PI - t);
+/** Outward normal azimuth (degrees) of the chord between two outline points p and q (the normal pointing away from the axis). */
+export function chordAz(p, q) {
+  let n = [-(q[1] - p[1]), q[0] - p[0]];
+  if (n[0] * p[0] + n[1] * p[1] < 0) n = [-n[0], -n[1]];
+  return norm360(deg(Math.atan2(n[1], n[0])));
+}
