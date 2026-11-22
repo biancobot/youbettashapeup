@@ -6,3 +6,4 @@ tools/out/
 .venv/
 pipeline/out/
 __pycache__/
+.claude/
