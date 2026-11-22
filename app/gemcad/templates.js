@@ -4,7 +4,8 @@
 // typical angles, and are labelled as reconstructions.
 import { roundBrilliant, girdleFromSupport, ellipseSupport } from './generators.js';
 import { newTier, tierFromPlane, expandIndex, azimuthDeg } from './design.js';
-import { marquiseStart, marquiseSupport } from './fancy.js';
+import { marquiseSupport } from './fancy.js';
+import { shapeTemplates, shapePlots } from './shapes/index.js';
 
 const rad = (d) => (d * Math.PI) / 180;
 
@@ -13,11 +14,13 @@ const mid = (a, b) => { let d = ((b - a) % 360 + 540) % 360 - 180; return ((a + 
 
 export const templates = {
   round: { name: 'Round brilliant (GIA proportions)', note: 'Built from GIA Diamond Cut Grading System proportion definitions.', make: ({ girdleFacets = 64 } = {}) => roundBrilliant({ girdleFacets }) },
-  marquise: { name: 'Marquise brilliant, French tips (starting point)', note: 'IGI plot pattern with typical angles and GIA-style French tips; trace against the underlay and cut meet points.', make: ({ girdleFacets = 128, ratio = 2.0 } = {}) => marquiseStart({ girdleFacets, ratio }) },
-  marquiseGia: { name: 'Marquise brilliant, French tips, GIA wireframe proportions', note: 'Same construction with the proportions read off GIA\'s 4Cs French-tip wireframe: table 52%, hub 23% from the point.', make: ({ girdleFacets = 128, ratio = 2.03 } = {}) => marquiseStart({ girdleFacets, ratio, crownAngle: 33, crownHeight: 0.156, tipHubHeight: 0.89, tipTable: 0.40 }) },
-  marquiseStd: { name: 'Marquise brilliant, uncorrected points (starting point)', note: 'IGI plot pattern with typical angles and a shallow bezel at each point.', make: ({ girdleFacets = 128, ratio = 2.0 } = {}) => marquiseStart({ frenchTips: false, girdleFacets, ratio }) },
+  ...shapeTemplates,
   blank: { name: 'Blank: round preform only', note: 'A 64-facet round girdle and nothing else. Add tiers to design a cut.', make: ({ girdleFacets = 64 } = {}) => blank(girdleFacets) },
 };
+export const plots = [
+  { id: 'round-crown', label: 'Round: crown (IGI)' }, { id: 'round-pavilion', label: 'Round: pavilion (IGI)' },
+  ...shapePlots,
+];
 
 /** Girdle preforms: a tier of 90-degree facets whose distances follow the outline's support function. */
 export const preforms = {

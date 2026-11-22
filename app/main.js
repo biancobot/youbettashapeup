@@ -5,8 +5,8 @@ import { LineMaterial } from '../vendor/three/lines/LineMaterial.js';
 import { designMesh, stoneStats } from './gemcad/mesh.js';
 import { createEditor } from './editor.js';
 import { createUnderlay } from './underlay.js';
-import { templates } from './gemcad/templates.js';
-window.__templates = { templates };
+import { templates, plots } from './gemcad/templates.js';
+window.__templates = { templates, plots };
 import { VIEWS, getView } from './views.js';
 
 // ----------------------------------------------------------------------------- state
@@ -525,6 +525,7 @@ const editor = createEditor({
 });
 // ----------------------------------------------------------------------------- underlay UI
 const uSel = document.getElementById('u-builtin');
+for (const p of plots) { const o = document.createElement('option'); o.value = p.id; o.textContent = p.label; uSel.appendChild(o); }
 document.getElementById('u-load').addEventListener('click', async () => {
   const v = uSel.value; if (!v) return;
   try { await underlay.load(`designs/plots/${v}.png`, v); document.getElementById('u-status').textContent = `Underlay: ${v}`; layout(true); }

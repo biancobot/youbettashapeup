@@ -1,74 +1,11 @@
-// Fancy-shape starting designs. They reproduce the facet pattern of the lab plotting template
-// (vertex positions measured on the IGI plots) with angles from the published proportion ranges,
-// built the GemCad way: every facet is a plane that touches the girdle outline at a chosen point
-// (so its azimuth is the outline's normal there, not the radial direction) or passes through
-// three meet points. Each symmetry class is one tier expanded by the design's 2-fold mirror symmetry.
-import { newTier, tierFromPlane, expandIndex, azimuthDeg } from './design.js';
-import { girdleFromSupport, plane3, intersect3 } from './generators.js';
-
-const rad = (d) => (d * Math.PI) / 180;
-const deg = (r) => (r * 180) / Math.PI;
-const norm360 = (a) => ((a % 360) + 360) % 360;
-const angDiff = (a, b) => Math.abs(((a - b + 540) % 360) - 180);
-
-/** Support function of a marquise outline (two circular arcs), half-width w, half-length l. */
-export function marquiseSupport(w, l) {
-  const R = (l * l + w * w) / (2 * w), c = R - w, sinMax = l / R;
-  return (t) => {
-    const ct = Math.abs(Math.cos(t)), st = Math.abs(Math.sin(t));
-    return st <= sinMax ? R - c * ct : l * st;
-  };
-}
-
-/** Two-arc marquise outline, half-width 1, half-length l: support, point and outward normal by radial azimuth. */
-export function marquiseOutline(l) {
-  const R = (l * l + 1) / 2, c = R - 1;
-  const point = (az) => {
-    const t = rad(az), ct = Math.cos(t), st = Math.sin(t), s = ct >= 0 ? 1 : -1;
-    const r = -s * c * ct + Math.sqrt(R * R - c * c * st * st);
-    return [r * ct, r * st];
-  };
-  const normalAz = (az) => {
-    const t = rad(az);
-    if (Math.abs(Math.cos(t)) < 1e-9) return Math.sin(t) > 0 ? 90 : 270;
-    const [x, y] = point(az), s = Math.cos(t) >= 0 ? 1 : -1;
-    return norm360(deg(Math.atan2(y, x + s * c)));
-  };
-  return { l, R, c, support: marquiseSupport(1, l), point, normalAz };
-}
-
-/** Vertices of a girdle preform tier (consecutive tangent lines intersected), with radial azimuths. */
-export function girdleVertices(tier, gear) {
-  const f = tier.indices.map((k, i) => ({ az: rad(azimuthDeg(k, gear)), h: tier.distances[i] })).sort((p, q) => p.az - q.az);
-  const verts = [];
-  for (let i = 0; i < f.length; i++) {
-    const a = f[i], b = f[(i + 1) % f.length];
-    const det = Math.sin(b.az - a.az);
-    if (Math.abs(det) < 1e-12) continue;
-    const x = (a.h * Math.sin(b.az) - b.h * Math.sin(a.az)) / det;
-    const y = (b.h * Math.cos(a.az) - a.h * Math.cos(b.az)) / det;
-    verts.push({ p: [x, y, 0], az: norm360(deg(Math.atan2(y, x))) });
-  }
-  return verts;
-}
-const vertexNear = (verts, az) => verts.reduce((best, v) => (angDiff(v.az, az) < angDiff(best.az, az) ? v : best));
-const vertexNearY = (verts, y, side) => verts.filter((v) => Math.sign(v.p[0]) === side || v.p[0] === 0).reduce((b, v) => (Math.abs(v.p[1] - y) < Math.abs(b.p[1] - y) ? v : b));
-
-/** Plane at `angle` (GemCad sign convention) and azimuth az passing through point p. */
-function planeThrough(angle, az, p) {
-  const a = rad(Math.abs(angle)), sign = angle >= 0 ? 1 : -1;
-  const n = [Math.sin(a) * Math.cos(rad(az)), Math.sin(a) * Math.sin(rad(az)), sign * Math.cos(a)];
-  return { n, d: n[0] * p[0] + n[1] * p[1] + n[2] * p[2] };
-}
-const mirrorX = (pl) => ({ n: [-pl.n[0], pl.n[1], pl.n[2]], d: pl.d });   // reflection x -> -x
-const mirrorY = (pl) => ({ n: [pl.n[0], -pl.n[1], pl.n[2]], d: pl.d });   // reflection y -> -y
-const zPlane = (z) => ({ n: [0, 0, 1], d: z });
-const yPlane = (y) => ({ n: [0, 1, 0], d: y });
-const xPlane = (x) => ({ n: [1, 0, 0], d: x });
-/** Vertical plane containing the axis line at azimuth az. */
-const azPlane = (az) => ({ n: [-Math.sin(rad(az)), Math.cos(rad(az)), 0], d: 0 });
-/** Vertical plane perpendicular to azimuth az at distance r from the axis. */
-const perpPlane = (az, r) => ({ n: [Math.cos(rad(az)), Math.sin(rad(az)), 0], d: r });
+// Marquise brilliant starting design. Other fancy shapes live in ./shapes/.
+import { newTier } from './design.js';
+import {
+  rad, deg, marquiseSupport, marquiseOutline, girdleVertices, vertexNear, vertexNearY, lift,
+  planeThrough, mirrorX, mirrorY, zPlane, yPlane, xPlane, azPlane, perpPlane, classTier,
+  girdleFromSupport, plane3, intersect3,
+} from './shapebuild.js';
+export { marquiseSupport, marquiseOutline, girdleVertices };
 
 /**
  * Marquise brilliant starting point, pattern of the IGI plotting template:
@@ -88,12 +25,7 @@ export function marquiseStart({
   const girdleTier = girdleFromSupport(outline.support, girdleFacets, gear, 0.5);
   const verts = girdleVertices(girdleTier, gear);
   const tiers = [girdleTier, newTier({ name: 'T', angle: 0, distance: H, indices: [] })];
-  const addClass = (name, plane) => {
-    const t = tierFromPlane(plane.n, plane.d, gear);
-    tiers.push(newTier({ name, angle: t.angle, distance: t.distance, indices: expandIndex(t.index, gear, 2, true) }));
-    return plane;
-  };
-  const lift = (v, z) => [v.p[0], v.p[1], z];
+  const addClass = (name, plane) => { tiers.push(classTier(name, plane, gear, 2, true)); return plane; };
   // Girdle contacts, top-right quadrant (radial azimuths measured on the IGI plots)
   const Pv = vertexNear(verts, 90), Sv = vertexNear(verts, 0), Uv = vertexNear(verts, 59.3);
   const P = lift(Pv, 0), Sd = lift(Sv, 0), U = lift(Uv, 0);
