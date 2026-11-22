@@ -75,8 +75,8 @@
         <h2>Design</h2>
         <div class="row"><label for="template">Start from</label>
           <span><select id="template"></select> <button id="loadtemplate">Load</button></span>
-            <label>Girdle facets <input type="number" id="tpl-gf" value="128" step="16" min="16" title="Number of girdle facets for the loaded template"></label>
-            <label>L:W <input type="number" id="tpl-ratio" value="2.0" step="0.01" min="1" title="Length-to-width ratio for fancy templates"></label></div>
+            <label>Girdle facets <input type="number" id="tpl-gf" placeholder="default" step="16" min="16" title="Number of girdle facets for the loaded template; blank = the template's default"></label>
+            <label>L:W <input type="number" id="tpl-ratio" placeholder="default" step="0.01" min="1" title="Length-to-width ratio; blank = the template's own default (ignored by square cuts)"></label></div>
         <details>
           <summary>Round brilliant from GIA proportions</summary>
           <div class="gaps">
@@ -211,6 +211,6 @@
       const el = document.getElementById('info'); if (el) { el.style.color = '#b00020'; el.textContent = 'Load error: ' + (e.reason && e.reason.message || e.reason); }
     });
   </script>
-  <script type="module" src="./app/main.js?v=11"></script>
+  <script type="module" src="./app/main.js?v=12"></script>
 </body>
 </html>

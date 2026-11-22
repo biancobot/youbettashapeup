@@ -61,7 +61,7 @@ half-bezels running to the table corner. The hub sits on the wing bezels' ridge,
 position follows the wing angle (`wingAngle`, `tipHubHeight`, `tipTable` in `marquiseStart`).
 A second template uses the proportions read off GIA's wireframe (table 52%, crown 33°, hub
 23% from the point) and overlays it closely; a third keeps uncorrected points (a shallow bezel
-at each point). Templates take the girdle facet count and L:W from the fields beside the list. Other cuts are
+at each point). Templates take the girdle facet count and L:W from the fields beside the list; left blank, each template uses its own defaults (the plot's L:W). Other cuts are
 designed in the app from a preform, or imported. `designs/` holds `.asc` exports of all three.
 
 ## Views and sheets

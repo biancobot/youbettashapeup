@@ -120,9 +120,11 @@ export function createEditor({ onChange, getSelectedVertex, saveText }) {
   }
   el('loadtemplate').addEventListener('click', () => {
     const tpl = templates[sel.value]; if (!tpl) return;
-    const girdleFacets = parseInt(el('tpl-gf').value, 10) || 128;
-    const ratio = parseFloat(el('tpl-ratio').value) || 2.0;
-    design = resetIds(tpl.make({ girdleFacets, ratio })); selectedTier = null;
+    // blank fields leave the template's own defaults in place
+    const opts = {};
+    const gf = parseInt(el('tpl-gf').value, 10); if (gf > 0) opts.girdleFacets = gf;
+    const ratio = parseFloat(el('tpl-ratio').value); if (ratio > 0) opts.ratio = ratio;
+    design = resetIds(tpl.make(opts)); selectedTier = null;
     setStatus(tpl.note || ''); changed();
   });
   const psel = el('preform');
