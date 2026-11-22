@@ -4,6 +4,7 @@
 // typical angles, and are labelled as reconstructions.
 import { roundBrilliant, girdleFromSupport, ellipseSupport } from './generators.js';
 import { newTier, tierFromPlane, expandIndex, azimuthDeg } from './design.js';
+import { marquiseStart, marquiseSupport } from './fancy.js';
 
 const rad = (d) => (d * Math.PI) / 180;
 
@@ -12,6 +13,7 @@ const mid = (a, b) => { let d = ((b - a) % 360 + 540) % 360 - 180; return ((a + 
 
 export const templates = {
   round: { name: 'Round brilliant (GIA proportions)', note: 'Built from GIA Diamond Cut Grading System proportion definitions.', make: () => roundBrilliant() },
+  marquise: { name: 'Marquise brilliant (starting point)', note: 'Facet pattern of the IGI plot with typical angles; trace against the underlay and cut meet points.', make: () => marquiseStart() },
   blank: { name: 'Blank: round preform only', note: 'A 64-facet round girdle and nothing else. Add tiers to design a cut.', make: () => blank() },
 };
 
@@ -21,6 +23,10 @@ export const preforms = {
   ellipse: {
     name: 'Ellipse (oval, L:W)',
     make: ({ ratio = 1.4, count = 64, gear = 96 } = {}) => girdleFromSupport(ellipseSupport(1, ratio), count, gear),
+  },
+  marquise: {
+    name: 'Marquise: two circular arcs (L:W)',
+    make: ({ ratio = 2.0, count = 64, gear = 96 } = {}) => girdleFromSupport(marquiseSupport(1, ratio), count, gear),
   },
   rectangle: {
     name: 'Rectangle / cut-cornered (L:W, corner)',

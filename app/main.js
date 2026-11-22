@@ -4,6 +4,7 @@ import { LineSegmentsGeometry } from '../vendor/three/lines/LineSegmentsGeometry
 import { LineMaterial } from '../vendor/three/lines/LineMaterial.js';
 import { designMesh, stoneStats } from './gemcad/mesh.js';
 import { createEditor } from './editor.js';
+import { createUnderlay } from './underlay.js';
 import { templates } from './gemcad/templates.js';
 window.__templates = { templates };
 import { VIEWS, getView } from './views.js';
@@ -38,6 +39,7 @@ renderer.setPixelRatio(window.devicePixelRatio || 1);
 renderer.setClearColor(0xffffff, 1);
 
 const scene = new THREE.Scene();
+const underlay = createUnderlay(scene);
 const orthoCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, -10, 10);
 const perspCamera = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
 let camera = orthoCamera;
@@ -225,6 +227,8 @@ function layout(force) {
     overall.maxY = Math.max(overall.maxY, inst.pos[1] + inst.bbox.maxY);
   }
   updateCamera(stage.clientWidth, stage.clientHeight);
+  const b = instances.get('base');
+  if (b && geo) underlay.place(geo.bbox, b.pos, state.viewId);
 }
 
 // ----------------------------------------------------------------------------- camera / size
@@ -519,6 +523,25 @@ const editor = createEditor({
   getSelectedVertex: () => selectedVertex,
   saveText: (filename, text) => saveFile(filename, 'data:text/plain;charset=utf-8,' + encodeURIComponent(text)),
 });
+// ----------------------------------------------------------------------------- underlay UI
+const uSel = document.getElementById('u-builtin');
+document.getElementById('u-load').addEventListener('click', async () => {
+  const v = uSel.value; if (!v) return;
+  try { await underlay.load(`designs/plots/${v}.png`, v); document.getElementById('u-status').textContent = `Underlay: ${v}`; layout(true); }
+  catch (e) { document.getElementById('u-status').textContent = 'Could not load: ' + e.message; }
+});
+document.getElementById('u-file').addEventListener('change', async (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  try { await underlay.load(f, f.name); document.getElementById('u-status').textContent = `Underlay: ${f.name}`; layout(true); }
+  catch (err) { document.getElementById('u-status').textContent = 'Could not load: ' + err.message; }
+  e.target.value = '';
+});
+const bind = (id, key, parse = parseFloat) => { const el = document.getElementById(id); el.addEventListener('input', () => { underlay.state[key] = parse(el.value); layout(true); }); };
+bind('u-opacity', 'opacity'); bind('u-scale', 'scale'); bind('u-dx', 'dx'); bind('u-dy', 'dy');
+document.getElementById('u-view').addEventListener('change', (e) => { underlay.state.view = e.target.value; layout(true); });
+document.getElementById('u-mirror').addEventListener('change', (e) => { underlay.state.mirror = e.target.checked; layout(true); });
+document.getElementById('u-show').addEventListener('change', (e) => { underlay.state.visible = e.target.checked; layout(true); });
+
 state.showMeet = params.get('meet') !== '0';
 const meetCb = document.getElementById('meet');
 meetCb.checked = state.showMeet;
@@ -551,6 +574,7 @@ window.__viewer = {
   setSpin,
   setZoom(z) { state.zoom = z; resize(); },
   setProjection(p, fov) { state.projection = p; if (fov) state.fov = fov; resize(); },
+  underlay,
   setStandard(s) { state.sheet.standard = s; standardSel.value = s; layout(true); },
   render() { layout(true); renderer.render(scene, camera); },
 };

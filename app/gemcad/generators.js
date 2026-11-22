@@ -94,6 +94,11 @@ export function roundBrilliant({ table = 0.56, crownAngle = 34.5, pavilionAngle 
     name: 'Round brilliant (GIA proportions)', gear, fold: 8, mirror: true, ri: 2.42,
     headings: ['Round brilliant', `GIA Excellent mid-range: table ${Math.round(table * 100)}%, crown ${crownAngle}, pavilion ${pavilionAngle}, star ${Math.round(starLength * 100)}%, lower girdle ${Math.round(lowerLength * 100)}%, girdle ${Math.round(girdle * 100)}%`],
     footnotes: ['Generated from GIA Diamond Cut Grading System proportion definitions.'],
+    notes: [
+      'GIA Excellent cut grade (round brilliant), typical ranges: table 54-57%, crown angle 34-35, pavilion angle 40.6-41, star length 50%, lower girdle length 75-80%, girdle thin to slightly thick, total depth 59-62.5%.',
+      'Tolkowsky (1919) ideal: table 53%, crown angle 34.5, pavilion angle 40.75, crown height 16.2%, pavilion depth 43.1%.',
+      'Lab plotting template: 8 bezels at 22.5 + 45k degrees, 8 stars, 16 upper and 16 lower girdle facets, 8 pavilion mains.',
+    ],
     tiers,
     params: { table, crownAngle, pavilionAngle, starLength, lowerLength, girdle },
   };

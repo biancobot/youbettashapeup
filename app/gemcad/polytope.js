@@ -20,70 +20,56 @@ function key(p) {
 export function clip(faces, plane, tag) {
   const { n, d } = plane;
   const out = [];
-  const segs = [];
+  const onPlane = new Map();   // points lying on the cutting plane (candidates for the cap polygon)
+  let cutAnything = false;
   for (const f of faces) {
     const P = f.pts, m = P.length;
     const s = P.map((p) => n[0] * p[0] + n[1] * p[1] + n[2] * p[2] - d);
     let allIn = true, allOut = true;
     for (const v of s) { if (v > EPS) allIn = false; if (v < -EPS) allOut = false; }
-    if (allIn) { out.push(f); continue; }
-    if (allOut) continue;
-    const kept = [], cross = [];
+    if (allIn) { out.push(f); for (let i = 0; i < m; i++) if (Math.abs(s[i]) <= EPS) onPlane.set(key(P[i]), P[i]); continue; }
+    if (allOut) { cutAnything = true; continue; }
+    cutAnything = true;
+    const kept = [];
     for (let i = 0; i < m; i++) {
       const j = (i + 1) % m;
       const a = P[i], b = P[j], sa = s[i], sb = s[j];
-      if (sa <= EPS) kept.push(a);
-      if (Math.abs(sa) <= EPS) { if (sb > EPS || s[(i + m - 1) % m] > EPS) cross.push(a); }
-      else if ((sa < -EPS && sb > EPS) || (sa > EPS && sb < -EPS)) {
+      if (sa <= EPS) { kept.push(a); if (Math.abs(sa) <= EPS) onPlane.set(key(a), a); }
+      if ((sa < -EPS && sb > EPS) || (sa > EPS && sb < -EPS)) {
         const t = sa / (sa - sb);
         const x = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
-        kept.push(x); cross.push(x);
+        kept.push(x); onPlane.set(key(x), x);
       }
     }
-    // de-duplicate consecutive points
     const clean = [];
     for (const p of kept) if (!clean.length || key(clean[clean.length - 1]) !== key(p)) clean.push(p);
     if (clean.length > 1 && key(clean[0]) === key(clean[clean.length - 1])) clean.pop();
     if (clean.length >= 3) out.push({ ...f, pts: clean });
-    // the two crossing points of this face form one edge of the cap
-    const uniq = []; for (const p of cross) if (!uniq.some((q) => key(q) === key(p))) uniq.push(p);
-    if (uniq.length === 2) segs.push(uniq);
   }
-  const cap = chain(segs);
-  if (cap.length >= 3) {
-    // orient the cap counter-clockwise about the outward normal n
-    const c = cap.reduce((a, p) => [a[0] + p[0], a[1] + p[1], a[2] + p[2]], [0, 0, 0]).map((v) => v / cap.length);
-    let ax = 0, ay = 0, az = 0;
-    for (let i = 0; i < cap.length; i++) {
-      const p = cap[i], q = cap[(i + 1) % cap.length];
-      const u = [p[0] - c[0], p[1] - c[1], p[2] - c[2]], v = [q[0] - c[0], q[1] - c[1], q[2] - c[2]];
-      ax += u[1] * v[2] - u[2] * v[1]; ay += u[2] * v[0] - u[0] * v[2]; az += u[0] * v[1] - u[1] * v[0];
-    }
-    if (ax * n[0] + ay * n[1] + az * n[2] < 0) cap.reverse();
-    out.push({ pts: cap, tag, plane });
+  if (!cutAnything) return out;
+  // Cap polygon: the on-plane points ordered around their centroid. The polytope is convex, so
+  // the cap is convex and an angular sort is exact; this is robust to several edges meeting at
+  // one point, as at the point of a marquise or pear preform.
+  const pts = [...onPlane.values()];
+  if (pts.length < 3) return out;
+  const c = pts.reduce((acc, p) => [acc[0] + p[0], acc[1] + p[1], acc[2] + p[2]], [0, 0, 0]).map((v) => v / pts.length);
+  const ref = Math.abs(n[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0];
+  const u = unit(crossv(n, ref)), v = crossv(n, u);
+  const cap = pts.map((p) => { const r = [p[0] - c[0], p[1] - c[1], p[2] - c[2]]; return { p, a: Math.atan2(dotv(r, v), dotv(r, u)) }; })
+    .sort((x, y) => x.a - y.a).map((x) => x.p);
+  const corners = [];
+  for (let i = 0; i < cap.length; i++) {
+    const p0 = cap[(i + cap.length - 1) % cap.length], p1 = cap[i], p2 = cap[(i + 1) % cap.length];
+    const cr = crossv([p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2]], [p2[0] - p1[0], p2[1] - p1[1], p2[2] - p1[2]]);
+    if (Math.hypot(...cr) > 1e-10) corners.push(p1);
   }
+  if (corners.length >= 3) out.push({ pts: corners, tag, plane });
   return out;
 }
 
-function chain(segs) {
-  if (!segs.length) return [];
-  const used = new Array(segs.length).fill(false);
-  const loop = [segs[0][0], segs[0][1]]; used[0] = true;
-  let guard = 0;
-  while (guard++ < segs.length + 1) {
-    const last = key(loop[loop.length - 1]);
-    if (loop.length > 2 && last === key(loop[0])) { loop.pop(); break; }
-    let found = -1;
-    for (let i = 0; i < segs.length; i++) {
-      if (used[i]) continue;
-      if (key(segs[i][0]) === last) { loop.push(segs[i][1]); used[i] = true; found = i; break; }
-      if (key(segs[i][1]) === last) { loop.push(segs[i][0]); used[i] = true; found = i; break; }
-    }
-    if (found < 0) break;
-  }
-  if (loop.length > 2 && key(loop[loop.length - 1]) === key(loop[0])) loop.pop();
-  return loop;
-}
+const crossv = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+const dotv = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+const unit = (a) => { const l = Math.hypot(...a); return a.map((v) => v / l); };
 
 /** Intersect the stock cube with every plane in order. */
 export function build(planes, half = 4) {

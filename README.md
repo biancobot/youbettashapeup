@@ -33,13 +33,21 @@ is taken. The site is static ES modules, so it must be served over HTTP (not `fi
 - **Round brilliant generator.** Builds the standard round brilliant from GIA's proportion
   parameters (table, crown angle, pavilion angle, star length, lower-girdle length, girdle).
   These define the cut completely, and the result matches the lab plotting diagram.
+- **Plot underlay.** Load a lab plotting diagram (the bundled IGI crown and pavilion plots, or
+  your own image) and it is drawn in red over the stone in the front or back view, scaled so
+  its girdle width matches the stone's. Trace a design against it by adjusting tiers and
+  cutting meet points. Opacity, scale trim, shift and mirror controls are provided.
+- **Notes.** Each design carries notes listing published ideal dimensions and ranges where
+  they exist (GIA Excellent for the round; IGI Excellent ranges for fancy shapes), the lab
+  plot pattern, and trade practice. Notes are editable and saved with the design `.json`.
 - **GemCad files.** Import and export `.asc` (GemCad for Windows format), so designs exchange
   with GemCad and Gem Cut Studio. Preform tiers with per-index distances are written as one
   tier per index. `designs/` holds the generated round brilliant.
 
 Only the round brilliant ships as a finished design: it is the one cut whose proportions are
-published as a complete parameter set. Other cuts are designed in the app, from a preform,
-or imported.
+published as a complete parameter set. The marquise ships as a starting point (the lab plot's
+facet pattern with typical angles) meant to be traced against the underlay. Other cuts are
+designed in the app from a preform, or imported.
 
 ## Views and sheets
 

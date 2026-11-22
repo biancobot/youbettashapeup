@@ -44,6 +44,8 @@
     #tiertable td.acts button { padding: 2px 5px; font-size: 11px; margin-left: 1px; }
     #tiertable tr.sel td { background: #e0e7ff; }
     .addtier { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 12px; }
+    .notes ul { margin: 4px 0 6px; padding-left: 18px; font-size: 12px; } .notes li { margin-bottom: 4px; }
+    textarea { width: 100%; font: inherit; font-size: 12px; border: 1px solid var(--border); border-radius: 6px; padding: 6px; }
     details summary { cursor: pointer; color: var(--muted); font-size: 12px; margin-bottom: 6px; }
     .gaps { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 12px; }
     .gaps label { display: flex; flex-direction: column; gap: 2px; color: var(--muted); }
@@ -120,6 +122,31 @@
         <div class="row"><button id="exportasc">Export .asc</button><button id="exportjson">Export .json</button></div>
         <div class="hint" id="estatus"></div>
         <dl id="props"></dl>
+        <details open>
+          <summary>Notes (ideal dimensions, sources)</summary>
+          <div id="notes" class="notes"></div>
+          <textarea id="notesedit" rows="3" placeholder="One note per line; saved with the design .json"></textarea>
+        </details>
+      </div>
+
+      <div class="group">
+        <h2>Plot underlay</h2>
+        <div class="row"><label for="u-builtin">Lab plot</label>
+          <span><select id="u-builtin">
+            <option value="">choose</option>
+            <option value="round-crown">Round: crown (IGI)</option><option value="round-pavilion">Round: pavilion (IGI)</option>
+            <option value="marquise-crown">Marquise: crown (IGI)</option><option value="marquise-pavilion">Marquise: pavilion (IGI)</option>
+          </select> <button id="u-load">Load</button></span></div>
+        <div class="row"><label>Own image</label><input type="file" id="u-file" accept="image/*" style="width:150px"></div>
+        <div class="row"><label for="u-show">Show</label><input type="checkbox" id="u-show" checked></div>
+        <div class="row"><label for="u-view">In view</label>
+          <select id="u-view"><option value="front">front (crown)</option><option value="back">back (pavilion)</option><option value="always">always</option></select></div>
+        <div class="row"><label for="u-opacity">Opacity</label><input type="range" id="u-opacity" min="0.1" max="1" step="0.05" value="0.6"></div>
+        <div class="row"><label for="u-scale">Scale trim</label><input type="range" id="u-scale" min="0.9" max="1.1" step="0.002" value="1"></div>
+        <div class="row"><label for="u-dx">Shift x</label><input type="range" id="u-dx" min="-0.2" max="0.2" step="0.002" value="0"></div>
+        <div class="row"><label for="u-dy">Shift y</label><input type="range" id="u-dy" min="-0.2" max="0.2" step="0.002" value="0"></div>
+        <div class="row"><label for="u-mirror">Mirror</label><input type="checkbox" id="u-mirror"></div>
+        <div class="hint" id="u-status">The plot's dark lines are drawn in red over the stone, scaled so its girdle width matches the stone's width. Use the front view for the crown plot and the back view for the pavilion plot.</div>
       </div>
 
       <div class="group">
@@ -186,6 +213,6 @@
       const el = document.getElementById('info'); if (el) { el.style.color = '#b00020'; el.textContent = 'Load error: ' + (e.reason && e.reason.message || e.reason); }
     });
   </script>
-  <script type="module" src="./app/main.js?v=6"></script>
+  <script type="module" src="./app/main.js?v=7"></script>
 </body>
 </html>

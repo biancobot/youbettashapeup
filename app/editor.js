@@ -54,6 +54,7 @@ export function createEditor({ onChange, getSelectedVertex, saveText }) {
       tbody.appendChild(tr);
     });
     markSelected();
+    renderNotes();
   }
   function markSelected() {
     [...tbody.children].forEach((tr, i) => tr.classList.toggle('sel', design.tiers[i].id === selectedTier));
@@ -62,6 +63,13 @@ export function createEditor({ onChange, getSelectedVertex, saveText }) {
     if (rebuild) onChange(design);
     render();
   }
+  function renderNotes() {
+    const box = el('notes'); if (!box) return;
+    const notes = design.notes || [];
+    box.innerHTML = notes.length ? '<ul>' + notes.map((n) => `<li>${esc(n)}</li>`).join('') + '</ul>' : '<div class="hint">No notes for this design.</div>';
+    const ta = el('notesedit'); if (ta) ta.value = notes.join('\n');
+  }
+  el('notesedit').addEventListener('change', (e) => { design.notes = e.target.value.split('\n').map((l) => l.trim()).filter(Boolean); renderNotes(); });
   function cutToMeet(t) {
     const v = getSelectedVertex();
     if (!v) { setStatus('Select a meet point in the view first (click near a vertex).'); return; }
