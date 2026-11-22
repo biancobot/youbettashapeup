@@ -51,6 +51,10 @@ function tangentThrough(az, g, q) {
   return planeThrough(q[2] > g[2] ? ang : -ang, az, g);
 }
 
+const PLOT_L = 1.25;   // L:W of the plot the positions were measured on
+/** Girdle contacts measured on the plot, normalised: x in half-widths, y as a fraction of the half-length. */
+const CONTACTS = { corner: [0.756, 1.024 / PLOT_L], ue: [0.556, 1.167 / PLOT_L], us: [0.890, 0.805 / PLOT_L] };
+
 /**
  * Cushion brilliant starting point, pattern of the IGI plotting template:
  * crown: table, 8 bezels (2 ends, 2 sides, 4 corners), 8 stars, 16 upper girdle facets;
@@ -64,19 +68,35 @@ export function cushionBrilliant({
   gear = 96, girdleFacets = 128,
 } = {}) {
   const W = 2, l = ratio, g = girdle * W, Pd = pavilionDepth * W;
-  const H = (1 - tableWidth) * Math.tan(rad(crownAngle));   // side bezels at crownAngle set the crown height
-  const outline = cushionOutline(l, corner, bowSides, bowEnds);
+  // The plot (L:W 1.25) is two-fold symmetric: ends and sides differ. As the ratio approaches 1
+  // the pattern blends to exact four-fold symmetry (every end/side pair of measurements replaced
+  // by their mean, every plan point by the mean of itself and its mirror image across the
+  // diagonal), so a square cushion has four identical bezels, stars and corners.
+  const t = Math.max(0, Math.min(1, (l - 1) / (PLOT_L - 1)));
+  const mix = (square, plot) => square + (plot - square) * t;
+  const mixPt = (sq, pl) => [mix(sq[0], pl[0]), mix(sq[1], pl[1])];
+  const sym = ([x, y]) => [(x + y) / 2, (x + y) / 2];
+  const symPair = (a, b) => { const m = [(a[0] + b[1]) / 2, (a[1] + b[0]) / 2]; return [m, [m[1], m[0]]]; };   // diagonal mirror images
+  const tw = mix((tableWidth + tableLength) / 2, tableWidth), tl = mix((tableWidth + tableLength) / 2, tableLength);
+  const bowX = mix((bowSides + bowEnds) / 2, bowSides), bowY = mix((bowSides + bowEnds) / 2, bowEnds);
+  const tc = mixPt(sym(tableCorner), tableCorner);
+  const [ueS, usS] = symPair(CONTACTS.ue, CONTACTS.us);
+  const cN = mixPt(sym(CONTACTS.corner), CONTACTS.corner), ueN = mixPt(ueS, CONTACTS.ue), usN = mixPt(usS, CONTACTS.us);
+  const azOfN = ([x, y]) => deg(Math.atan2(y * l, x));   // normalised point (x in half-widths, y as a fraction of the half-length) -> radial azimuth
+  const re = mix((ridgeEnd + ridgeSide) / 2, ridgeEnd), rs = mix((ridgeEnd + ridgeSide) / 2, ridgeSide);
+  const H = (1 - tw) * Math.tan(rad(crownAngle));   // side bezels at crownAngle set the crown height
+  const outline = cushionOutline(l, corner, bowX, bowY);
   const girdleTier = girdleFromSupport(outline.support, girdleFacets, gear, 0.5);
   const verts = girdleVertices(girdleTier, gear);
   const tiers = [girdleTier, newTier({ name: 'T', angle: 0, distance: H, indices: [] })];
   const addClass = (name, plane) => { const t = classTier(name, plane, gear, 2, true); tiers.push(t); return plane; };
   // Girdle contacts, top-right quadrant (radial azimuths measured on the IGI plots)
-  const Ev = vertexNear(verts, 90), Sv = vertexNear(verts, 0), Cv = vertexNear(verts, 53.6);
-  const Uev = vertexNear(verts, 64.5), Usv = vertexNear(verts, 42.4);
+  const Ev = vertexNear(verts, 90), Sv = vertexNear(verts, 0), Cv = vertexNear(verts, azOfN(cN));
+  const Uev = vertexNear(verts, azOfN(ueN)), Usv = vertexNear(verts, azOfN(usN));
   const cornerAz = outline.normalAz(Cv.az);
 
   // ---- crown bezels: through the girdle vertex (azimuth = outline normal there) and the plot's table corner
-  const Te = [0, tableLength * l, H], Ts = [tableWidth, 0, H], Tc = [tableCorner[0], tableCorner[1] * l, H];
+  const Te = [0, tl * l, H], Ts = [tw, 0, H], Tc = [tc[0], tc[1] * l, H];
   const end = addClass('A end', tangentThrough(90, lift(Ev, 0), Te));
   const cor = addClass('A corner', tangentThrough(cornerAz, lift(Cv, 0), Tc));
   const side = addClass('A side', tangentThrough(0, lift(Sv, 0), Ts));
@@ -94,14 +114,14 @@ export function cushionBrilliant({
 
   // ---- pavilion: mains through the girdle contacts and the culet rectangle (or the culet point)
   const zc = -g - Pd;
-  const cw = culet ? culet[0] : 0, cl = culet ? culet[1] * l : 0;
+  const cw = culet ? mix((culet[0] + culet[1]) / 2, culet[0]) : 0, cl = culet ? mix((culet[0] + culet[1]) / 2, culet[1]) * l : 0;
   const Eg = lift(Ev, -g), Sg = lift(Sv, -g), Cg = lift(Cv, -g), Ueg = lift(Uev, -g), Usg = lift(Usv, -g);
   const mE = addClass('P end', tangentThrough(90, Eg, [0, cl, zc]));
   const mC = addClass('P corner', tangentThrough(cornerAz, Cg, [cw, cl, zc]));
   const mS = addClass('P side', tangentThrough(0, Sg, [cw, 0, zc]));
   // lower girdle facets: junctions on the ridges between mains at the plot's plan positions
-  const Rec = intersect3(mE, mC, yPlane(ridgeEnd * l));
-  const Rcs = intersect3(mC, mS, xPlane(ridgeSide));
+  const Rec = intersect3(mE, mC, yPlane(re * l));
+  const Rcs = intersect3(mC, mS, xPlane(rs));
   addClass('L end', plane3(Rec, Eg, Ueg, false));
   addClass('L end-corner', plane3(Rec, Ueg, Cg, false));
   addClass('L corner-side', plane3(Rcs, Cg, Usg, false));
@@ -119,11 +139,12 @@ export function cushionBrilliant({
     notes: [
       'Ideal dimensions: none published as a complete parameter set. GIA assigns no cut grade to cushion diamonds.',
       'IGI Excellent ranges (cushion row of IGI\'s fancy-shape cut guidelines, which applies to both cushion styles): L:W 1.00-1.05 (1.06 and above is considered rectangular), total depth 62-68%, table 55-62%, crown height 8-16%, girdle 2-6% (thin to thick), pavilion depth 40-56%, culet pointed to small, symmetry and polish very good or excellent. No crown or pavilion angle ranges are given.',
-      `This design: L:W ${ratio} (the IGI report plot measures 1.25), table ${pct(tableWidth)} of the width and ${pct(tableLength)} of the length, crown height ${pct(H / W)}, bezels ${crownAngle} (sides), ${angleOf('A end')} (ends), ${angleOf('A corner')} (corners), pavilion depth ${pct(pavilionDepth)}, mains ${angleOf('P side')} (sides), ${angleOf('P end')} (ends), ${angleOf('P corner')} (corners), girdle ${pct(girdle)}, total depth ${pct((H + g + Pd) / W)}. Bezel and main angles are measured in each facet's own slope direction; they vary around a fancy outline at a constant crown height and pavilion depth.`,
+      `This design: L:W ${ratio} (the IGI report plot measures 1.25), table ${pct(tw)} of the width and ${pct(tl)} of the length, crown height ${pct(H / W)}, bezels ${crownAngle} (sides), ${angleOf('A end')} (ends), ${angleOf('A corner')} (corners), pavilion depth ${pct(pavilionDepth)}, mains ${angleOf('P side')} (sides), ${angleOf('P end')} (ends), ${angleOf('P corner')} (corners), girdle ${pct(girdle)}, total depth ${pct((H + g + Pd) / W)}. Bezel and main angles are measured in each facet's own slope direction; they vary around a fancy outline at a constant crown height and pavilion depth.`,
       `Culet: ${culet ? `a small rectangle ${pct(2 * cw / W)} x ${pct(2 * cl / W)} of the width along the length, as drawn on the plot (the keel where the side and end mains meet)` : 'pointed, all mains meeting at the culet point'}.`,
       'Plot pattern (IGI template): crown 8 bezels (2 ends, 2 sides, 4 corners at about 54 degrees), 8 stars, 16 upper girdle facets; pavilion 8 mains (corner contacts at about 54 degrees), 16 lower girdle facets with junctions at about 64 and 43 degrees, small rectangular culet. Plot L:W 1.25.',
       `Girdle: ${pct(girdle)} at the bezels (hills); the upper and lower girdle facets scallop it to about half that at the junctions on the sides, where the outline bows beyond the chord from the side bezel's tip to the junction. Below L:W 1.1 raise the girdle to 6-7% or the girdle facets at those valleys vanish.`,
-      `Outline: a rectangle with sides bowed out by ${bowSides} (sides) and ${bowEnds} (ends) of the half-width, corners rounded with a circle of radius ${corner}, fitted to the plot. Facets touch the girdle at the plot positions; each facet azimuth is the outline normal at its contact point.`,
+      'The plot is two-fold symmetric (ends and sides differ); towards L:W 1 the pattern blends to exact four-fold symmetry, so a square cushion has four identical bezels, stars and corners and a square culet.',
+      `Outline: a rectangle with sides bowed out by ${Math.round(bowX * 1000) / 1000} (sides) and ${Math.round(bowY * 1000) / 1000} (ends) of the half-width, corners rounded with a circle of radius ${corner}, fitted to the plot. Facets touch the girdle at the plot positions; each facet azimuth is the outline normal at its contact point.`,
     ],
     tiers,
   };

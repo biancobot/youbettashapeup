@@ -59,8 +59,23 @@ export function radiantStart({
   // follow; the notes report the resulting angles.
   const s = L / PLOT_L, Lb = PLOT_L;
   const stretch = ({ n, d }) => { const m = [n[0], n[1] / s, n[2]]; const k = Math.hypot(...m); return { n: m.map((v) => v / k), d: d / k }; };
-  const ab = Lb - cornerY, b = 1 - cornerX;   // corner ends in the unstretched build
-  const a = ab * s;                           // side end y of the final stone (the corner scales with the length)
+  // Towards L:W 1 the crown blends to exact four-fold symmetry: each end/side pair of measurements
+  // (in normalised coordinates: x in half-widths, y as a fraction of the half-length) is replaced
+  // by its mean or by diagonal mirror images, so a square radiant has four identical break facets
+  // and corners. The pavilion keeps the plot's two hubs on the long axis (its pattern is two-fold).
+  const t = Math.max(0, Math.min(1, (L - 1) / (PLOT_L - 1)));
+  const mix = (square, plot) => square + (plot - square) * t;
+  const symPair = (p, q) => { const m = [(p[0] + q[1]) / 2, (p[1] + q[0]) / 2]; return [m, [m[1], m[0]]]; };
+  const mixPt = (sq, pl) => [mix(sq[0], pl[0]), mix(sq[1], pl[1])];
+  const Y = (yfrac) => yfrac * Lb;   // normalised y -> build y
+  const cxN = cornerX, cyN = cornerY / Lb, cN = (cxN + cyN) / 2;
+  const b = 1 - mix(cN, cxN), ab = Lb - Y(mix(cN, cyN));   // corner ends in the unstretched build
+  const a = ab * s;                                          // side end y of the final stone
+  const BtN = [0.51, 1.178 / Lb], BrN = [0.82, 0.782 / Lb], [BtS, BrS] = symPair(BtN, BrN);
+  const btN = mixPt(BtS, BtN), brN = mixPt(BrS, BrN);
+  const taN = mix((0.99 / Lb + 0.68) / 2, 0.99 / Lb), tsN = mix((0.99 / Lb + 0.68) / 2, 0.68);
+  const TbN = [0.54, 0.792 / Lb], tbN = mixPt([(TbN[0] + TbN[1]) / 2, (TbN[0] + TbN[1]) / 2], TbN);
+  const endA = mix((crownAngle + crownAngle) / 2, crownAngle);
   // girdle octagon, counter-clockwise from the lower end of the right side
   const poly = [[1, -a], [1, a], [b, L], [-b, L], [-1, a], [-1, -a], [-b, -L], [b, -L]];
   const girdleTier = girdleFromPolygon(poly, gear);
@@ -71,12 +86,12 @@ export function radiantStart({
   // ---- crown (built at the plot length): break row along the girdle (end facet by angle, corner
   // and side through the measured inner octagon corners Bt and Br), then the upper row through table vertices
   const Ct = [b, Lb, 0], Cr = [1, ab, 0];
-  const bandEnd = addClass('A end', planeThrough(crownAngle, 90, Ct));
-  const Bt = intersect3(bandEnd, xPlane(0.51), yPlane(1.178));
+  const bandEnd = addClass('A end', planeThrough(endA, 90, Ct));
+  const Bt = intersect3(bandEnd, xPlane(btN[0]), yPlane(Y(btN[1])));
   const bandCorner = addClass('A corner', plane3(Ct, Cr, Bt, true));
-  const Br = intersect3(bandCorner, xPlane(0.82), yPlane(0.782));
+  const Br = intersect3(bandCorner, xPlane(brN[0]), yPlane(Y(brN[1])));
   addClass('A side', plane3(Cr, my(Cr), Br, true));
-  const Ta = [0, 0.99, H], Tb = [0.54, 0.792, H], Ts = [0.68, 0, H];
+  const Ta = [0, Y(taN), H], Tb = [tbN[0], Y(tbN[1]), H], Ts = [tsN, 0, H];
   addClass('C end', plane3(Bt, mx(Bt), Ta, true));
   addClass('C end-corner', plane3(Ta, Bt, Tb, true));
   addClass('C corner', plane3(Bt, Br, Tb, true));
