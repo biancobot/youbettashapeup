@@ -13,8 +13,9 @@ const mid = (a, b) => { let d = ((b - a) % 360 + 540) % 360 - 180; return ((a + 
 
 export const templates = {
   round: { name: 'Round brilliant (GIA proportions)', note: 'Built from GIA Diamond Cut Grading System proportion definitions.', make: ({ girdleFacets = 64 } = {}) => roundBrilliant({ girdleFacets }) },
-  marquise: { name: 'Marquise brilliant, French tips (starting point)', note: 'IGI plot pattern with typical angles and GIA-style French tips; trace against the underlay and cut meet points.', make: (opts) => marquiseStart({ ...opts }) },
-  marquiseStd: { name: 'Marquise brilliant, uncorrected points (starting point)', note: 'IGI plot pattern with typical angles and a shallow bezel at each point.', make: (opts) => marquiseStart({ frenchTips: false, ...opts }) },
+  marquise: { name: 'Marquise brilliant, French tips (starting point)', note: 'IGI plot pattern with typical angles and GIA-style French tips; trace against the underlay and cut meet points.', make: ({ girdleFacets = 128, ratio = 2.0 } = {}) => marquiseStart({ girdleFacets, ratio }) },
+  marquiseGia: { name: 'Marquise brilliant, French tips, GIA wireframe proportions', note: 'Same construction with the proportions read off GIA\'s 4Cs French-tip wireframe: table 52%, hub 23% from the point.', make: ({ girdleFacets = 128, ratio = 2.03 } = {}) => marquiseStart({ girdleFacets, ratio, crownAngle: 33, crownHeight: 0.156, tipHubHeight: 0.89, tipTable: 0.40 }) },
+  marquiseStd: { name: 'Marquise brilliant, uncorrected points (starting point)', note: 'IGI plot pattern with typical angles and a shallow bezel at each point.', make: ({ girdleFacets = 128, ratio = 2.0 } = {}) => marquiseStart({ frenchTips: false, girdleFacets, ratio }) },
   blank: { name: 'Blank: round preform only', note: 'A 64-facet round girdle and nothing else. Add tiers to design a cut.', make: ({ girdleFacets = 64 } = {}) => blank(girdleFacets) },
 };
 

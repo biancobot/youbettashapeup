@@ -75,7 +75,8 @@
         <h2>Design</h2>
         <div class="row"><label for="template">Start from</label>
           <span><select id="template"></select> <button id="loadtemplate">Load</button></span>
-            <label>Girdle facets <input type="number" id="tpl-gf" value="128" step="16" min="16" title="Number of girdle facets for the loaded template"></label></div>
+            <label>Girdle facets <input type="number" id="tpl-gf" value="128" step="16" min="16" title="Number of girdle facets for the loaded template"></label>
+            <label>L:W <input type="number" id="tpl-ratio" value="2.0" step="0.01" min="1" title="Length-to-width ratio for fancy templates"></label></div>
         <details>
           <summary>Round brilliant from GIA proportions</summary>
           <div class="gaps">
@@ -137,6 +138,7 @@
             <option value="">choose</option>
             <option value="round-crown">Round: crown (IGI)</option><option value="round-pavilion">Round: pavilion (IGI)</option>
             <option value="marquise-crown">Marquise: crown (IGI)</option><option value="marquise-pavilion">Marquise: pavilion (IGI)</option>
+            <option value="marquise-french-gia">Marquise: French tips, crown (GIA 4Cs)</option>
           </select> <button id="u-load">Load</button></span></div>
         <div class="row"><label>Own image</label><input type="file" id="u-file" accept="image/*" style="width:150px"></div>
         <div class="row"><label for="u-show">Show</label><input type="checkbox" id="u-show" checked></div>
@@ -214,6 +216,6 @@
       const el = document.getElementById('info'); if (el) { el.style.color = '#b00020'; el.textContent = 'Load error: ' + (e.reason && e.reason.message || e.reason); }
     });
   </script>
-  <script type="module" src="./app/main.js?v=9"></script>
+  <script type="module" src="./app/main.js?v=10"></script>
 </body>
 </html>

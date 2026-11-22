@@ -37,8 +37,8 @@ is taken. The site is static ES modules, so it must be served over HTTP (not `fi
 - **Round brilliant generator.** Builds the standard round brilliant from GIA's proportion
   parameters (table, crown angle, pavilion angle, star length, lower-girdle length, girdle).
   These define the cut completely, and the result matches the lab plotting diagram.
-- **Plot underlay.** Load a lab plotting diagram (the bundled IGI crown and pavilion plots, or
-  your own image) and it is drawn in red over the stone in the front or back view, scaled so
+- **Plot underlay.** Load a lab plotting diagram (the bundled IGI crown and pavilion plots, GIA's
+  French-tip marquise wireframe, or your own image) and it is drawn in red over the stone in the front or back view, scaled so
   its girdle width matches the stone's. Trace a design against it by adjusting tiers and
   cutting meet points. Opacity, scale trim, shift and mirror controls are provided.
 - **Notes.** Each design carries notes listing published ideal dimensions and ranges where
@@ -59,7 +59,9 @@ marquise wireframe: no bezel at the point; eight facets meet at a hub on the axi
 facets forming the point, two small upper girdle facets, the two wing bezels and two
 half-bezels running to the table corner. The hub sits on the wing bezels' ridge, so its
 position follows the wing angle (`wingAngle`, `tipHubHeight`, `tipTable` in `marquiseStart`).
-A second template keeps uncorrected points (a shallow bezel at each point). Other cuts are
+A second template uses the proportions read off GIA's wireframe (table 52%, crown 33°, hub
+23% from the point) and overlays it closely; a third keeps uncorrected points (a shallow bezel
+at each point). Templates take the girdle facet count and L:W from the fields beside the list. Other cuts are
 designed in the app from a preform, or imported. `designs/` holds `.asc` exports of all three.
 
 ## Views and sheets
