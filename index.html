@@ -34,6 +34,10 @@
     #stage canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
     #stage canvas:active { cursor: grabbing; }
     #info { position: absolute; left: 12px; bottom: 10px; color: var(--muted); font-size: 12px; pointer-events: none; }
+    #export { position: absolute; top: 10px; right: 10px; width: 38px; height: 38px; padding: 0; display: flex; align-items: center;
+      justify-content: center; border-radius: 8px; background: rgba(255, 255, 255, .85); color: var(--muted); border: 1px solid var(--border); }
+    #export:hover { color: var(--accent); border-color: var(--accent); background: #fff; }
+    body.noui #export { display: none; }
     dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; font-size: 12px; }
     dt { color: var(--muted); } dd { margin: 0; }
     #tiertable { width: 100%; border-collapse: collapse; font-size: 12px; }
@@ -69,7 +73,7 @@
   <div id="app">
     <aside id="panel">
       <div>
-        <h1>Gem Facet Designer <span class="build" title="Build number; if it does not match the README, hard-reload or git pull">build 22</span></h1>
+        <h1>Gem Facet Designer <span class="build" title="Build number; if it does not match the README, hard-reload or git pull">build 35</span></h1>
         <div class="hint">GemCad-style facet design: every facet is a plane by angle, index and distance; the stone is their intersection. Drag to rotate, shift-drag to roll, scroll to zoom, click a vertex to pick a meet point.</div>
       </div>
 
@@ -183,12 +187,14 @@
         <h2>Export</h2>
         <div class="row"><label for="scale">Resolution</label>
           <select id="scale"><option value="1">1x</option><option value="2" selected>2x</option><option value="4">4x</option><option value="8">8x</option></select></div>
-        <button id="export" class="primary">Export PNG</button>
-        <div class="hint">White background, black edges, current view and zoom.</div>
+        <div class="hint">The download icon at the top right of the preview exports a PNG: white background, black edges, current view and zoom.</div>
       </div>
     </aside>
     <main id="stage">
       <canvas id="c"></canvas>
+      <button id="export" title="Export PNG (current view and zoom, at the Export resolution)" aria-label="Export PNG">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 3v11m0 0-4-4m4 4 4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
       <div id="info"></div>
     </main>
   </div>
@@ -203,6 +209,6 @@
       const el = document.getElementById('info'); if (el) { el.style.color = '#b00020'; el.textContent = 'Load error: ' + (e.reason && e.reason.message || e.reason); }
     });
   </script>
-  <script type="module" src="./app/main.js?v=22"></script>
+  <script type="module" src="./app/main.js?v=35"></script>
 </body>
 </html>
