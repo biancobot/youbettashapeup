@@ -122,7 +122,7 @@ const HAND = { ratio: 0.93, lobe: 0.52, lowerRadius: 1.42 };
 export function heartStart({
   ratio = HAND.ratio, lobe = HAND.lobe, lowerRadius = HAND.lowerRadius,
   crownAngle = 35, lowerAngle = 41, pointAngle = 31, cleftAngle = 25, crownHeight = 0.12, girdle = 0.04, pavilionDepth = 0.41,
-  starHeight = 0.65, cleftTip = 0.65, culetOffset = 0.12, pavilionCleft = 0.41,
+  starHeight = 0.65, cleftTip = 0.65, culetOffset = 0.12, pavilionCleft = 0.41, bellyContact = 13, wingContact = -51,
   gear = 96, girdleFacets = 128,
   frenchTips = true, tipHubHeight = 0.75, tipTable = PLOT.crown.B0, tipGirdle = 0.16,
 } = {}) {
@@ -161,11 +161,22 @@ export function heartStart({
   // side and lower bezels touch the girdle at a single vertex (the plot draws them along an arc,
   // which a flat facet cannot do), with the outline normal there; the upper girdle facets then
   // come in pairs meeting at a junction vertex between neighbouring contacts
-  const sideAz = (pc.Gd + pc.Ge) / 2, lowerAz = (pc.Gg + pc.Gh) / 2;
+  // contacts: belly bezel at the widest part of the stone, wing (lower) bezels about half way up
+  // the wings (positions marked on the reference drawing); junctions midway between contacts
+  const sideAz = bellyContact, lowerAz = wingContact;
   const Gs = G(sideAz), Gl = G(lowerAz);
   const sideBezel = planeThrough(crownAngle, outline.normalAz(vertexNear(verts, sideAz).az), Gs);
   const lowerBezel = planeThrough(lowerAngle, outline.normalAz(vertexNear(verts, lowerAz).az), Gl);
-  const Gj1 = G((pc.Gc + sideAz) / 2), Gj3 = G((lowerAz - 90) / 2);
+  const j1Az = (pc.Gc + sideAz) / 2, fAz = (sideAz + lowerAz) / 2, j3Az = (lowerAz - 90) / 2;
+  /** Upper girdle facet: through the star tip, tangent to the girdle at the middle of its arc
+   * (between azimuths azA and azB) with the outline normal there, so it never cuts into the
+   * girdle; neighbouring uppers meet at the junction above the girdle, which thickens there. */
+  const upperTangent = (tip, azA, azB) => {
+    const v = vertexNear(verts, (azA + azB) / 2), gp = lift(v, 0), az = outline.normalAz(v.az);
+    const u = [Math.cos(rad(az)), Math.sin(rad(az))];
+    const run = u[0] * gp[0] + u[1] * gp[1] - (u[0] * tip[0] + u[1] * tip[1]);
+    return planeThrough(deg(Math.atan2(tip[2], run)), az, gp);
+  };
   const V = addProbe(intersect3(lobeBezel, table, azPlane(pc.V)));
   const X = addProbe(intersect3(sideBezel, table, azPlane(pc.X)));
   const D = addProbe(intersect3(lowerBezel, table, azPlane(pc.D)));
@@ -209,19 +220,19 @@ export function heartStart({
   const zAt = (pl, p) => (pl.d - pl.n[0] * p[0] - pl.n[1] * p[1]) / pl.n[2];
   const GaC = [Ga[0], Ga[1], zAt(cleft, Ga)];
   addClass('B cleft-lobe', plane3(J1, GaC, Gb, true));
-  addClass('B lobe', plane3(J1, Gb, Gc, true));
-  addClass('B lobe-side', plane3(Wt, Gc, Gj1, true));
-  addClass('B side-lobe', plane3(Wt, Gj1, Gs, true));
-  addClass('B side', plane3(A, Gs, Gf, true));
-  addClass('B lower', plane3(A, Gf, Gl, true));
+  addClass('B lobe', upperTangent(J1, pc.Gb, pc.Gc));
+  addClass('B lobe-side', upperTangent(Wt, pc.Gc, j1Az));
+  addClass('B side-lobe', upperTangent(Wt, j1Az, sideAz));
+  addClass('B side', upperTangent(A, sideAz, fAz));
+  addClass('B lower', upperTangent(A, fAz, lowerAz));
   if (!frenchTips) {
     addClass('C lower-point', plane3(D, B0, E, true));
-    addClass('B lower-point', plane3(E, Gl, Gj3, true));
-    addClass('B point', plane3(E, Gj3, P, true));
+    addClass('B lower-point', upperTangent(E, lowerAz, j3Az));
+    addClass('B point', upperTangent(E, j3Az, -90 + 2));
   } else {
     const Gt = lift(vertexNearY(verts, -(1 - tipGirdle) * l, 1), 0);
     addClass('C half-bezel', plane3(hub, B0, D, true));
-    addClass('B tip', plane3(hub, Gt, Gl, true));
+    addClass('B tip', upperTangent(hub, lowerAz, deg(Math.atan2(Gt[1], Gt[0]))));
     addClass('tip', plane3(P, hub, Gt, true));
   }
 
@@ -284,6 +295,8 @@ const base = [
   { key: 'lowerRadius', label: 'Side radius', default: HAND.lowerRadius, step: 0.1, min: 1.2, title: 'Radius of the lower sides, fraction of the half-width' },
   { key: 'crownAngle', label: 'Crown angle', default: 35, step: 0.5, title: 'Lobe and side bezel angle' },
   { key: 'lowerAngle', label: 'Lower bezels', default: 41, step: 0.5, title: 'Lower bezel angle' },
+  { key: 'bellyContact', label: 'Belly contact', default: 13, step: 1, title: 'Radial azimuth (degrees from the side) where the belly bezel touches the girdle' },
+  { key: 'wingContact', label: 'Wing contact', default: -51, step: 1, title: 'Radial azimuth where the wing bezel touches the girdle (negative: below the side)' },
   { key: 'cleftAngle', label: 'Cleft bezel', default: 25, step: 0.5, min: 10, max: 60, title: 'Angle of the single cleft bezel (clamped so it stays above the girdle at the lobe tops); the table apex follows' },
   { key: 'crownHeight', label: 'Crown height', default: 0.12, step: 0.005, title: 'Fraction of the width' },
   { key: 'pavilionDepth', label: 'Pavilion depth', default: 0.41, step: 0.005, title: 'Fraction of the width' },
