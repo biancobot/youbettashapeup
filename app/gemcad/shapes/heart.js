@@ -111,8 +111,16 @@ const PLOT = {
  * lobes, as on the plot. The pavilion cleft mains meet on the axis at `pavilionCleft` of the
  * half-length below the cleft.
  */
+/**
+ * Default outline: the classic heart silhouette fitted to a hand-drawn reference (least squares
+ * on the digitised outline, mean error 0.012 of the half-width): L:W 0.93, lobe radius 0.52,
+ * lower-side radius 2.0, cleft 28% of the half-length deep. The IGI plot's outline (L:W 1.05,
+ * lobe 0.56, lower radius 2.46) is narrower with shallower lobes; set those values to trace it.
+ */
+const HAND = { ratio: 0.93, lobe: 0.52, lowerRadius: 2.0 };
+
 export function heartStart({
-  ratio = PLOT.ratio, lobe = 0.57, lowerRadius = PLOT.lowerRadius,
+  ratio = HAND.ratio, lobe = HAND.lobe, lowerRadius = HAND.lowerRadius,
   crownAngle = 35, lowerAngle = 41, pointAngle = 31, cleftAngle = 35, crownHeight = 0.12, girdle = 0.04, pavilionDepth = 0.41,
   starHeight = 0.65, cleftTip = 0.65, culetOffset = 0.12, pavilionCleft = 0.41,
   gear = 96, girdleFacets = 128,
@@ -253,9 +261,9 @@ export function heartStart({
 }
 
 const base = [
-  { key: 'ratio', label: 'L:W', default: PLOT.ratio, step: 0.01, min: 0.7 },
-  { key: 'lobe', label: 'Lobe radius', default: 0.57, step: 0.01, min: 0.51, max: 0.8, title: 'Lobe circle radius, fraction of the half-width (sets the cleft depth)' },
-  { key: 'lowerRadius', label: 'Side radius', default: PLOT.lowerRadius, step: 0.1, min: 1.2, title: 'Radius of the lower sides, fraction of the half-width' },
+  { key: 'ratio', label: 'L:W', default: HAND.ratio, step: 0.01, min: 0.7, title: 'Length to width; the IGI plot is 1.05, the classic outline 0.93' },
+  { key: 'lobe', label: 'Lobe radius', default: HAND.lobe, step: 0.01, min: 0.51, max: 0.8, title: 'Lobe circle radius, fraction of the half-width (sets the cleft depth)' },
+  { key: 'lowerRadius', label: 'Side radius', default: HAND.lowerRadius, step: 0.1, min: 1.2, title: 'Radius of the lower sides, fraction of the half-width' },
   { key: 'crownAngle', label: 'Crown angle', default: 35, step: 0.5, title: 'Lobe and side bezel angle' },
   { key: 'lowerAngle', label: 'Lower bezels', default: 41, step: 0.5, title: 'Lower bezel angle' },
   { key: 'cleftAngle', label: 'Cleft facets', default: 35, step: 0.5, min: 10, max: 80, title: 'Cleft facet angle; the table notch depth follows' },
