@@ -10,7 +10,8 @@ import * as radiant from './radiant.js';
 import * as emerald from './emerald.js';
 import * as asscher from './asscher.js';
 import * as shield from './shield.js';
+import * as shieldStep from './shieldStep.js';
 
-export const shapeModules = { marquise, pear, heart, oval, cushion, cushionModified, princess, radiant, emerald, asscher, shield };
+export const shapeModules = { marquise, pear, heart, oval, cushion, cushionModified, princess, radiant, emerald, asscher, shield, shieldStep };
 export const shapeTemplates = Object.assign({}, ...Object.values(shapeModules).map((m) => m.templates || {}));
 export const shapePlots = Object.values(shapeModules).flatMap((m) => m.plots || []);

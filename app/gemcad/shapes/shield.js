@@ -21,7 +21,7 @@ import {
  * that meet at the point (0, -ratio); the sides' widest point (x = 1) is at y = widest * ratio.
  * All arcs are mutually tangent, so the outline is smooth everywhere but the point.
  */
-export function shieldOutline(ratio, widest = 0.45, headRadius = 2.5, shoulder = 0.4) {
+export function shieldOutline(ratio, widest = 0.45, headRadius = 1.8, shoulder = 0.4) {
   const yTop = ratio, yW = widest * ratio, P = [0, -ratio];
   const R2 = (1 + (yTop + yW) ** 2) / 2, cS = [1 - R2, yW];              // side circle through the point, apex at x = 1
   const Rt = Math.max(headRadius, 1.05), cT = [0, yTop - Rt];           // head circle, apex at the top
@@ -74,7 +74,7 @@ export function shieldOutline(ratio, widest = 0.45, headRadius = 2.5, shoulder =
  * shoulder, `pavSideContact` and `lowerContact`.
  */
 export function shieldStart({
-  ratio = 1.3, widest = 0.45, headRadius = 2.5, shoulder = 0.4, crownAngle = 35, shoulderAngle = 35, sideAngle = 35, wingAngle = 33, pointAngle = 25, crownHeight = 0.14, girdle = 0.05, pavilionDepth = 0.43,
+  ratio = 1.3, widest = 0.45, headRadius = 1.8, shoulder = 0.4, crownAngle = 35, shoulderAngle = 35, sideAngle = 35, wingAngle = 33, pointAngle = 25, crownHeight = 0.14, girdle = 0.05, pavilionDepth = 0.43,
   sideContact = null, wingContact = 330, pavShoulderContact = null, pavSideContact = 15, lowerContact = 300, starHeight = 0.6, culetPos = 0.5, lowerDepth = 0.78,
   gear = 96, girdleFacets = 128,
   frenchTip = true, tipHubHeight = 0.8, tipTable = 0.28, tipGirdle = 0.12,
@@ -190,7 +190,7 @@ const xPlane_ = (x) => ({ n: [1, 0, 0], d: x });
 const params = [
   { key: 'ratio', label: 'L:W', default: 1.3, step: 0.01, min: 1 },
   { key: 'widest', label: 'Widest point', default: 0.45, step: 0.05, min: 0.1, max: 0.9, title: 'Height of the widest point, fraction of the half-length above the centre' },
-  { key: 'headRadius', label: 'Head radius', default: 2.5, step: 0.1, min: 1.1, title: 'Radius of the head arc, half-widths (large = nearly flat)' },
+  { key: 'headRadius', label: 'Head radius', default: 1.8, step: 0.1, min: 1.1, title: 'Radius of the head arc, half-widths (large = nearly flat)' },
   { key: 'shoulder', label: 'Shoulder radius', default: 0.4, step: 0.05, min: 0.1, max: 0.9, title: 'Radius of the shoulder arcs, half-widths' },
   { key: 'crownAngle', label: 'Head bezel', default: 35, step: 0.5 }, { key: 'shoulderAngle', label: 'Shoulder bezels', default: 35, step: 0.5 }, { key: 'sideAngle', label: 'Belly bezels', default: 35, step: 0.5 }, { key: 'wingAngle', label: 'Wing bezels', default: 33, step: 0.5 },
   { key: 'crownHeight', label: 'Crown height', default: 0.14, step: 0.005 }, { key: 'girdle', label: 'Girdle', default: 0.05, step: 0.005 }, { key: 'pavilionDepth', label: 'Pavilion depth', default: 0.43, step: 0.005 },
