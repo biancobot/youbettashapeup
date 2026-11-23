@@ -148,9 +148,23 @@ export function createEditor({ onChange, getSelectedVertex, saveText }) {
     try { design = resetIds(tpl.make(templateOptions())); selectedTier = null; setStatus(tpl.note || ''); changed(); }
     catch (err) { setStatus('Could not build with these proportions: ' + err.message); }
   }
-  sel.addEventListener('change', () => { renderParams(); loadTemplate(); });
+  // Load as soon as the selection changes, however it changes: the change event, input events, and
+  // keyboard navigation on the closed select (arrow keys and type-ahead), which some browsers only
+  // report once the control loses focus.
+  let loadedKey = null;
+  function syncTemplate() { if (sel.value === loadedKey) return; loadedKey = sel.value; renderParams(); loadTemplate(); }
+  sel.addEventListener('change', syncTemplate);
+  sel.addEventListener('input', syncTemplate);
+  sel.addEventListener('keydown', (e) => {
+    const step = e.key === 'ArrowDown' || e.key === 'PageDown' ? 1 : e.key === 'ArrowUp' || e.key === 'PageUp' ? -1 : 0;
+    if (!step || e.altKey || e.metaKey) return;   // alt/cmd + arrow opens the native list; let the browser handle that
+    e.preventDefault();
+    sel.selectedIndex = Math.max(0, Math.min(sel.options.length - 1, sel.selectedIndex + step));
+    syncTemplate();
+  });
+  sel.addEventListener('keyup', syncTemplate);   // type-ahead selection by letter
   el('loadtemplate').addEventListener('click', loadTemplate);
-  renderParams();
+  loadedKey = sel.value; renderParams();
   const psel = el('preform');
   for (const [key, pf] of Object.entries(preforms)) { const o = document.createElement('option'); o.value = key; o.textContent = pf.name; psel.appendChild(o); }
   el('applypreform').addEventListener('click', () => {
