@@ -114,10 +114,10 @@ const PLOT = {
 /**
  * Default outline: the classic heart silhouette fitted to a hand-drawn reference (least squares
  * on the digitised outline, mean error 0.012 of the half-width): L:W 0.93, lobe radius 0.52,
- * lower-side radius 2.0, cleft 28% of the half-length deep. The IGI plot's outline (L:W 1.05,
+ * lower-side radius 1.42 (the wings bowed out to the marked profile), cleft 28% of the half-length deep. The IGI plot's outline (L:W 1.05,
  * lobe 0.56, lower radius 2.46) is narrower with shallower lobes; set those values to trace it.
  */
-const HAND = { ratio: 0.93, lobe: 0.52, lowerRadius: 2.0 };
+const HAND = { ratio: 0.93, lobe: 0.52, lowerRadius: 1.42 };
 
 export function heartStart({
   ratio = HAND.ratio, lobe = HAND.lobe, lowerRadius = HAND.lowerRadius,
