@@ -19,6 +19,7 @@ app's underlay; they are the laboratories' artwork and are kept here only for th
 | cushionmod-3-*.png | IGI FDR631497388 (Square Cushion Modified Brilliant, dense crushed-ice pavilion; FDR778608949 is the same template) |
 | cushionmod-4-*.png | IGI FDR715558200 (Square Cushion Modified Brilliant, square culet) |
 | princess-crown.png, princess-pavilion.png | IGI FDR719531797 (Princess Cut) |
+| trillion-crown.png, trillion-pavilion.png | loosegrowndiamond.com, "History of Trillion Cut Diamond" top and bottom views (reference drawing, no lab template) |
 | radiant-crown.png, radiant-pavilion.png | IGI FDR719531732 (Cut Cornered Rectangular Modified Brilliant) |
 | emerald-crown.png, emerald-pavilion.png | IGI FDR713510206 (Emerald Cut) |
 | asscher-crown.png, asscher-pavilion.png | IGI FDR691554158 (Square Emerald Cut; same plot on FDR728551464 and FDR728551753) |
