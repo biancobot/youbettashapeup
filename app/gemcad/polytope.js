@@ -119,7 +119,7 @@ export function topology(faces, tol = 1e-5) {
  * merged back into one polygon (possibly concave, like the heart's table with its notch).
  * The result is a face list for topology(); edges along the seam then join the two halves.
  */
-export function unionHalves(right, left, tol = 1e-6) {
+export function unionHalves(right, left, tol = 1e-3) {
   const R = right.filter((f) => f.tag !== 'seam'), L = left.filter((f) => f.tag !== 'seam');
   const out = [], used = new Set();
   const coplanar = (a, b) => a.plane && b.plane && dotv(a.plane.n, b.plane.n) > 1 - 1e-9 && Math.abs(a.plane.d - b.plane.d) < 1e-7;
@@ -138,13 +138,18 @@ export function unionHalves(right, left, tol = 1e-6) {
 }
 
 /** Polygons A and B (same orientation) sharing an edge on x = 0: one polygon, or null. */
-function mergeAlongSeam(A, B, tol) {
+function mergeAlongSeam(A0, B0, tol) {
+  // a polygon's seam run may carry extra collinear vertices (where other facets meet the seam) and
+  // sliver vertices a hair off the seam where a facet is nearly coincident with it (the heart's
+  // cleft bezel at the table apex); drop the inner ones so each polygon has a single seam edge
+  const squash = (P) => P.filter((p, k) => !(Math.abs(p[0]) < tol && Math.abs(P[(k + P.length - 1) % P.length][0]) < tol && Math.abs(P[(k + 1) % P.length][0]) < tol));
+  const A = squash(A0), B = squash(B0);
   const seamEdge = (P) => { for (let i = 0; i < P.length; i++) if (Math.abs(P[i][0]) < tol && Math.abs(P[(i + 1) % P.length][0]) < tol) return i; return -1; };
   const i = seamEdge(A), j = seamEdge(B);
   if (i < 0 || j < 0) return null;
   const p = A[i], q = A[(i + 1) % A.length];                                   // A runs p -> q along the seam
   const bq = B[j], bp = B[(j + 1) % B.length];                                 // B runs q -> p (opposite direction)
-  const same = (u, v) => Math.hypot(u[1] - v[1], u[2] - v[2]) < 1e-5;
+  const same = (u, v) => Math.hypot(u[1] - v[1], u[2] - v[2]) < 2 * tol;
   if (!(same(p, bp) && same(q, bq))) return null;
   const out = [];
   for (let k = 0; k < A.length; k++) out.push(A[(i + 1 + k) % A.length]);     // q ... p around A

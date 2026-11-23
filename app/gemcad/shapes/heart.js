@@ -4,8 +4,8 @@
 // azimuth is the outline normal there; the other facets are planes through three meet points.
 //
 // The heart is not convex: the cleft between the lobes is a notch in the outline, and the two
-// cleft facets of the crown (and the two cleft mains of the pavilion) meet along the mirror plane
-// in a concave groove. The kernel only intersects half-spaces, so the stone is modelled as the
+// cleft mains of the pavilion meet along the mirror plane in a concave groove, and the single
+// cleft bezel of the crown is split in two by the notch. The kernel only intersects half-spaces, so the stone is modelled as the
 // UNION OF TWO CONVEX HALVES split along x = 0: every facet is built for the right half (x >= 0);
 // a facet whose plane would also cut into the left half (the girdle, the cleft facets, the lobe
 // facets whose contacts face the other lobe) becomes a pair of tiers marked `half: 'right'` and
@@ -83,7 +83,7 @@ import {
  */
 const PLOT = {
   ratio: 1.05, lobe: 0.56, lowerRadius: 2.46,
-  crown: { Ga: 77.2, Gb: 59.0, Gtop: 68, Gc: 43.9, V: 47.6, Gd: 27.4, X: 20.6, Ge: 8.9, Gf: -14.9, Gg: -44.8, D: -48.2, Gh: -75.3, B0: 0.376 },
+  crown: { Ga: 77.2, Gb: 59.0, Gtop: 68, J1: 57.8, Gc: 43.9, V: 47.6, Gd: 27.4, X: 20.6, Ge: 8.9, Gf: -14.9, Gg: -44.8, D: -48.2, Gh: -75.3, B0: 0.376 },
   pav: { Gb: 65, Gc: 47.9, Gd: 30.9, Gs: 7.7, Gf: -10.5, Gh: -36.7, Gk: -60.7, K1: 0.420, Jp: [57.7, 0.395], Q: [25.0, 0.300], R: [-20.7, 0.212], K3: -0.153,
     // lower girdle facets touch the girdle at the middle of their arcs; the cleft main near the cleft (the
     // arc from the cleft to the lobe top is long: a chord would cut through the girdle, a contact at the
@@ -121,16 +121,17 @@ const HAND = { ratio: 0.93, lobe: 0.52, lowerRadius: 2.0 };
 
 export function heartStart({
   ratio = HAND.ratio, lobe = HAND.lobe, lowerRadius = HAND.lowerRadius,
-  crownAngle = 35, lowerAngle = 41, pointAngle = 31, cleftAngle = 35, crownHeight = 0.12, girdle = 0.04, pavilionDepth = 0.41,
+  crownAngle = 35, lowerAngle = 41, pointAngle = 31, cleftAngle = 25, crownHeight = 0.12, girdle = 0.04, pavilionDepth = 0.41,
   starHeight = 0.65, cleftTip = 0.65, culetOffset = 0.12, pavilionCleft = 0.41,
   gear = 96, girdleFacets = 128,
   frenchTips = true, tipHubHeight = 0.75, tipTable = PLOT.crown.B0, tipGirdle = 0.16,
 } = {}) {
   const W = 2, l = ratio, H = crownHeight * W, g = girdle * W, Pd = pavilionDepth * W;
   const outline = heartHalfOutline(l, lobe, lowerRadius);
-  // Girdle: one tier per half, each the preform of that half's convex outline.
-  const gR = girdleEqualLength(outline.support, girdleFacets, gear, 270); gR.name = 'G right'; gR.half = 'right';
-  const gL = girdleEqualLength(mirrorSupport(outline.support), girdleFacets, gear, 270); gL.name = 'G left'; gL.half = 'left';
+  // Girdle: one tier per half, each the preform of that half's convex outline, sampled by normal
+  // angle (equal-arc-length sampling of the two hulls does not give exact mirror images at the point).
+  const gR = girdleFromSupport(outline.support, girdleFacets, gear, 0.5); gR.name = 'G right'; gR.half = 'right';
+  const gL = girdleFromSupport(mirrorSupport(outline.support), girdleFacets, gear, 0.5); gL.name = 'G left'; gL.half = 'left';
   const verts = girdleVertices(gR, gear).filter((v) => v.p[0] >= -1e-6);   // right half of the hull polygon
   const tiers = [gR, gL, newTier({ name: 'T', angle: 0, distance: H, indices: [] })];
   const table = zPlane(H);
@@ -162,10 +163,16 @@ export function heartStart({
   const V = addProbe(intersect3(lobeBezel, table, azPlane(pc.V)));
   const X = addProbe(intersect3(sideBezel, table, azPlane(pc.X)));
   const D = addProbe(intersect3(lowerBezel, table, azPlane(pc.D)));
-  // cleft facet: along the chord from the girdle cleft to Ga; the table notch T0 is where its groove reaches the table
-  const cleft = planeThrough(cleftAngle, chordAz(C, Ga), C);
-  const T0 = intersect3(cleft, mirrorX(cleft), table);
-  const J1 = addProbe(intersect3(cleft, lobeBezel, zPlane(cleftTip * H)));
+  // cleft bezel: ONE plane facing the cleft (azimuth 90), the eighth bezel; the notch splits it into
+  // the two triangles the plots draw. It passes through the cleft star tip J1 on the lobe bezel,
+  // and is kept shallow enough to stay above the girdle at the lobe tops (the girdle is thickest
+  // at the cleft, as on real hearts). The table's apex T0 is where it meets the table on the axis.
+  const J1 = addProbe(intersect3(lobeBezel, zPlane(cleftTip * H), azPlane(pc.J1)));
+  const Gtop = vertexNear(verts, pc.Gtop);
+  const maxTan = (J1[2] - 0.5 * g) / Math.max(Gtop.p[1] - J1[1], 1e-6);
+  const cleftA = Math.min(cleftAngle, deg(Math.atan(maxTan)));
+  const cleft = planeThrough(cleftA, 90, J1);
+  const T0 = intersect3(cleft, table, azPlane(90));
   const Wt = addProbe(intersect3(lobeBezel, sideBezel, zPlane(starHeight * H)));
   const A = addProbe(intersect3(sideBezel, lowerBezel, zPlane(starHeight * H)));
   let hub = null, B0, E;
@@ -180,7 +187,7 @@ export function heartStart({
     addProbe(hub);
     B0 = [0, -(1 - tipTable) * l, H];
   }
-  addClass('cleft', cleft);
+  addClass('A cleft', cleft);
   addClass('A lobe', lobeBezel);
   addClass('A side', sideBezel);
   addClass('A lower', lowerBezel);
@@ -190,9 +197,12 @@ export function heartStart({
   addClass('C lobe-side', plane3(V, X, Wt, true));
   addClass('C side-lower', plane3(X, D, A, true));
   // upper girdle facets: through the star tip and two girdle vertices
-  // across the lobe top the arc is long: this facet touches the girdle at the top with the outline normal (the girdle thickens towards Ga and Gb)
-  const Gtop = vertexNear(verts, pc.Gtop);
-  addClass('B cleft-lobe', planeAz(J1, lift(Gtop, 0), outline.normalAz(Gtop.az), true));
+  // the upper between the cleft bezel and the lobe top: through J1, the girdle junction Gb (at the
+  // girdle) and Ga at the height where the cleft bezel meets the girdle there, so the three planes
+  // and the girdle meet at Ga (the girdle is thick along the inner side of the lobe, as on real hearts)
+  const zAt = (pl, p) => (pl.d - pl.n[0] * p[0] - pl.n[1] * p[1]) / pl.n[2];
+  const GaC = [Ga[0], Ga[1], zAt(cleft, Ga)];
+  addClass('B cleft-lobe', plane3(J1, GaC, Gb, true));
   addClass('B lobe', plane3(J1, Gb, Gc, true));
   addClass('B lobe-side', plane3(Wt, Gc, Gd, true));
   addClass('B side', plane3(A, Ge, Gf, true));
@@ -250,9 +260,9 @@ export function heartStart({
       'Ideal dimensions: none published as a complete parameter set. GIA assigns no cut grade to heart diamonds.',
       'IGI Excellent ranges (heart brilliant): L:W 0.85-0.95, total depth 51.9-61.0%, table 58-64%, crown height 11.5-14%, crown angle 32-38, girdle 2-6% (thin to thick, excluding the shoulders), pavilion depth 39-43%, pavilion angle 39-42.5, culet pointed to small. IGI publishes no Very Good column for the heart; bow-tie must not be significant.',
       `Plot L:W 1.05 (IGI reports FDR675586951, FDR685548981, FDR728551327 all use the same template), longer than IGI's Excellent range; the default ratio is the plot's.`,
-      `This design: L:W ${ratio}, crown height ${pct(crownHeight)}, lobe and side bezels ${crownAngle}, lower bezels ${lowerAngle}, cleft facets ${ang(cleft)}, pavilion depth ${pct(pavilionDepth)} (mains ${ang(mLobe)} lobe, ${ang(mSide)} side, ${ang(mLower)} lower, ${ang(mPoint)} point), girdle ${pct(girdle)}, culet ${pct(culetOffset)} of the half-length above the centre. Outline: lobe radius ${lobe} of the half-width, lower arc radius ${lowerRadius}, cleft ${pct(1 - outline.cleft[1] / l)} of the half-length deep. Table notch ${pct((C[1] - T0[1]) / l)} of the half-length below the cleft.`,
+      `This design: L:W ${ratio}, crown height ${pct(crownHeight)}, lobe and side bezels ${crownAngle}, lower bezels ${lowerAngle}, cleft bezel ${ang(cleft)} (one plane, split by the notch), pavilion depth ${pct(pavilionDepth)} (mains ${ang(mLobe)} lobe, ${ang(mSide)} side, ${ang(mLower)} lower, ${ang(mPoint)} point), girdle ${pct(girdle)}, culet ${pct(culetOffset)} of the half-length above the centre. Outline: lobe radius ${lobe} of the half-width, lower arc radius ${lowerRadius}, cleft ${pct(1 - outline.cleft[1] / l)} of the half-length deep. Table apex ${pct((C[1] - T0[1]) / l)} of the half-length below the cleft; girdle at the cleft ${pct((cleft.d - cleft.n[1] * C[1]) / cleft.n[2] / W + girdle)} of the width thick.`,
       `Point: ${frenchTips ? 'French tip (GIA 4Cs wireframe). No bezel at the point. Eight facets meet at a hub on the axis: two tip facets forming the point, two small upper girdle facets, the two lower bezels and two half-bezels that run to the table corner.' + hubNote : 'uncorrected, a shallow bezel at the point (' + pointAngle + ') with a star either side.'}`,
-      'Plot pattern (IGI template): crown table notched at the cleft, 2 cleft facets, 7 bezels (2 lobe kites, 2 side and 2 lower bezels touching the girdle along an arc, 1 point), 8 stars, 12 upper girdle facets; pavilion 2 cleft mains, 8 mains meeting at the culet (offset towards the lobes), 14 lower girdle facets; a line runs the full length of the pavilion on the axis (cleft groove, main ridges, keel). The template draws the table notch at the girdle cleft and the bezel and star edges as single crossing lines; a real stone has a groove from the cleft down to the table notch.',
+      'Plot pattern (IGI template): crown table with its apex at the cleft, 8 bezels (1 cleft bezel, a single plane that the notch splits into two triangles; 2 lobe kites; 2 side and 2 lower bezels touching the girdle along an arc; 1 point bezel, replaced by the French-tip hub arrangement), 8 stars, 12 upper girdle facets; pavilion 2 cleft mains, 8 mains meeting at the culet (offset towards the lobes), 14 lower girdle facets; a line runs the full length of the pavilion on the axis (cleft groove, main ridges, keel). The template draws the table notch at the girdle cleft and the bezel and star edges as single crossing lines; the cleft bezel reaches the table at an apex below the cleft, and the girdle is thickest at the cleft.',
       'Facets touch the girdle at the plot positions; each facet azimuth is the outline normal at its contact point (the chord normal where the template shows a facet along an arc).',
       `Non-convex: the cleft makes the heart the union of two convex halves split on the mirror plane. Tiers ${halves} cut one half only (marked half:right / half:left); the others are ordinary mirror pairs. GemCad has no such facets: the .asc export marks them in the cutting instructions.`,
     ],
@@ -266,7 +276,7 @@ const base = [
   { key: 'lowerRadius', label: 'Side radius', default: HAND.lowerRadius, step: 0.1, min: 1.2, title: 'Radius of the lower sides, fraction of the half-width' },
   { key: 'crownAngle', label: 'Crown angle', default: 35, step: 0.5, title: 'Lobe and side bezel angle' },
   { key: 'lowerAngle', label: 'Lower bezels', default: 41, step: 0.5, title: 'Lower bezel angle' },
-  { key: 'cleftAngle', label: 'Cleft facets', default: 35, step: 0.5, min: 10, max: 80, title: 'Cleft facet angle; the table notch depth follows' },
+  { key: 'cleftAngle', label: 'Cleft bezel', default: 25, step: 0.5, min: 10, max: 60, title: 'Angle of the single cleft bezel (clamped so it stays above the girdle at the lobe tops); the table apex follows' },
   { key: 'crownHeight', label: 'Crown height', default: 0.12, step: 0.005, title: 'Fraction of the width' },
   { key: 'pavilionDepth', label: 'Pavilion depth', default: 0.41, step: 0.005, title: 'Fraction of the width' },
   { key: 'girdle', label: 'Girdle', default: 0.04, step: 0.005 },
