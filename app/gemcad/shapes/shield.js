@@ -1,11 +1,11 @@
-// Shield brilliant: a straight top edge with two corners, sides that bow out and meet at a
-// point, cut brilliant style. There is no lab plotting template for shields (IGI's fancy-shape
+// Shield brilliant: a pear-like outline whose head is a large-radius arc blending through rounded
+// shoulders into sides that meet at a point, cut brilliant style. There is no lab plotting template for shields (IGI's fancy-shape
 // guidelines do not cover them and GIA assigns no cut grade), so the pattern follows the pear's:
-// bezels at the top edge, the sides and the wings, a French tip (default) or a point bezel,
+// bezels at the head, the shoulders, the bellies and the wings, a French tip (default) or a point bezel,
 // stars between the bezels, upper girdle facets in pairs meeting at junctions on the girdle, and
 // a pavilion of mains meeting at the culet with lower girdle facets in pairs. Built like the
-// marquise in ../fancy.js: girdle contacts are polygon vertices (the top edge is one girdle
-// facet, the corners and the point are exact vertices), facets touching the girdle have the
+// marquise in ../fancy.js: girdle contacts are polygon vertices (the point is an exact vertex),
+// facets touching the girdle have the
 // outline normal as azimuth, the rest pass through meet points. One mirror line: fold 1 + mirror.
 //
 // Orientation: width 2 along x, length along y, top edge at +y, point at -y (radial azimuth 270).
@@ -16,107 +16,121 @@ import {
 } from '../shapebuild.js';
 
 /**
- * Shield outline, half-width 1 at the widest point, length 2 * ratio: top edge at y = ratio from
- * corner to corner, sides circular arcs from the corners to the point (0, -ratio) with their
- * widest point (x = 1) at y = widest * ratio. The corner half-width follows (a little under 1).
+ * Shield outline, half-width 1 at the widest point, length 2 * ratio: a head arc of large radius
+ * `headRadius` at the top, blending through shoulder arcs of radius `shoulder` into the side arcs
+ * that meet at the point (0, -ratio); the sides' widest point (x = 1) is at y = widest * ratio.
+ * All arcs are mutually tangent, so the outline is smooth everywhere but the point.
  */
-export function shieldOutline(ratio, widest = 0.55) {
-  const yT = ratio, yW = widest * ratio;
-  const R = (1 + (yT + yW) ** 2) / 2, cx = 1 - R, cy = yW;      // right arc: centre (cx, cy), through the point, apex at x = 1
-  const a = cx + Math.sqrt(Math.max(0, R * R - (yT - yW) ** 2)); // corner half-width
-  const A = [a, yT], P = [0, -yT];
-  const phiA = Math.atan2(A[1] - cy, A[0] - cx), phiP = Math.atan2(P[1] - cy, P[0] - cx);
-  const pts = [];
-  const n = 720;
-  for (let i = 0; i <= n; i++) { const ph = phiA + (phiP - phiA) * (i / n); pts.push([cx + R * Math.cos(ph), cy + R * Math.sin(ph)]); }   // right side, corner to point
-  // exact mirror image for the left side so the girdle polygon is symmetric to rounding
-  const right = pts.slice(0, -1), left = pts.slice(0, -1).reverse().map(([x, y]) => [-x, y]);
-  const poly = [...right, P, ...left];   // corner -> point -> left corner -> top edge back: clockwise, so reverse
-  poly.reverse();
+export function shieldOutline(ratio, widest = 0.45, headRadius = 2.5, shoulder = 0.4) {
+  const yTop = ratio, yW = widest * ratio, P = [0, -ratio];
+  const R2 = (1 + (yTop + yW) ** 2) / 2, cS = [1 - R2, yW];              // side circle through the point, apex at x = 1
+  const Rt = Math.max(headRadius, 1.05), cT = [0, yTop - Rt];           // head circle, apex at the top
+  const rs = Math.min(shoulder, Rt - 0.05, R2 - 0.05);
+  // shoulder circle centre: at distance R2 - rs from cS and Rt - rs from cT (intersection of two circles)
+  const d = Math.hypot(cS[0] - cT[0], cS[1] - cT[1]), r1 = Rt - rs, r2 = R2 - rs;
+  const aa = (r1 * r1 - r2 * r2 + d * d) / (2 * d), hh = Math.sqrt(Math.max(0, r1 * r1 - aa * aa));
+  const ux = (cS[0] - cT[0]) / d, uy = (cS[1] - cT[1]) / d;
+  const c1 = [cT[0] + aa * ux - hh * uy, cT[1] + aa * uy + hh * ux], c2 = [cT[0] + aa * ux + hh * uy, cT[1] + aa * uy - hh * ux];
+  const cR = c1[0] > 0 && c1[1] > c2[1] ? c1 : (c2[0] > 0 ? c2 : c1);   // the right-hand, upper solution
+  // tangency points: on the line from each big centre through the shoulder centre
+  const tangentOn = (c, R) => { const vx = cR[0] - c[0], vy = cR[1] - c[1], l = Math.hypot(vx, vy); return [c[0] + (R * vx) / l, c[1] + (R * vy) / l]; };
+  const T1 = tangentOn(cS, R2), T2 = tangentOn(cT, Rt);
+  const arc = (c, R, from, to, n) => { const a0 = Math.atan2(from[1] - c[1], from[0] - c[0]); let a1 = Math.atan2(to[1] - c[1], to[0] - c[0]); while (a1 > a0) a1 -= 2 * Math.PI; return [...Array(n)].map((_, i) => { const t = a0 + ((a1 - a0) * i) / n; return [c[0] + R * Math.cos(t), c[1] + R * Math.sin(t)]; }); };
+  // right half, clockwise from the top centre: head arc to T2, shoulder arc to T1, side arc to the point
+  const half = [...arc(cT, Rt, [0, yTop], T2, 200), ...arc(cR, rs, T2, T1, 120), ...arc(cS, R2, T1, P, 400)];
+  const left = half.slice(1).reverse().map(([x, y]) => [-x, y]);   // exact mirror image
+  const poly = [...half, P, ...left];
+  poly.reverse();   // counter-clockwise
   const support = polygonSupport(poly);
-  const point = (az) => {   // ray from the origin at azimuth az to the outline
-    const d = [Math.cos(rad(az)), Math.sin(rad(az))];
+  const point = (az) => {
+    const dd = [Math.cos(rad(az)), Math.sin(rad(az))];
     let best = null;
     for (let i = 0; i < poly.length; i++) {
       const p0 = poly[i], p1 = poly[(i + 1) % poly.length], ex = p1[0] - p0[0], ey = p1[1] - p0[1];
-      const den = d[0] * ey - d[1] * ex; if (Math.abs(den) < 1e-12) continue;
-      const t = (p0[0] * ey - p0[1] * ex) / den, u = (p0[0] * d[1] - p0[1] * d[0]) / den;
+      const den = dd[0] * ey - dd[1] * ex; if (Math.abs(den) < 1e-12) continue;
+      const t = (p0[0] * ey - p0[1] * ex) / den, u = (p0[0] * dd[1] - p0[1] * dd[0]) / den;
       if (t > 0 && u >= -1e-9 && u <= 1 + 1e-9 && (!best || t < best[0])) best = [t, [p0[0] + u * ex, p0[1] + u * ey]];
     }
     return best ? best[1] : [0, 0];
   };
   const normalAz = (az) => {
-    const [x, y] = point(az);
-    if (Math.abs(y - yT) < 1e-6 && Math.abs(x) < a - 1e-6) return 90;                           // top edge
-    if (Math.abs(y - yT) < 1e-6) { const na = deg(Math.atan2(y - cy, Math.abs(x) - cx)); return norm360(x > 0 ? (90 + na) / 2 : 180 - (90 + na) / 2); }   // corner: bisector of the top and the arc normals
-    if (Math.abs(x) < 1e-9 && y < 0) return 270;                                               // point
-    const na = deg(Math.atan2(y - cy, Math.abs(x) - cx));
-    return norm360(x > 0 ? na : 180 - na);
+    const [x, y] = point(az), ax = Math.abs(x);
+    if (ax < 1e-9 && y < 0) return 270;
+    // which arc: compare distances to the three centres (right half)
+    const dT = Math.abs(Math.hypot(ax - cT[0], y - cT[1]) - Rt), dR = Math.abs(Math.hypot(ax - cR[0], y - cR[1]) - rs), dS = Math.abs(Math.hypot(ax - cS[0], y - cS[1]) - R2);
+    const c = dT <= dR && dT <= dS ? cT : (dR <= dS ? cR : cS);
+    const na = deg(Math.atan2(y - c[1], ax - c[0]));
+    return norm360(x >= 0 ? na : 180 - na);
   };
-  return { ratio, yT, a, R, cx, cy, cornerAz: deg(Math.atan2(yT, a)), support, point, normalAz, poly };
+  const shoulderAz = deg(Math.atan2(cR[1] + rs * (cR[1] - (cT[1] + cS[1]) / 2) / Math.hypot(cR[0], 1e-9 + cR[1]), cR[0]));   // rough; replaced below
+  const shoulderMid = (() => { const a0 = Math.atan2(T2[1] - cR[1], T2[0] - cR[0]); let a1 = Math.atan2(T1[1] - cR[1], T1[0] - cR[0]); while (a1 > a0) a1 -= 2 * Math.PI; const t = (a0 + a1) / 2; return [cR[0] + rs * Math.cos(t), cR[1] + rs * Math.sin(t)]; })();
+  return { ratio, yT: yTop, R2, cS, Rt, cT, rs, cR, T1, T2, shoulderMid, shoulderAz: deg(Math.atan2(shoulderMid[1], shoulderMid[0])), support, point, normalAz, poly };
 }
 
 /**
- * Shield brilliant starting point. Contacts (radial azimuths, right half): the top edge (90), the
- * side bezel at the widest point (or `sideContact`), the wing bezel at `wingContact`,
- * the point (270); pavilion mains at the top edge, the corner, `pavSideContact` and `lowerContact`.
+ * Shield brilliant starting point, the pear's pattern on the shield outline. Contacts (radial
+ * azimuths, right half): head (90), shoulder (middle of the shoulder arc), belly (the widest
+ * point, or `sideContact`), wing (`wingContact`), point (270); pavilion mains at the head, the
+ * shoulder, `pavSideContact` and `lowerContact`.
  */
 export function shieldStart({
-  ratio = 1.3, widest = 0.55, crownAngle = 35, sideAngle = 35, wingAngle = 33, pointAngle = 25, crownHeight = 0.14, girdle = 0.04, pavilionDepth = 0.43,
-  sideContact = null, wingContact = 330, pavSideContact = 20, lowerContact = 300, starHeight = 0.6, culetPos = 0.5, lowerDepth = 0.78,
-  tableTop = 0.55, gear = 96, girdleFacets = 128,
+  ratio = 1.3, widest = 0.45, headRadius = 2.5, shoulder = 0.4, crownAngle = 35, shoulderAngle = 35, sideAngle = 35, wingAngle = 33, pointAngle = 25, crownHeight = 0.14, girdle = 0.05, pavilionDepth = 0.43,
+  sideContact = null, wingContact = 330, pavShoulderContact = null, pavSideContact = 15, lowerContact = 300, starHeight = 0.6, culetPos = 0.5, lowerDepth = 0.78,
+  gear = 96, girdleFacets = 128,
   frenchTip = true, tipHubHeight = 0.8, tipTable = 0.28, tipGirdle = 0.12,
 } = {}) {
   const W = 2, L = ratio * W, H = crownHeight * W, g = girdle * W, Pd = pavilionDepth * W;
-  const outline = shieldOutline(ratio, widest);
-  const cornerAz = outline.cornerAz;
-  const girdleTier = girdleEqualLength(outline, girdleFacets, gear, 90, [cornerAz, 180 - cornerAz, 270]);
+  const outline = shieldOutline(ratio, widest, headRadius, shoulder);
+  const girdleTier = girdleEqualLength(outline, girdleFacets, gear, 90, [270]);
   const verts = girdleVertices(girdleTier, gear);
   const tiers = [girdleTier, newTier({ name: 'T', angle: 0, distance: H, indices: [] })];
   const addClass = (name, plane) => { tiers.push(classTier(name, plane, gear, 1, true)); return plane; };
   const table = zPlane(H);
-  const sideAz = sideContact ?? deg(Math.atan2(outline.cy, 1));   // default: the widest point
-  const Av = vertexNear(verts, cornerAz), Sv = vertexNear(verts, sideAz), Wv = vertexNear(verts, wingContact), Pv = vertexNear(verts, 270);
-  const A = lift(Av, 0), S = lift(Sv, 0), Wg = lift(Wv, 0), P = lift(Pv, 0);
+  const sideAz = sideContact ?? deg(Math.atan2(outline.cS[1], 1));   // default: the widest point
+  const shAz = outline.shoulderAz;
+  const Hv = vertexNear(verts, 90), Shv = vertexNear(verts, shAz), Sv = vertexNear(verts, sideAz), Wv = vertexNear(verts, wingContact), Pv = vertexNear(verts, 270);
+  const Hd = lift(Hv, 0), Sh = lift(Shv, 0), S = lift(Sv, 0), Wg = lift(Wv, 0), P = lift(Pv, 0);
   const yP = P[1];
   const bezel = (angle, v) => planeThrough(angle, outline.normalAz(v.az), lift(v, 0));
 
-  // ---- crown bezels: the top edge, the sides at the widest point, the wings on the lower sides
-  // (the sides are too nearly vertical for a separate corner kite: a side bezel at the widest
-  // point already runs up under the corner, so the top and side bezels share the corner region,
-  // with the top-side star's uppers meeting the top bezel at the corner)
-  const top = addClass('A top', planeThrough(crownAngle, 90, [0, outline.yT, 0]));
-  const side = addClass('A side', bezel(sideAngle, Sv));
+  // ---- crown bezels: head (top centre), shoulders, bellies (widest point), wings
+  const head = addClass('A head', planeThrough(crownAngle, 90, Hd));
+  const shoulderB = addClass('A shoulder', bezel(shoulderAngle, Shv));
+  const belly = addClass('A belly', bezel(sideAngle, Sv));
   const wing = addClass('A wing', bezel(wingAngle, Wv));
   const pt = planeThrough(pointAngle, 270, P);
   if (!frenchTip) addClass('A point', pt);
   // table corners: on each bezel's table line, midway between the points where the neighbouring
   // bezel ridges reach the table (so every star has its tip beyond its base)
-  const R1 = intersect3(top, side, table), R2 = intersect3(side, wing, table);
+  const R1 = intersect3(head, shoulderB, table), R2 = intersect3(shoulderB, belly, table), R3 = intersect3(belly, wing, table);
   const A4 = frenchTip ? [0, yP + tipTable * L, H] : intersect3(pt, table, azPlane(270));
-  const R3 = frenchTip ? A4 : intersect3(wing, pt, table);
-  const T1 = intersect3(top, table, xPlane_(tableTop * R1[0]));
-  const T2 = intersect3(side, table, yPlane((R1[1] + R2[1]) / 2));
-  const T3 = intersect3(wing, table, yPlane((R2[1] + R3[1]) / 2));
+  const R4 = frenchTip ? A4 : intersect3(wing, pt, table);
+  const azOf = (p) => deg(Math.atan2(p[1], p[0]));
+  const T0 = intersect3(head, table, azPlane(90));
+  const T1 = intersect3(shoulderB, table, azPlane((azOf(R1) + azOf(R2)) / 2));
+  const T2 = intersect3(belly, table, yPlane((R2[1] + R3[1]) / 2));
+  const T3 = intersect3(wing, table, yPlane((R3[1] + R4[1]) / 2));
   // ---- stars: between neighbouring bezels, tip on their ridge at starHeight of the crown
   const zs = zPlane(starHeight * H);
-  const Tts = intersect3(top, side, zs), Tsw = intersect3(side, wing, zs);
-  addClass('C top-side', plane3(T1, T2, Tts, true));
-  addClass('C side-wing', plane3(T2, T3, Tsw, true));
-  // ---- upper girdle facets in pairs meeting at a junction vertex between the contacts; the
-  // top-side pair meets the top bezel's girdle edge at the corner
-  const J1 = lift(vertexNear(verts, (cornerAz + sideAz) / 2), 0), J2 = lift(vertexNear(verts, (sideAz + wingContact - 360) / 2), 0);
-  addClass('B corner', plane3(Tts, A, J1, true));
-  addClass('B side a', plane3(Tts, J1, S, true));
-  addClass('B side b', plane3(Tsw, S, J2, true));
-  addClass('B wing a', plane3(Tsw, J2, Wg, true));
+  const Ths = intersect3(head, shoulderB, zs), Tsb = intersect3(shoulderB, belly, zs), Tbw = intersect3(belly, wing, zs);
+  addClass('C head', plane3(T0, T1, Ths, true));
+  addClass('C shoulder', plane3(T1, T2, Tsb, true));
+  addClass('C belly', plane3(T2, T3, Tbw, true));
+  // ---- upper girdle facets in pairs meeting at a junction vertex between the contacts
+  const J1 = lift(vertexNear(verts, (90 + shAz) / 2), 0), J2 = lift(vertexNear(verts, (shAz + sideAz) / 2), 0), J3 = lift(vertexNear(verts, (sideAz + wingContact - 360) / 2), 0);
+  addClass('B head', plane3(Ths, Hd, J1, true));
+  addClass('B shoulder a', plane3(Ths, J1, Sh, true));
+  addClass('B shoulder b', plane3(Tsb, Sh, J2, true));
+  addClass('B belly a', plane3(Tsb, J2, S, true));
+  addClass('B belly b', plane3(Tbw, S, J3, true));
+  addClass('B wing a', plane3(Tbw, J3, Wg, true));
   let hub = null;
   if (!frenchTip) {
     const Twp = intersect3(wing, pt, zs);
-    addClass('C wing-point', plane3(T3, A4, Twp, true));
-    const J3 = lift(vertexNear(verts, (wingContact + 270) / 2), 0);
-    addClass('B wing b', plane3(Twp, Wg, J3, true));
-    addClass('B point', plane3(Twp, J3, P, true));
+    addClass('C wing', plane3(T3, A4, Twp, true));
+    const J4 = lift(vertexNear(verts, (wingContact + 270) / 2), 0);
+    addClass('B wing b', plane3(Twp, Wg, J4, true));
+    addClass('B point', plane3(Twp, J4, P, true));
   } else {
     let V = intersect3(wing, mirrorX(wing), zPlane(tipHubHeight * H));
     const yMin = yP + 0.04 * L;
@@ -136,16 +150,19 @@ export function shieldStart({
     const h = u[0] * p[0] + u[1] * p[1] - u[1] * cY;
     return planeThrough(-deg(Math.atan2(Pd, h)), az, p);
   };
-  const Lv = vertexNear(verts, lowerContact), Spv = vertexNear(verts, pavSideContact);
-  const Ag = lift(Av, -g), Sg = lift(Spv, -g), Lg = lift(Lv, -g), Pg = lift(Pv, -g);
-  const mTop = addClass('P top', mainAt(90, [0, outline.yT, -g]));
-  const mCorner = addClass('P corner', mainAt(outline.normalAz(Av.az), Ag));
+  const Lv = vertexNear(verts, lowerContact), Spv = vertexNear(verts, pavSideContact), Pshv = vertexNear(verts, pavShoulderContact ?? shAz);
+  const Hg = lift(Hv, -g), Ag = lift(Pshv, -g), Sg = lift(Spv, -g), Lg = lift(Lv, -g), Pg = lift(Pv, -g);
+  const mHead = addClass('P head', mainAt(90, Hg));
+  const mCorner = addClass('P shoulder', mainAt(outline.normalAz(Pshv.az), Ag));
   const mSide = addClass('P side', mainAt(outline.normalAz(Spv.az), Sg));
   const mLower = addClass('P lower', mainAt(outline.normalAz(Lv.az), Lg));
   // lower girdle facets: junctions on the main ridges at lowerDepth of the pavilion depth
   const jz = zPlane(-g - lowerDepth * Pd);
   const Jcs = intersect3(mCorner, mSide, jz), Jsl = intersect3(mSide, mLower, jz), Kp = intersect3(mLower, mirrorX(mLower), jz);
-  const G1 = lift(vertexNear(verts, (cornerAz + pavSideContact) / 2), -g), G2 = lift(vertexNear(verts, (pavSideContact + lowerContact - 360) / 2 + 360), -g);
+  const Jhs = intersect3(mHead, mCorner, jz);
+  const G0 = lift(vertexNear(verts, (90 + Pshv.az) / 2), -g), G1 = lift(vertexNear(verts, (Pshv.az + pavSideContact) / 2), -g), G2 = lift(vertexNear(verts, (pavSideContact + lowerContact - 360) / 2 + 360), -g);
+  addClass('L head a', plane3(Jhs, Hg, G0, false));
+  addClass('L head b', plane3(Jhs, G0, Ag, false));
   addClass('L a', plane3(Jcs, Ag, G1, false));
   addClass('L b', plane3(Jcs, G1, Sg, false));
   addClass('L c', plane3(Jsl, Sg, G2, false));
@@ -160,10 +177,10 @@ export function shieldStart({
     footnotes: ['Starting point: brilliant pattern on a shield outline with typical angles. No lab plotting template exists for shields.'],
     notes: [
       'Ideal dimensions: none published. GIA assigns no cut grade to shield-cut diamonds and IGI\'s fancy-shape cut guidelines do not cover the shape; trade practice puts shields at L:W 1.2-1.5 with proportions like a pear\'s (crown height 12-16%, pavilion depth 41-46%, girdle 2-6%).',
-      `This design: L:W ${ratio}, widest point ${pct(widest)} of the half-length above the centre, corner half-width ${Math.round(outline.a * 100) / 100} of the half-width, crown height ${pct(crownHeight)}, top bezel ${crownAngle}, side bezels ${sideAngle}, wing bezels ${wingAngle}, pavilion depth ${pct(pavilionDepth)}, girdle ${pct(girdle)}, culet ${pct(culetPos)} of the length from the top. Bezel angles are measured in each facet's own slope direction.`,
+      `This design: L:W ${ratio}, widest point ${pct(widest)} of the half-length above the centre, head radius ${headRadius} and shoulder radius ${shoulder} half-widths, crown height ${pct(crownHeight)}, head bezel ${crownAngle}, shoulder bezels ${shoulderAngle}, belly bezels ${sideAngle}, wing bezels ${wingAngle}, pavilion depth ${pct(pavilionDepth)}, girdle ${pct(girdle)}, culet ${pct(culetPos)} of the length from the top. Bezel angles are measured in each facet's own slope direction.`,
       `Point: ${frenchTip ? 'French tip (GIA 4Cs marquise wireframe arrangement): no bezel at the point; two tip facets, two small upper girdle facets, the two side bezels and two half-bezels meet at a hub on the axis. ' + hubNote : 'uncorrected, a shallow bezel at the point (' + pointAngle + ') with a star either side.'}`,
-      'Pattern: crown: table, a top bezel along the straight edge, 2 side bezels touching at the widest point, 2 wing bezels on the lower sides, point bezel or French tip, 6 stars, 12 upper girdle facets in pairs meeting at junctions (the top-side pair meets the top bezel at the corner); pavilion: a top main along the edge, 2 corner, 2 side and 2 lower mains meeting at the culet, 10 lower girdle facets with junctions on the main ridges.',
-      'Outline: straight top edge, sides circular arcs from the corners to the point with the widest point part way down, the corners a little narrower than the widest point. Facets touch the girdle at polygon vertices (top edge: one girdle facet) with the outline normal as azimuth.',
+      'Pattern (the pear\'s): crown: table, head bezel, 2 shoulder bezels, 2 belly bezels at the widest point, 2 wing bezels on the lower sides, point bezel or French tip, 8 stars, 16 upper girdle facets in pairs meeting at junctions; pavilion: head, 2 shoulder, 2 side and 2 lower mains meeting at the culet, 14 lower girdle facets with junctions on the main ridges.',
+      'Outline: a head arc of large radius blending through rounded shoulders into the side arcs that meet at the point, all tangent; the widest point part way down the sides. Facets touch the girdle at polygon vertices with the outline normal as azimuth.',
     ],
     tiers,
   };
@@ -172,12 +189,13 @@ const xPlane_ = (x) => ({ n: [1, 0, 0], d: x });
 
 const params = [
   { key: 'ratio', label: 'L:W', default: 1.3, step: 0.01, min: 1 },
-  { key: 'widest', label: 'Widest point', default: 0.55, step: 0.05, min: 0.1, max: 0.95, title: 'Height of the widest point, fraction of the half-length above the centre (1 = at the corners)' },
-  { key: 'tableTop', label: 'Table top', default: 0.55, step: 0.05, min: 0.2, max: 0.9, title: 'Table top corner, fraction of the distance from the axis to where the top/corner ridge reaches the table' },
-  { key: 'crownAngle', label: 'Top bezel', default: 35, step: 0.5 }, { key: 'sideAngle', label: 'Side bezels', default: 35, step: 0.5 }, { key: 'wingAngle', label: 'Wing bezels', default: 33, step: 0.5 },
-  { key: 'crownHeight', label: 'Crown height', default: 0.14, step: 0.005 }, { key: 'girdle', label: 'Girdle', default: 0.04, step: 0.005 }, { key: 'pavilionDepth', label: 'Pavilion depth', default: 0.43, step: 0.005 },
+  { key: 'widest', label: 'Widest point', default: 0.45, step: 0.05, min: 0.1, max: 0.9, title: 'Height of the widest point, fraction of the half-length above the centre' },
+  { key: 'headRadius', label: 'Head radius', default: 2.5, step: 0.1, min: 1.1, title: 'Radius of the head arc, half-widths (large = nearly flat)' },
+  { key: 'shoulder', label: 'Shoulder radius', default: 0.4, step: 0.05, min: 0.1, max: 0.9, title: 'Radius of the shoulder arcs, half-widths' },
+  { key: 'crownAngle', label: 'Head bezel', default: 35, step: 0.5 }, { key: 'shoulderAngle', label: 'Shoulder bezels', default: 35, step: 0.5 }, { key: 'sideAngle', label: 'Belly bezels', default: 35, step: 0.5 }, { key: 'wingAngle', label: 'Wing bezels', default: 33, step: 0.5 },
+  { key: 'crownHeight', label: 'Crown height', default: 0.14, step: 0.005 }, { key: 'girdle', label: 'Girdle', default: 0.05, step: 0.005 }, { key: 'pavilionDepth', label: 'Pavilion depth', default: 0.43, step: 0.005 },
   { key: 'wingContact', label: 'Wing contact', default: 330, step: 1, title: 'Radial azimuth of the wing bezel contact on the lower side (270 = the point, 360 = the side)' },
-  { key: 'pavSideContact', label: 'Side main', default: 20, step: 1, title: 'Radial azimuth of the pavilion side main contact' },
+  { key: 'pavSideContact', label: 'Side main', default: 15, step: 1, title: 'Radial azimuth of the pavilion side main contact' },
   { key: 'lowerContact', label: 'Lower contact', default: 300, step: 1, title: 'Radial azimuth of the lower main contact' },
   { key: 'starHeight', label: 'Star tips', default: 0.6, step: 0.05, min: 0.2, max: 0.95 },
   { key: 'culetPos', label: 'Culet', default: 0.5, step: 0.01, title: 'Fraction of the length from the top' },
