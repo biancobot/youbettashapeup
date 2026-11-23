@@ -9,7 +9,8 @@ import * as princess from './princess.js';
 import * as radiant from './radiant.js';
 import * as emerald from './emerald.js';
 import * as asscher from './asscher.js';
+import * as shield from './shield.js';
 
-export const shapeModules = { marquise, pear, heart, oval, cushion, cushionModified, princess, radiant, emerald, asscher };
+export const shapeModules = { marquise, pear, heart, oval, cushion, cushionModified, princess, radiant, emerald, asscher, shield };
 export const shapeTemplates = Object.assign({}, ...Object.values(shapeModules).map((m) => m.templates || {}));
 export const shapePlots = Object.values(shapeModules).flatMap((m) => m.plots || []);

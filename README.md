@@ -65,7 +65,9 @@ round brilliant (GIA proportions); marquise (French tips, GIA-wireframe proporti
 uncorrected points, and the side-hub crown variant); pear and heart (French tip and uncorrected
 point); oval (8-main and 4-main pavilions); cushion brilliant; square cushion modified
 brilliant (fan, ring-and-chevron, dense crushed-ice and square-culet pavilions); princess;
-radiant; emerald; asscher. The heart is the one non-convex stone: it is built as the union of
+radiant; emerald; asscher; shield brilliant (French tip and uncorrected point, designed from the
+pear's pattern since no lab template exists); the heart also comes with the hand-drawn
+reference profile. The heart is the one non-convex stone: it is built as the union of
 two convex halves split on the mirror plane, with the cleft facets applied to one half each.
 `node tools/gallery.mjs && python3 tools/gallery.py` renders every template's front, back and
 iso views into one sheet. `node tools/audit.mjs` is the meet-point audit every template must

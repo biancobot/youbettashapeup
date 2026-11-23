@@ -109,7 +109,7 @@ export function girdleFromPolygon(verts, gear) {
  * facet is the chord between consecutive vertices, so all facets have the same length and the
  * vertices lie on the outline; collinear chords on a flat edge give one facet.
  */
-export function girdleEqualLength(outline, count, gear, originAz = 0) {
+export function girdleEqualLength(outline, count, gear, originAz = 0, cornersAz = []) {
   const h = typeof outline === 'function' ? outline : outline.support;
   const fine = 2880;
   const f = [];
@@ -127,13 +127,17 @@ export function girdleEqualLength(outline, count, gear, originAz = 0) {
     if (len < 1e-9) continue;
     edges.push({ p0, p1, az: f[k].az, len, s0: total }); total += len;
   }
-  // arc-length position of the outline point at radial azimuth originAz (the edge the ray crosses)
-  const dir = [Math.cos(rad(originAz)), Math.sin(rad(originAz))];
-  let s0 = 0;
-  for (const e of edges) {
-    const c0 = dir[0] * e.p0[1] - dir[1] * e.p0[0], c1 = dir[0] * e.p1[1] - dir[1] * e.p1[0];   // cross products: sign change = crossing
-    if ((c0 <= 0 && c1 > 0) || (c0 >= 0 && c1 < 0)) { if (dir[0] * e.p0[0] + dir[1] * e.p0[1] > 0) { s0 = e.s0 + e.len * (Math.abs(c0) / (Math.abs(c0) + Math.abs(c1))); break; } }
-  }
+  // arc-length position of the outline point at a radial azimuth (the edge the ray crosses)
+  const sAt = (azimuth) => {
+    const dir = [Math.cos(rad(azimuth)), Math.sin(rad(azimuth))], eps = 1e-9;
+    for (const e of edges) {
+      const c0 = dir[0] * e.p0[1] - dir[1] * e.p0[0], c1 = dir[0] * e.p1[1] - dir[1] * e.p1[0];   // cross products: sign change = crossing (with a tolerance for a vertex exactly on the ray)
+      if (Math.abs(c0) < eps && Math.abs(c1) < eps) continue;
+      if ((c0 <= eps && c1 >= -eps) || (c0 >= -eps && c1 <= eps)) { if (dir[0] * e.p0[0] + dir[1] * e.p0[1] > 0) return e.s0 + e.len * (Math.abs(c0) / (Math.abs(c0) + Math.abs(c1))); }
+    }
+    return 0;
+  };
+  const s0 = sAt(originAz);
   // polygon vertices equally spaced by arc length (one on originAz); each facet is the chord
   // between consecutive vertices, so the facet lengths are equal and the vertices lie on the outline
   const at = (s) => {
@@ -142,10 +146,22 @@ export function girdleEqualLength(outline, count, gear, originAz = 0) {
     const e = edges[ei], t = (s - e.s0) / e.len;
     return [e.p0[0] + t * (e.p1[0] - e.p0[0]), e.p0[1] + t * (e.p1[1] - e.p0[1])];
   };
+  // vertex positions: equally spaced, or, with corners that must be vertices, equally spaced
+  // within each stretch between consecutive corners (the origin is a corner when given)
+  let positions;
+  if (cornersAz.length) {
+    const cs = [...new Set(cornersAz.map((a) => ((sAt(a) - s0) % total + total) % total))].sort((a, b) => a - b);
+    if (cs[0] > 1e-9) cs.unshift(0);
+    positions = [];
+    for (let i = 0; i < cs.length; i++) {
+      const a = cs[i], b = i + 1 < cs.length ? cs[i + 1] : total, n = Math.max(1, Math.round((count * (b - a)) / total));
+      for (let k = 0; k < n; k++) positions.push(s0 + a + ((b - a) * k) / n);
+    }
+  } else positions = [...Array(count)].map((_, k) => s0 + (k * total) / count);
   const tier = newTier({ name: 'G', angle: 90, distance: 1, indices: [], distances: [] });
   let prev = null;
-  for (let k = 0; k < count; k++) {
-    const p = at(s0 + (k * total) / count), q = at(s0 + ((k + 1) * total) / count);
+  for (let k = 0; k < positions.length; k++) {
+    const p = at(positions[k]), q = at(positions[(k + 1) % positions.length]);
     const nx = q[1] - p[1], ny = -(q[0] - p[0]), nl = Math.hypot(nx, ny);   // outward normal of a counter-clockwise chord
     const az = norm360(deg(Math.atan2(ny, nx))), dist = (nx * p[0] + ny * p[1]) / nl;
     if (prev && Math.abs(angDiff(az, prev)) < 1e-6) continue;   // collinear chords on a flat: one facet

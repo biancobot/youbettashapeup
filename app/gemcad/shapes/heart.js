@@ -310,6 +310,8 @@ const french = [
 
 export const templates = {
   heart: { name: 'Heart brilliant, French tip (starting point)', note: 'IGI plot pattern with typical angles and a GIA-style French tip; the cleft makes the stone the union of two convex halves. Trace against the underlay and cut meet points.', params: [...base, ...french], make: (o = {}) => heartStart({ ...o }) },
+  heartHand: { name: 'Heart brilliant, hand-drawn profile, French tip', note: 'The outline fitted to the hand-drawn reference (straighter wings, lower-side radius 2.0); same facets as the heart with a French tip.', params: [...base.map((p) => (p.key === 'lowerRadius' ? { ...p, default: 2.0 } : p)), ...french], make: (o = {}) => heartStart({ lowerRadius: 2.0, ...o }) },
+  heartHandStd: { name: 'Heart brilliant, hand-drawn profile, uncorrected point', note: 'The outline fitted to the hand-drawn reference with a shallow bezel at the point.', params: [...base.map((p) => (p.key === 'lowerRadius' ? { ...p, default: 2.0 } : p)), { key: 'pointAngle', label: 'Point bezel', default: 31, step: 0.5, title: 'Angle of the point bezel' }], make: (o = {}) => heartStart({ frenchTips: false, lowerRadius: 2.0, ...o }) },
   heartStd: { name: 'Heart brilliant, uncorrected point (starting point)', note: 'IGI plot pattern with typical angles and a shallow bezel at the point, as drawn on the report.', params: [...base, { key: 'pointAngle', label: 'Point bezel', default: 31, step: 0.5, title: 'Angle of the point bezel' }], make: (o = {}) => heartStart({ frenchTips: false, ...o }) },
 };
 
