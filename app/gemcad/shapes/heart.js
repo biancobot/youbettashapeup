@@ -121,7 +121,7 @@ const HAND = { ratio: 0.93, lobe: 0.52, lowerRadius: 1.42 };
 
 export function heartStart({
   ratio = HAND.ratio, lobe = HAND.lobe, lowerRadius = HAND.lowerRadius,
-  crownAngle = 35, lowerAngle = 41, pointAngle = 31, cleftAngle = 25, crownHeight = 0.12, girdle = 0.04, pavilionDepth = 0.41,
+  crownAngle = 35, lowerAngle = 41, pointAngle = 31, cleftAngle = 25, crownHeight = 0.12, girdle = 0.05, pavilionDepth = 0.41,
   starHeight = 0.65, cleftTip = 0.65, culetOffset = 0.12, pavilionCleft = 0.41, bellyContact = 13, wingContact = -51,
   gear = 96, girdleFacets = 128,
   frenchTips = true, tipHubHeight = 0.75, tipTable = PLOT.crown.B0, tipGirdle = 0.16,
@@ -168,15 +168,11 @@ export function heartStart({
   const sideBezel = planeThrough(crownAngle, outline.normalAz(vertexNear(verts, sideAz).az), Gs);
   const lowerBezel = planeThrough(lowerAngle, outline.normalAz(vertexNear(verts, lowerAz).az), Gl);
   const j1Az = (pc.Gc + sideAz) / 2, fAz = (sideAz + lowerAz) / 2, j3Az = (lowerAz - 90) / 2;
-  /** Upper girdle facet: through the star tip, tangent to the girdle at the middle of its arc
-   * (between azimuths azA and azB) with the outline normal there, so it never cuts into the
-   * girdle; neighbouring uppers meet at the junction above the girdle, which thickens there. */
-  const upperTangent = (tip, azA, azB) => {
-    const v = vertexNear(verts, (azA + azB) / 2), gp = lift(v, 0), az = outline.normalAz(v.az);
-    const u = [Math.cos(rad(az)), Math.sin(rad(az))];
-    const run = u[0] * gp[0] + u[1] * gp[1] - (u[0] * tip[0] + u[1] * tip[1]);
-    return planeThrough(deg(Math.atan2(tip[2], run)), az, gp);
-  };
+  // girdle meet points: each upper passes through its star tip and two girdle vertices (a bezel
+  // contact and a junction), so bezel tips and junctions are points where three facets meet the
+  // girdle; between those points the upper dips into the girdle (the valley of a scalloped
+  // girdle), which the audit keeps above half the girdle thickness
+  const Gj1 = G(j1Az), Gfj = G(fAz), Gj3 = G(j3Az);
   const V = addProbe(intersect3(lobeBezel, table, azPlane(pc.V)));
   const X = addProbe(intersect3(sideBezel, table, azPlane(pc.X)));
   const D = addProbe(intersect3(lowerBezel, table, azPlane(pc.D)));
@@ -220,19 +216,19 @@ export function heartStart({
   const zAt = (pl, p) => (pl.d - pl.n[0] * p[0] - pl.n[1] * p[1]) / pl.n[2];
   const GaC = [Ga[0], Ga[1], zAt(cleft, Ga)];
   addClass('B cleft-lobe', plane3(J1, GaC, Gb, true));
-  addClass('B lobe', upperTangent(J1, pc.Gb, pc.Gc));
-  addClass('B lobe-side', upperTangent(Wt, pc.Gc, j1Az));
-  addClass('B side-lobe', upperTangent(Wt, j1Az, sideAz));
-  addClass('B side', upperTangent(A, sideAz, fAz));
-  addClass('B lower', upperTangent(A, fAz, lowerAz));
+  addClass('B lobe', plane3(J1, Gb, Gc, true));
+  addClass('B lobe-side', plane3(Wt, Gc, Gj1, true));
+  addClass('B side-lobe', plane3(Wt, Gj1, Gs, true));
+  addClass('B side', plane3(A, Gs, Gfj, true));
+  addClass('B lower', plane3(A, Gfj, Gl, true));
   if (!frenchTips) {
     addClass('C lower-point', plane3(D, B0, E, true));
-    addClass('B lower-point', upperTangent(E, lowerAz, j3Az));
-    addClass('B point', upperTangent(E, j3Az, -90 + 2));
+    addClass('B lower-point', plane3(E, Gl, Gj3, true));
+    addClass('B point', plane3(E, Gj3, P, true));
   } else {
     const Gt = lift(vertexNearY(verts, -(1 - tipGirdle) * l, 1), 0);
     addClass('C half-bezel', plane3(hub, B0, D, true));
-    addClass('B tip', upperTangent(hub, lowerAz, deg(Math.atan2(Gt[1], Gt[0]))));
+    addClass('B tip', plane3(hub, Gt, Gl, true));
     addClass('tip', plane3(P, hub, Gt, true));
   }
 
@@ -300,7 +296,7 @@ const base = [
   { key: 'cleftAngle', label: 'Cleft bezel', default: 25, step: 0.5, min: 10, max: 60, title: 'Angle of the single cleft bezel (clamped so it stays above the girdle at the lobe tops); the table apex follows' },
   { key: 'crownHeight', label: 'Crown height', default: 0.12, step: 0.005, title: 'Fraction of the width' },
   { key: 'pavilionDepth', label: 'Pavilion depth', default: 0.41, step: 0.005, title: 'Fraction of the width' },
-  { key: 'girdle', label: 'Girdle', default: 0.04, step: 0.005 },
+  { key: 'girdle', label: 'Girdle', default: 0.05, step: 0.005 },
   { key: 'starHeight', label: 'Star tips', default: 0.65, step: 0.05, min: 0.2, max: 0.95, title: 'Star tip height, fraction of the crown height' },
   { key: 'cleftTip', label: 'Cleft star tip', default: 0.65, step: 0.05, min: 0.2, max: 0.95, title: 'Cleft star tip height, fraction of the crown height' },
   { key: 'culetOffset', label: 'Culet offset', default: 0.12, step: 0.01, title: 'Culet above the centre, fraction of the half-length' },
