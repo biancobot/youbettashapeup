@@ -66,8 +66,8 @@ uncorrected points, and the side-hub crown variant); pear and heart (French tip 
 point); oval (8-main and 4-main pavilions); cushion brilliant; square cushion modified
 brilliant (fan, ring-and-chevron, dense crushed-ice and square-culet pavilions); princess;
 radiant; emerald; asscher; shield brilliant (French tip and uncorrected point, designed from the
-pear's pattern since no lab template exists); step-cut shields in three proportions (a six-sided kite
-shield measured from a photograph, plus long and wide pentagonal shields); the heart also comes with the hand-drawn
+pear's pattern since no lab template exists); step-cut shields in three proportions (a kite shield, a
+hexagonal shield and a wide shield, all six-sided, measured from photographs and face-up silhouettes); the heart also comes with the hand-drawn
 reference profile. The heart is the one non-convex stone: it is built as the union of
 two convex halves split on the mirror plane, with the cleft facets applied to one half each.
 `node tools/gallery.mjs && python3 tools/gallery.py` renders every template's front, back and
