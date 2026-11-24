@@ -14,7 +14,7 @@ companion produces STEP solids and exact vector SVG views with OpenCascade.
 npm start
 ```
 
-Then open `http://localhost:8000/`. The page header shows its build number (currently 41); if it
+Then open `http://localhost:8000/`. The page header shows its build number (currently 42); if it
 shows an older one after a `git pull`, hard-reload (Ctrl+Shift+R). Pass another port as `node tools/serve.mjs 8123` if 8000
 is taken. The site is static ES modules, so it must be served over HTTP (not `file://`).
 `diag.html` runs a step-by-step load check if the page does not come up.
@@ -108,7 +108,11 @@ and rows found from the views' extents), with adjustable line opacity and border
 (Letter, A4, 8.5 × 8.5 or custom inches, with the stone's width on the page in inches) frames
 the sheet; views can be centred on it horizontally or vertically, the arrangement can be
 alt-dragged across it, the preview pans (right-drag) and zooms about the cursor with a Fit button to
-reframe, and Export PNG then writes the page at the chosen DPI. Without a page,
+reframe, and Export PNG then writes the page at the chosen DPI. A background option fills the
+free area with a cobblestone pavé of the current stone (random sizes up to a chosen carat
+weight, sized by the trade weight estimators, random orientations and opacities, with outline
+stones labelled 0.25 to 5 ct for shapes the estimators cover) or, for the marquise, a hexafoil
+tiling of one-size marquises at one opacity. Without a page,
 Export PNG writes the preview at 1x to 8x.
 
 ## Exact CAD output
@@ -126,7 +130,9 @@ given. The same `.asc` the app exports is the input, read with the same conventi
 
 ```
 index.html, diag.html        UI shell, load diagnostics
-app/main.js                  renderer, rotation, views, sheets, meet-point picking, export
+app/main.js                  renderer, rotation, views, sheets, page, meet-point picking, export
+app/pave.js                  pavé and hexafoil backgrounds (packing, tiling, rendering)
+app/gemcad/weights.js        diamond weight estimator factors and carat-to-millimetre sizes
 app/editor.js                tiers table, symmetry, preforms, .asc import/export
 app/gemcad/design.js         design model, facet planes, index conventions, .asc parser/writer
 app/gemcad/polytope.js       half-space clipping core

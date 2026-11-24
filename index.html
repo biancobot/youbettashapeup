@@ -74,7 +74,7 @@
   <div id="app">
     <aside id="panel">
       <div>
-        <h1>Gem Facet Designer <span class="build" title="Build number; if it does not match the README, hard-reload or git pull">build 41</span></h1>
+        <h1>Gem Facet Designer <span class="build" title="Build number; if it does not match the README, hard-reload or git pull">build 42</span></h1>
         <div class="hint">GemCad-style facet design: every facet is a plane by angle, index and distance; the stone is their intersection. Drag to rotate, shift-drag to roll, scroll to zoom, right-drag to pan, click a vertex to pick a meet point.</div>
       </div>
 
@@ -201,6 +201,25 @@
       </div>
 
       <div class="group">
+        <h2>Background</h2>
+        <div class="row"><label for="pave">Pavé of the current stone</label><input type="checkbox" id="pave"></div>
+        <div class="row"><label for="pavepattern">Pattern</label>
+          <select id="pavepattern"><option value="cobblestone">Cobblestone (random sizes)</option><option value="hexafoil">Hexafoil (marquise only, one size)</option></select></div>
+        <div class="row"><label for="pavemin">Min opacity <span id="paveminv"></span></label><input type="range" id="pavemin" min="0.05" max="1" step="0.05"></div>
+        <div class="row"><label for="pavemax">Max opacity <span id="pavemaxv"></span></label><input type="range" id="pavemax" min="0.05" max="1" step="0.05"></div>
+        <div class="gaps">
+          <label>Largest stone (ct) <input type="number" id="pavemaxct" step="0.5" min="0.1" max="20"></label>
+          <label>Scale (mm per page inch) <input type="number" id="pavescale" step="1" min="1" title="25.4 draws the stones at real size on the page; smaller values enlarge them"></label>
+          <label>Gap between stones <input type="number" id="pavegap" step="0.01" min="0" max="1" title="Fraction of the stone's size"></label>
+          <label>Hexafoil size (ct) <input type="number" id="pavehexct" step="0.25" min="0.05"></label>
+        </div>
+        <div class="row"><label for="pavehexop">Hexafoil opacity <span id="pavehexopv"></span></label><input type="range" id="pavehexop" min="0.05" max="1" step="0.05"></div>
+        <div class="row"><label for="pavelabels">Carat-size outlines with weights</label><input type="checkbox" id="pavelabels"></div>
+        <div class="row"><span class="hint" id="paveinfo"></span><button id="pavereseed" title="Lay the stones out again at random">Reshuffle</button></div>
+        <div class="hint">Fills the page (or a border round the sheet) outside the views and the grid with face-up stones of the current shape at random sizes up to the largest, each turned at random and drawn at a random opacity between the two limits. Sizes follow the trade weight estimators (carats = length × width × depth × shape factor), so a 1 ct stone is drawn at its real width at the page scale. For shapes the estimators cover, one stone of each chart size (0.25, 0.33, 0.5, 1, 1.5, 2, 3, 4, 5 ct) is drawn as a plain outline with its weight in it. The hexafoil pattern, for the marquise, tiles the area with marquises of one size, six meeting at every point, at one opacity.</div>
+      </div>
+
+      <div class="group">
         <h2>Export</h2>
         <div class="row"><label for="scale">Resolution</label>
           <select id="scale"><option value="1">1x</option><option value="2" selected>2x</option><option value="4">4x</option><option value="8">8x</option></select></div>
@@ -226,6 +245,6 @@
       const el = document.getElementById('info'); if (el) { el.style.color = '#b00020'; el.textContent = 'Load error: ' + (e.reason && e.reason.message || e.reason); }
     });
   </script>
-  <script type="module" src="./app/main.js?v=41"></script>
+  <script type="module" src="./app/main.js?v=42"></script>
 </body>
 </html>

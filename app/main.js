@@ -8,6 +8,8 @@ import { createUnderlay } from './underlay.js';
 import { templates, plots } from './gemcad/templates.js';
 window.__templates = { templates, plots };
 import { VIEWS, getView } from './views.js';
+import { createPave, packStones, paveSizes, hexafoilStones, convexHull, rng } from './pave.js';
+import { weightEstimator, weightFamily } from './gemcad/weights.js';
 
 // ----------------------------------------------------------------------------- state
 const params = new URLSearchParams(location.search);
@@ -34,6 +36,8 @@ const state = {
     origin: [0, 0],                                            // where the base view sits on the page (world units)
     // Page: a sheet of paper centred on the origin; the stone's width occupies `stoneWidth` inches of it
     page: { enabled: params.get('page') === '1', width: 8.5, height: 11, stoneWidth: 2, dpi: 300, outline: true },
+    // Background: cobblestone pavé of the current stone in random sizes and orientations, or a hexafoil of marquises
+    pave: { enabled: false, pattern: 'cobblestone', minOpacity: 0.15, maxOpacity: 0.6, maxCarats: 5, mmPerInch: 25.4, gap: 0.06, patience: 150, seed: 1, labels: true, hexCarats: 1, hexOpacity: 0.3 },
     nextId: 1,
   },
 };
@@ -58,6 +62,7 @@ const occluderMat = new THREE.MeshBasicMaterial({
 });
 const lineMat = new LineMaterial({ color: 0x000000, linewidth: state.lineWidth, worldUnits: false, depthTest: true, depthWrite: true });
 lineMat.resolution.set(1, 1);
+const pave = createPave(scene, occluderMat);
 // Hidden lines: the same edges drawn light grey only where they lie behind the stone's surface
 // (depth test "greater" against the occluder faces); drawn after the faces and before the
 // visible lines, so visible black lines stay on top where the two cross.
@@ -175,11 +180,8 @@ function syncInstances() {
 }
 
 /** Smooth girdle edges are drawn only where the girdle turns away from the viewer. */
-function updateSilhouette(inst, force) {
-  const qn = inst.q;
-  if (!force && inst.lastQ && inst.lastQ.equals(qn) && inst.lastMode === state.girdleLines) return;
-  inst.lastQ = qn.clone();
-  inst.lastMode = state.girdleLines;
+/** Positions of the girdle (smooth) edges to draw for rotation qn: all of them, or only the silhouette. */
+function smoothEdgesFor(qn) {
   const s = geo.smooth;
   const n = s.normalsA.length / 3;
   const out = [];
@@ -193,6 +195,15 @@ function updateSilhouette(inst, force) {
     }
     if (draw) for (let k = 0; k < 6; k++) out.push(s.positions[6 * i + k]);
   }
+  return out;
+}
+function updateSilhouette(inst, force) {
+  const qn = inst.q;
+  if (!force && inst.lastQ && inst.lastQ.equals(qn) && inst.lastMode === state.girdleLines) return;
+  inst.lastQ = qn.clone();
+  inst.lastMode = state.girdleLines;
+  const s = geo.smooth;
+  const out = smoothEdgesFor(qn);
   inst.smooth.geometry.dispose();
   if (out.length) {
     inst.smooth.geometry = new LineSegmentsGeometry().setPositions(new Float32Array(out));
@@ -258,6 +269,44 @@ function updatePage() {
   pageLines.geometry.dispose();
   pageLines.geometry = new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
 }
+// ----------------------------------------------------------------------------- pavé background
+let paveInfo = { count: 0, note: '' };
+function paveArea() {
+  if (state.sheet.page.enabled) { const r = pageRect(); return { minX: r.minX, maxX: r.maxX, minY: r.minY, maxY: r.maxY }; }
+  const w = overall.maxX - overall.minX, h = overall.maxY - overall.minY;   // no page: a generous border round the sheet
+  return { minX: overall.minX - 0.75 * w, maxX: overall.maxX + 0.75 * w, minY: overall.minY - 0.75 * h, maxY: overall.maxY + 0.75 * h };
+}
+function paveExclusions() {
+  const m = 0.2;   // 0.1 stone widths clear of every view
+  if (state.sheet.grid) { const g = state.sheet.gridMargin * 2; return [{ minX: overall.minX - g, maxX: overall.maxX + g, minY: overall.minY - g, maxY: overall.maxY + g }]; }
+  return [...instances.values()].map((inst) => ({ minX: inst.pos[0] + inst.bbox.minX - m, maxX: inst.pos[0] + inst.bbox.maxX + m, minY: inst.pos[1] + inst.bbox.minY - m, maxY: inst.pos[1] + inst.bbox.maxY + m }));
+}
+function updatePave() {
+  const pv = state.sheet.pave;
+  pave.visible = pv.enabled;
+  if (!pv.enabled || !geo || !design) { paveInfo = { count: 0, note: '' }; renderPaveInfo(); return; }
+  const st = stoneStats(geo, design);
+  const est = weightEstimator(design.name, st.ratio, st.depth);
+  const family = weightFamily(design.name);
+  const pattern = pv.pattern === 'hexafoil' && family === 'marquise' ? 'hexafoil' : 'cobblestone';
+  // sizes: the estimator's millimetre widths at the page's scale; shapes without an estimator use the round factor, unlabelled
+  const sizer = est || weightEstimator('round', st.ratio, st.depth);
+  const worldPerMm = pageRect().k / pv.mmPerInch;
+  const area = paveArea(), exclusions = paveExclusions();
+  const r3 = (v) => Math.round(v * 20) / 20;
+  const key = JSON.stringify([state.shapeId, geo.faceCount, state.girdleLines, pattern, pv, [area.minX, area.maxX, area.minY, area.maxY].map(r3), exclusions.map((e) => [e.minX, e.maxX, e.minY, e.maxY].map(r3)), st.W, st.L]);
+  // the face-up outline (convex hull of the stone's plan) and its edges
+  const pts = []; for (let i = 0; i < geo.vertices.length; i += 3) pts.push([geo.vertices[i], geo.vertices[i + 1]]);
+  const hull = convexHull(pts);
+  const hullEdges = []; for (let i = 0; i < hull.length; i++) { const a = hull[i], b = hull[(i + 1) % hull.length]; hullEdges.push(a[0], a[1], 0, b[0], b[1], 0); }
+  let stones;
+  if (pattern === 'hexafoil') stones = hexafoilStones(hull, area, exclusions, (sizer.widthMm(pv.hexCarats) * worldPerMm) / 2, pv.hexOpacity, rng(pv.seed));
+  else stones = packStones(hull, area, exclusions, paveSizes(sizer, pv.maxCarats, worldPerMm, pv.labels && !!est), pv, rng(pv.seed));
+  pave.build({ key, stones, meshGeometry, hardGeometry, smoothPositions: new Float32Array(smoothEdgesFor(new THREE.Quaternion())), hullEdges: new Float32Array(hullEdges) });
+  paveInfo = { count: stones.length, note: pattern === 'hexafoil' ? `Hexafoil: ${stones.length} marquises of ${pv.hexCarats} ct (${sizer.widthMm(pv.hexCarats).toFixed(2)} mm wide)` : est ? `${stones.length} stones, ${est.label} estimator (factor ${est.factor.toFixed(5)}): 1 ct is ${est.widthMm(1).toFixed(2)} mm wide, 5 ct ${est.widthMm(5).toFixed(2)} mm` : `${stones.length} stones; no weight estimator covers this shape, so sizes use the round factor and no carat labels are drawn` };
+  renderPaveInfo();
+}
+function renderPaveInfo() { const el = document.getElementById('paveinfo'); if (el) el.textContent = paveInfo.note; }
 function updateGrid() {
   gridLines.visible = state.sheet.grid && instances.size > 0;
   if (!gridLines.visible) return;
@@ -322,6 +371,7 @@ function layout(force) {
   }
   updateGrid();
   updatePage();
+  if (force) updatePave();
   updateCamera(stage.clientWidth, stage.clientHeight);
   const b = instances.get('base');
   if (b && geo) underlay.place(geo.bbox, b.pos, state.viewId);
@@ -334,6 +384,7 @@ function resize() {
   updateCamera(w, h);
   lineMat.resolution.set(renderer.domElement.width, renderer.domElement.height);
   hiddenMat.resolution.set(renderer.domElement.width, renderer.domElement.height);
+  pave.setResolution(renderer.domElement.width, renderer.domElement.height);
 }
 
 function updateCamera(w, h) {
@@ -436,6 +487,7 @@ canvas.addEventListener('pointermove', (e) => {
   layout(false);
 });
 canvas.addEventListener('pointerup', (e) => {
+  if (drag && drag.moved && state.sheet.pave.enabled && !drag.pan) layout(true);   // the free area changed: repack the pavé
   if (drag && !drag.moved) {
     const v = pickVertex(e.clientX, e.clientY);
     selectedVertex = v;
@@ -490,13 +542,13 @@ function exportPNG(scaleFactor) {
   renderer.setPixelRatio(1);
   renderer.setSize(Math.round(w * scaleFactor), Math.round(h * scaleFactor), false);
   lineMat.resolution.set(renderer.domElement.width, renderer.domElement.height);
-  hiddenMat.resolution.copy(lineMat.resolution);
-  lineMat.linewidth = lw * scaleFactor / pr; hiddenMat.linewidth = lineMat.linewidth;
+  hiddenMat.resolution.copy(lineMat.resolution); pave.setResolution(renderer.domElement.width, renderer.domElement.height);
+  lineMat.linewidth = lw * scaleFactor / pr; hiddenMat.linewidth = lineMat.linewidth; pave.setLineWidth(lineMat.linewidth);
   updateCamera(w, h);
   renderer.render(scene, camera);
   const url = renderer.domElement.toDataURL('image/png');
   renderer.setPixelRatio(pr);
-  lineMat.linewidth = lw; hiddenMat.linewidth = lw;
+  lineMat.linewidth = lw; hiddenMat.linewidth = lw; pave.setLineWidth(lw);
   resize();
   state.showMeet = showMeet; updateMeetPoints();
   const suffix = state.sheet.views.length ? `sheet-${state.sheet.standard}-angle` : state.viewId;
@@ -512,15 +564,15 @@ function exportPage() {
   const pr = renderer.getPixelRatio(), lw = lineMat.linewidth;
   renderer.setPixelRatio(1);
   renderer.setSize(pw, ph, false);
-  lineMat.resolution.set(pw, ph); hiddenMat.resolution.set(pw, ph);
+  lineMat.resolution.set(pw, ph); hiddenMat.resolution.set(pw, ph); pave.setResolution(pw, ph);
   // keep the lines the same thickness relative to the stone as on screen
   const screenPxPerUnit = stage.clientWidth / (orthoCamera.right - orthoCamera.left), pagePxPerUnit = pw / (r.maxX - r.minX);
-  lineMat.linewidth = lw * pagePxPerUnit / screenPxPerUnit / pr; hiddenMat.linewidth = lineMat.linewidth;
+  lineMat.linewidth = lw * pagePxPerUnit / screenPxPerUnit / pr; hiddenMat.linewidth = lineMat.linewidth; pave.setLineWidth(lineMat.linewidth);
   const cam = orthoCamera;
   cam.left = r.minX; cam.right = r.maxX; cam.top = r.maxY; cam.bottom = r.minY; cam.position.set(0, 0, 5); cam.lookAt(0, 0, 0); cam.updateProjectionMatrix();
   renderer.render(scene, cam);
   const url = renderer.domElement.toDataURL('image/png');
-  renderer.setPixelRatio(pr); lineMat.linewidth = lw; hiddenMat.linewidth = lw; pageLines.visible = outline;
+  renderer.setPixelRatio(pr); lineMat.linewidth = lw; hiddenMat.linewidth = lw; pave.setLineWidth(lw); pageLines.visible = outline;
   resize();
   state.showMeet = showMeet; updateMeetPoints();
   saveFile(`${state.shapeId}-page-${pg.width}x${pg.height}in-${pg.dpi}dpi.png`, url);
@@ -709,7 +761,7 @@ lw.value = state.lineWidth;
 lwv.textContent = `${state.lineWidth} px`;
 lw.addEventListener('input', () => {
   state.lineWidth = parseFloat(lw.value);
-  lineMat.linewidth = state.lineWidth;
+  lineMat.linewidth = state.lineWidth; hiddenMat.linewidth = state.lineWidth; pave.setLineWidth(state.lineWidth);
   lwv.textContent = `${state.lineWidth} px`;
 });
 const girdleCb = document.getElementById('girdle');
@@ -734,6 +786,14 @@ if (pageChk) {
   pageSize.addEventListener('change', () => { const sz = PAGE_SIZES[pageSize.value]; if (sz) { pg.width = sz[0]; pg.height = sz[1]; refresh(); layout(true); } });
   const num = (el, key, min) => el.addEventListener('change', () => { const v = parseFloat(el.value); if (v >= min) { pg[key] = v; pageSize.value = 'custom'; layout(true); } });
   num(pageW, 'width', 0.5); num(pageH, 'height', 0.5); num(pageStone, 'stoneWidth', 0.05); num(pageDpi, 'dpi', 36);
+}
+// pavé background controls
+{
+  const pv = state.sheet.pave, $ = (id) => document.getElementById(id);
+  const bind = (id, key, parse = parseFloat, after = () => layout(true)) => { const el = $(id); if (!el) return; if (el.type === 'checkbox') el.checked = pv[key]; else el.value = pv[key]; el.addEventListener(el.type === 'range' ? 'change' : 'change', () => { pv[key] = el.type === 'checkbox' ? el.checked : parse(el.value); after(); }); };
+  bind('pave', 'enabled'); bind('pavepattern', 'pattern', String); bind('pavemin', 'minOpacity'); bind('pavemax', 'maxOpacity'); bind('pavemaxct', 'maxCarats'); bind('pavescale', 'mmPerInch'); bind('pavegap', 'gap'); bind('pavelabels', 'labels'); bind('pavehexct', 'hexCarats'); bind('pavehexop', 'hexOpacity');
+  for (const id of ['pavemin', 'pavemax', 'pavehexop']) { const el = $(id), v = $(id + 'v'); if (el && v) { v.textContent = `${Math.round(el.value * 100)}%`; el.addEventListener('input', () => { v.textContent = `${Math.round(el.value * 100)}%`; }); } }
+  const reseed = $('pavereseed'); if (reseed) reseed.addEventListener('click', () => { pv.seed = (pv.seed + 1) % 100000; layout(true); });
 }
 const fitBtn = document.getElementById('fitview'); if (fitBtn) fitBtn.addEventListener('click', fitView);
 const gridChk = document.getElementById('grid'), gridOp = document.getElementById('gridopacity'), gridOpV = document.getElementById('gridopacityv'), gridMarginIn = document.getElementById('gridmargin');
@@ -831,9 +891,9 @@ requestAnimationFrame(frame);
 
 // Exposed for the screenshot tool and for scripting.
 window.__viewer = {
-  state, setDesign, snapTo, exportPNG, resize, addView, removeView, clearViews, resetView3d, snapCentre, fitView, editor, instances, camera: () => camera, gridCells: () => gridLines.userData.cells,
+  state, setDesign, snapTo, exportPNG, resize, addView, removeView, clearViews, resetView3d, snapCentre, fitView, editor, paveInfo: () => paveInfo, instances, camera: () => camera, gridCells: () => gridLines.userData.cells,
   loadShape(id) { const { templates } = window.__templates; if (templates[id]) editor.design = templates[id].make(); },
-  setLineWidth(v) { state.lineWidth = v; lineMat.linewidth = v; },
+  setLineWidth(v) { state.lineWidth = v; lineMat.linewidth = v; hiddenMat.linewidth = v; pave.setLineWidth(v); },
   setGirdleLines(v) { state.girdleLines = v; layout(true); },
   setSpin,
   setZoom(z) { state.zoom = z; resize(); },
