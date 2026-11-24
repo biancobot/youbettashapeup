@@ -29,17 +29,19 @@
 // diagonal; three fan facets from the hub T (0, 0.24): (T, CR, K), (T, M, CR) and (T, CC, M)
 // with M (0.20, 0.72) on the girdle kite where its edge CC-CR bends; the main kite (T, culet, S, K)
 // with S the side's hub. 4 + 8 + 8 + 4 + 8 + 8 + 8 + 4 = 52 facets, plus a square culet facet
-// when one is set. The upper and lower girdle facets along the corner arcs each cover 45 degrees
-// of a circle of radius 0.45; the arc's sagitta (0.034 of the half-width) times their slopes digs
-// about 3.2% of the width into the girdle at mid-arc, crown and pavilion together, so the girdle
-// is 5% at the hills (the axis and corner contacts) and about 1.8% in those valleys, the thick
-// corners of a real cushion.
-import { newTier } from '../design.js?v=60';
-import { cushionOutline as bowedCushionOutline } from './cushion.js?v=60';
+// when one is set. The upper and lower girdle facets along the corner arcs would each cover 45
+// degrees of a circle of radius 0.45 if they met the flat-side ones at the flat's end, and the
+// arc's sagitta times their slopes would dig 3% of the width into the girdle, so the scallop
+// would be large; the corner-arc facets are painted (cut flatter: upper 34, lower 48 degrees) and
+// the contact between the axis-side and corner-side facets sits 12 degrees round the arc from the
+// flat's end so the two share the sagitta, which keeps the girdle at 3.5% on the hills (the
+// contacts) and 1.9% in the valleys, 2.9% on average.
+import { newTier } from '../design.js?v=61';
+import { cushionOutline as bowedCushionOutline } from './cushion.js?v=61';
 import {
   deg, lift, vertexNear, girdleVertices, planeThrough, planeAz, mainThrough, yPlane, xPlane, classTier,
-  girdleEqualLength, plane3, intersect3, pointOn, azOf,
-} from '../shapebuild.js?v=60';
+  girdleEqualLength, plane3, intersect3, pointOn, azOf, chordAz,
+} from '../shapebuild.js?v=61';
 
 const BOW = 0.01;   // outward bow of the sides, fraction of the half-width
 
@@ -54,15 +56,19 @@ const PLOT = {
 
 /** Square cushion modified brilliant of the GIA plot pattern. */
 export function cushionModified({
-  ratio = 1, crownHeight = 0.125, girdle = 0.05, pavilionDepth = 0.5, cornerAngle = 40, corner = 0.45, culet = 0,
+  ratio = 1, crownHeight = 0.125, girdle = 0.035, pavilionDepth = 0.5, cornerAngle = 40, corner = 0.45, culet = 0,
+  upperAngle = 34, lowerAngle = 48, contactArc = 12,
   gear = 96, girdleFacets = 128,
 } = {}) {
   const W = 2, l = ratio, H = crownHeight * W, g = girdle * W, Pd = pavilionDepth * W, zc = -g - Pd;
   const outline = bowedCushionOutline(ratio, corner, BOW, BOW);
   // girdle contacts: the axis vertices, the ends of the flats and the corner vertex in the middle
   // of each corner arc; the girdle polygon gets vertices exactly there (equally spaced between)
-  const flatEnd = { top: [1 - corner - BOW, l], side: [1, l - corner - BOW] };
-  const cornerMid = [1 - corner - BOW + corner * Math.SQRT1_2, l - corner - BOW + corner * Math.SQRT1_2];
+  // the contact between the axis-side and corner-side girdle facets sits contactArc degrees round
+  // the corner arc from the flat's end, so the two facets share the arc's sagitta
+  const cx = 1 - corner - BOW, cy = l - corner - BOW, th = (90 - contactArc) * Math.PI / 180;   // corner arc centre; contact angle from the arc centre
+  const flatEnd = { top: [cx + corner * Math.cos(th), cy + corner * Math.sin(th)], side: [cx + corner * Math.sin(th), cy + corner * Math.cos(th)] };
+  const cornerMid = [cx + corner * Math.SQRT1_2, cy + corner * Math.SQRT1_2];
   const sym = (p) => [[p[0], p[1]], [-p[0], p[1]], [-p[0], -p[1]], [p[0], -p[1]]];
   const contacts = [[1, 0], [0, 1], [-1, 0], [0, -1], ...sym(flatEnd.top), ...sym(flatEnd.side), ...sym(cornerMid)].map(azOf);
   const girdleTier = girdleEqualLength(outline, girdleFacets, gear, 0, contacts);
@@ -93,10 +99,14 @@ export function cushionModified({
     const C = [Cp[0], Cp[1], H];
     const run = o === 'top' ? Gax[1] - C[1] : Gax[0] - C[0];
     bezel[o] = add(`A ${o}`, planeThrough(deg(Math.atan2(H, run)), axisAz[o], Gax));   // kite tangent to the girdle on the axis, reaching the table at C
-    const Ap = at(o, PLOT.crown.A);
-    A[o] = intersect3(bezel[o], cornerFacet, o === 'top' ? yPlane(Ap[1]) : xPlane(Ap[0]));   // on the bezel's edge with the corner facet
-    chord(`UG ${o}`, A[o], vAxis[o], vFlat[o], 0, true);          // along the flat: through the axis vertex and the flat's end
-    chord(`UG corner-${o}`, A[o], vFlat[o], vCorner, 0, true);    // along the corner arc: through the flat's end and the corner vertex
+    // upper girdle facet along the corner arc: painted at upperAngle through the contact and the
+    // corner vertex; A, the junction of the bezel, the corner facet and both upper girdle facets,
+    // follows, and the upper girdle facet along the flat runs from the axis vertex to the contact
+    // and A (it shares the bezel's azimuth, so it is the one that cannot be painted flatter than the bezel)
+    const B1 = lift(vFlat[o], 0);
+    const ugc = add(`UG corner-${o}`, planeThrough(upperAngle, chordAz(B1, B2), B1));
+    A[o] = intersect3(bezel[o], cornerFacet, ugc);
+    chord(`UG ${o}`, A[o], vAxis[o], vFlat[o], 0, true);
     add(`star ${o}`, plane3(C, A[o], D, true));
   }
 
@@ -104,7 +114,15 @@ export function cushionModified({
   // corner kite first: tangent to the girdle at the corner vertex at cornerAngle; CR on it for both octants
   const B2p = lift(vCorner, -g);
   const cornerKite = add('P corner', planeThrough(-cornerAngle, cornerAz, B2p));
-  const CR = { top: pointOn(cornerKite, ...at('top', PLOT.pavilion.CR)), side: pointOn(cornerKite, ...at('side', PLOT.pavilion.CR)) };
+  // lower girdle facets along the corner arcs: painted at lowerAngle through the contact and the
+  // corner vertex; CR, the junction of six facets, is where that facet meets the corner kite at
+  // the plot's distance from the axis
+  const CR = {};
+  for (const o of ['top', 'side']) {
+    const B1 = lift(vFlat[o], -g), lg = add(`LG corner-${o}`, planeThrough(-lowerAngle, chordAz(B1, B2p), B1));
+    const p = at(o, PLOT.pavilion.CR);
+    CR[o] = intersect3(cornerKite, lg, o === 'top' ? xPlane(p[0]) : yPlane(p[1]));
+  }
   // K on the corner kite; the main kite through K and the culet, so the main angle follows from the pavilion depth
   const Kp = sc(PLOT.pavilion.K), K = pointOn(cornerKite, ...Kp);
   const main = add('P main', mainThrough(azOf(Kp), K, zc));
@@ -114,8 +132,7 @@ export function cushionModified({
     const kite = add(`P ${o}`, planeAz(Gax, CR[o], axisAz[o], false));
     const CC = pointOn(kite, ...at(o, [0, PLOT.pavilion.CC]));
     const M = pointOn(kite, ...at(o, PLOT.pavilion.M));   // on the kite, where its edge CC-CR bends
-    chord(`LG ${o}`, CR[o], vAxis[o], vFlat[o], -g, false);          // along the flat
-    chord(`LG corner-${o}`, CR[o], vFlat[o], vCorner, -g, false);    // along the corner arc
+    chord(`LG ${o}`, CR[o], vAxis[o], vFlat[o], -g, false);          // along the flat, through the axis vertex, the contact and CR
     const T = pointOn(main, ...at(o, [0, PLOT.pavilion.T]));   // hub on the main kite's edge with its mirror
     add(`F outer-${o}`, plane3(T, CR[o], K, false));
     add(`F mid-${o}`, plane3(T, M, CR[o], false));
@@ -142,7 +159,7 @@ export function cushionModified({
       `Ideal dimensions: none published as a complete parameter set. ${NO_GIA}`,
       IGI_RANGES,
       `This design: L:W ${ratio}, total depth ${pct(crownHeight + girdle + pavilionDepth)}, table ${pct(PLOT.crown.C)} of the width on the axes, crown height ${pct(crownHeight)}, bezels ${Math.round(bezelAngle)} degrees, girdle ${pct(girdle)}, pavilion depth ${pct(pavilionDepth)}, corner kites ${cornerAngle} degrees, mains ${Math.round(mainAngle)} degrees at the culet, culet ${culet > 0 ? `square facet ${pct(culet)} of the width` : 'pointed'}.${deviation}`,
-      'Plot pattern: crown of table (octagon), 4 bezel kites on the axes, 8 stars, 4 corner facets, 16 upper girdle facets (33); pavilion of 4 girdle kites on the axes, 16 lower girdle facets, 4 corner kites, 24 fan facets from the four hubs, 4 main kites meeting at the culet (52). The upper and lower girdle facets along the corner arcs each span 45 degrees of the corner circle, so the girdle is thinnest at mid-arc (about 1.8% of the width at the default 5% hills) and thickest at the axis and corner contacts, as on a real cushion.',
+      'Plot pattern: crown of table (octagon), 4 bezel kites on the axes, 8 stars, 4 corner facets, 16 upper girdle facets (33); pavilion of 4 girdle kites on the axes, 16 lower girdle facets, 4 corner kites, 24 fan facets from the four hubs, 4 main kites meeting at the culet (52). The upper and lower girdle facets along the corner arcs are painted (34 and 48 degrees) and meet the flat-side ones 12 degrees round the arc, so the girdle scallops little: 3.5% at the contacts, 1.9% at thinnest, 2.9% on average.',
       `Outline: square of half-side ${Math.round((1 - corner) * 100) / 100} plus corner radius ${corner} (half-widths), sides bowed by ${BOW}; eight-fold at L:W 1, stretched along the length above it.`,
       'Every facet that reaches the girdle meets it at girdle polygon vertices: the kites on the axes and at the corners touch it at one vertex with the outline normal as azimuth, the upper and lower girdle facets run through two (the axis vertex and the end of the flat, or the end of the flat and the corner vertex), so the mains, the girdle facets and the girdle share their meet points.',
     ],
@@ -157,10 +174,13 @@ export const templates = {
     params: [
       { key: 'ratio', label: 'L:W', default: 1, step: 0.01, min: 1, max: 1.1, title: 'Square cushion: 1.00 to 1.05 per IGI' },
       { key: 'crownHeight', label: 'Crown height', default: 0.125, step: 0.005, title: 'Fraction of the width' },
-      { key: 'girdle', label: 'Girdle', default: 0.05, step: 0.005, title: 'At the hills (axis and corner contacts); the corner arcs cut it to about a third of this at mid-arc' },
+      { key: 'girdle', label: 'Girdle', default: 0.035, step: 0.005, title: 'At the hills (the contacts); the arcs between them cut it thinner' },
       { key: 'pavilionDepth', label: 'Pavilion depth', default: 0.5, step: 0.005, title: 'The mains at the culet follow from the depth and the corner kite angle; they must stay flatter than the corner kites, so the depth has a ceiling' },
       { key: 'cornerAngle', label: 'Corner kite', default: 40, step: 1, title: 'Angle of the corner kites, degrees (the mains at the culet, which must be flatter, follow from it and the pavilion depth)' },
       { key: 'corner', label: 'Corner radius', default: 0.45, step: 0.05, min: 0.3, max: 0.55, title: 'Fraction of the half-width (the plot\'s flats end at 0.55); larger corners pull the corner kites under the mains' },
+      { key: 'upperAngle', label: 'Upper girdle', default: 34, step: 1, min: 33, max: 40, title: 'Angle of the upper girdle facets along the corner arcs, degrees: flatter (painted) keeps the girdle even; the junction A follows' },
+      { key: 'lowerAngle', label: 'Lower girdle', default: 48, step: 1, min: 46, max: 56, title: 'Angle of the lower girdle facets along the corner arcs, degrees: flatter (painted) keeps the girdle even, but below about 46 the fans overtake the girdle kites' },
+      { key: 'contactArc', label: 'Contact', default: 12, step: 1, min: 9, max: 15, title: 'Where the axis-side and corner-side girdle facets meet (upper and lower share it): degrees round the corner arc from the end of the flat; outside 9 to 15 the facets no longer close' },
       { key: 'culet', label: 'Culet', default: 0, step: 0.01, min: 0, max: 0.1, title: 'Side of the square culet facet, fraction of the width (0: pointed)' },
     ],
     make: (o = {}) => cushionModified(o),
