@@ -11,10 +11,10 @@
 // outline normal as azimuth, the rest pass through meet points. One mirror line: fold 1 + mirror.
 //
 // Orientation: width 2 along x, length along y, top edge at +y, point at -y (radial azimuth 270).
-import { newTier } from '../design.js?v=62';
+import { newTier } from '../design.js?v=63';
 import {
   rad, deg, norm360, polygonSupport, girdleVertices, vertexNear, vertexNearY, lift,
-  planeThrough, mirrorX, zPlane, yPlane, azPlane, perpPlane, classTier, girdleEqualLength, plane3, intersect3, chordRun } from '../shapebuild.js?v=62';
+  planeThrough, mirrorX, zPlane, yPlane, azPlane, perpPlane, classTier, girdleEqualLength, plane3, intersect3 } from '../shapebuild.js?v=63';
 
 /**
  * Shield outline, half-width 1 at the widest point, length 2 * ratio: a head arc of large radius
@@ -75,8 +75,8 @@ export function shieldOutline(ratio, widest = 0.45, headRadius = 1.8, shoulder =
  * shoulder, the widest point, the wing contact and the point (one under each bezel).
  */
 export function shieldStart({
-  ratio = 1.3, widest = 0.45, headRadius = 1.8, shoulder = 0.4, crownAngle = 35, shoulderAngle = 35, sideAngle = 35, wingAngle = 33, pointAngle = 25, crownHeight = 0.14, girdle = 0.033, pavilionDepth = 0.43,
-  sideContact = null, wingContact = 330, starHeight = 0.45, headStarHeight = 0.6, culetPos = 0.5, lowerDepth = 0.65, maxDip = 0.2,
+  ratio = 1.3, widest = 0.45, headRadius = 3.5, shoulder = 0.35, crownAngle = 35, shoulderAngle = 35, sideAngle = 35, wingAngle = 33, pointAngle = 25, crownHeight = 0.14, girdle = 0.04, pavilionDepth = 0.46,
+  sideContact = null, wingContact = 330, starHeight = 0.6, lowerDepth = 0.6, culetPos = 0.5,
   gear = 96, girdleFacets = 128,
   frenchTip = true, tipHubHeight = 0.8, tipTable = 0.28, tipGirdle = 0.08,
 } = {}) {
@@ -111,45 +111,53 @@ export function shieldStart({
   const T1 = intersect3(shoulderB, table, azPlane((azOf(R1) + azOf(R2)) / 2));
   const T2 = intersect3(belly, table, yPlane((R2[1] + R3[1]) / 2));
   const T3 = intersect3(wing, table, yPlane((R3[1] + R4[1]) / 2));
-  // ---- stars: between neighbouring bezels, tip on their ridge at starHeight of the crown; the
-  // head star's tips sit higher (headStarHeight), a shorter star with longer upper girdle facets
+  // ---- upper girdle facets in pairs meeting at a junction vertex on the girdle between the
+  // contacts, each pair's tip on the ridge of its two bezels at starHeight of the crown. The head
+  // and side junctions sit where the shoulder arc meets the head arc and the side arc (the
+  // outline's tangency points), so no chord runs across those bends; the belly and wing junctions
+  // sit midway by arc length between their contacts. One chord facet per run, no splits: the head
+  // arc and the shoulders must be gentle enough for that (head radius about 3.5, shoulders 0.35).
+  const sorted = verts.slice().sort((a, b) => a.az - b.az);
+  const between = (azA, azB, f) => {   // the girdle vertex f of the way along the arc from azA to azB (the short way round)
+    const i = sorted.indexOf(vertexNear(sorted, azA)), j = sorted.indexOf(vertexNear(sorted, azB)), n = sorted.length;
+    const fwd = ((j - i) % n + n) % n, back = ((i - j) % n + n) % n;
+    const step = fwd <= back ? 1 : -1, count = Math.min(fwd, back);
+    return sorted[((i + step * Math.round(f * count)) % n + n) % n];
+  };
+  const azT2 = azOf(outline.T2), azT1 = azOf(outline.T1);
+  const J1v = vertexNear(verts, azT2), J2v = vertexNear(verts, azT1), J3v = between(sideAz, wingContact, 0.5), J4v = between(wingContact, 270, 0.5);
   const zs = zPlane(starHeight * H);
-  const Ths = intersect3(head, shoulderB, zPlane(headStarHeight * H)), Tsb = intersect3(shoulderB, belly, zs), Tbw = intersect3(belly, wing, zs);
+  const Ths = intersect3(head, shoulderB, zs), Tsb = intersect3(shoulderB, belly, zs), Tbw = intersect3(belly, wing, zs);
+  const chord = (name, vA, vB, apex, z, up) => addClass(name, plane3(lift(vA, z), lift(vB, z), apex, up));
+  chord('B head', Hv, J1v, Ths, 0, true);
+  chord('B shoulder a', J1v, Shv, Ths, 0, true);
+  chord('B shoulder b', Shv, J2v, Tsb, 0, true);
+  chord('B belly a', J2v, Sv, Tsb, 0, true);
+  chord('B belly b', Sv, J3v, Tbw, 0, true);
+  chord('B wing a', J3v, Wv, Tbw, 0, true);
+  // ---- stars: between neighbouring bezels, from the table edge down to the tip on their ridge
   addClass('C head', plane3(T0, T1, Ths, true));
   addClass('C shoulder', plane3(T1, T2, Tsb, true));
   addClass('C belly', plane3(T2, T3, Tbw, true));
-  // ---- upper girdle facets in pairs meeting at a junction vertex between the contacts
-  // the head and side junctions sit where the shoulder arc meets the head arc and the side arc
-  // (the outline's tangency points), so no upper runs across those bends; each shoulder upper then
-  // spans only half the shoulder arc and digs little into the girdle
-  // Each run of upper girdle facets between a star tip's two bezel contacts is one chord facet per
-  // side of the junction where the girdle is gentle, and is split at the deepest point where the
-  // outline curves tightly (the head arc and the shoulders), so no facet digs more than `maxDip`
-  // of the girdle thickness. The junctions start at the shoulder arc's tangency points.
-  const azT2 = azOf(outline.T2), azT1 = azOf(outline.T1);
-  const azJ3 = (sideAz + wingContact - 360) / 2;
-  const dip = maxDip * g;
-  const uppers = (name, apex, azA, azB) => chordRun(verts, azA, azB, apex, 0, true, dip).forEach((c, i, arr) => addClass(arr.length > 1 ? `${name} ${i + 1}` : name, c.plane));
-  uppers('B head', Ths, 90, azT2);
-  uppers('B shoulder a', Ths, azT2, shAz);
-  uppers('B shoulder b', Tsb, shAz, azT1);
-  uppers('B belly a', Tsb, azT1, sideAz);
-  uppers('B belly b', Tbw, sideAz, azJ3);
-  uppers('B wing a', Tbw, azJ3, wingContact);
   let hub = null;
   if (!frenchTip) {
     const Twp = intersect3(wing, pt, zs);
     addClass('C wing', plane3(T3, A4, Twp, true));
-    uppers('B wing b', Twp, wingContact, (wingContact + 270) / 2);
-    uppers('B point', Twp, (wingContact + 270) / 2, 270);
+    chord('B wing b', Wv, J4v, Twp, 0, true);
+    chord('B point', J4v, Pv, Twp, 0, true);
   } else {
     let V = intersect3(wing, mirrorX(wing), zPlane(tipHubHeight * H));
     const yMin = yP + 0.04 * L;
     if (V[1] < yMin) V = intersect3(wing, mirrorX(wing), yPlane(yMin));
     hub = V;
-    const G = lift(vertexNearY(verts, yP + tipGirdle * L, 1), 0);
+    const Gv = vertexNearY(verts, yP + tipGirdle * L, 1), G = lift(Gv, 0);
     addClass('C half-bezel', plane3(V, A4, T3, true));
-    uppers('B tip', V, wingContact, azOf(G));   // from the wing contact down to the tip facet's girdle point, split where the side curves
+    // GIA's French tip has two small upper girdle facets beside each tip facet; on the shield's long
+    // lower side that run (wing contact to the tip facet's girdle point) is a quarter of the outline,
+    // so it is two chords meeting at the hub, with a junction midway by arc length
+    const J5v = between(wingContact, Gv.az, 0.5);
+    chord('B tip a', Wv, J5v, V, 0, true);
+    chord('B tip b', J5v, Gv, V, 0, true);
     addClass('tip', plane3(P, V, G, true));
   }
 
@@ -169,20 +177,18 @@ export function shieldStart({
   const mSide = addClass('P belly', mainAt(outline.normalAz(Sv.az), Sg));
   const mLower = addClass('P wing', mainAt(outline.normalAz(Wv.az), Lg));
   const mPoint = addClass('P point', mainAt(270, Pg));
-  // lower girdle facets: junctions on the main ridges at lowerDepth of the pavilion depth
+  // lower girdle facets in pairs meeting at the same girdle junctions as the uppers, each pair's
+  // junction on the ridge of its two mains at lowerDepth of the pavilion depth
   const jz = zPlane(-g - lowerDepth * Pd);
-  const Jcs = intersect3(mCorner, mSide, jz), Jsl = intersect3(mSide, mLower, jz), Jlp = intersect3(mLower, mPoint, jz);
-  const Jhs = intersect3(mHead, mCorner, jz);
-  const azJ4 = (wingContact + 270) / 2;
-  const lowers = (name, apex, azA, azB) => chordRun(verts, azA, azB, apex, -g, false, dip).forEach((c, i, arr) => addClass(arr.length > 1 ? `${name} ${i + 1}` : name, c.plane));
-  lowers('L head a', Jhs, 90, azT2);
-  lowers('L head b', Jhs, azT2, shAz);
-  lowers('L shoulder a', Jcs, shAz, azT1);
-  lowers('L shoulder b', Jcs, azT1, sideAz);
-  lowers('L belly a', Jsl, sideAz, azJ3);
-  lowers('L belly b', Jsl, azJ3, wingContact);
-  lowers('L wing a', Jlp, wingContact, azJ4);
-  lowers('L wing b', Jlp, azJ4, 270);
+  const Jhs = intersect3(mHead, mCorner, jz), Jcs = intersect3(mCorner, mSide, jz), Jsl = intersect3(mSide, mLower, jz), Jlp = intersect3(mLower, mPoint, jz);
+  chord('L head a', Hv, J1v, Jhs, -g, false);
+  chord('L head b', J1v, Shv, Jhs, -g, false);
+  chord('L shoulder a', Shv, J2v, Jcs, -g, false);
+  chord('L shoulder b', J2v, Sv, Jcs, -g, false);
+  chord('L belly a', Sv, J3v, Jsl, -g, false);
+  chord('L belly b', J3v, Wv, Jsl, -g, false);
+  chord('L wing a', Wv, J4v, Jlp, -g, false);
+  chord('L wing b', J4v, Pv, Jlp, -g, false);
 
   const pct = (v) => `${Math.round(v * 100)}%`;
   const hubNote = hub ? `Hub at ${pct((hub[1] - yP) / L)} of the length from the point, ${pct(hub[2] / H)} of the crown height.` : '';
@@ -205,14 +211,13 @@ const xPlane_ = (x) => ({ n: [1, 0, 0], d: x });
 const params = [
   { key: 'ratio', label: 'L:W', default: 1.3, step: 0.01, min: 1 },
   { key: 'widest', label: 'Widest point', default: 0.45, step: 0.05, min: 0.1, max: 0.9, title: 'Height of the widest point, fraction of the half-length above the centre' },
-  { key: 'headRadius', label: 'Head radius', default: 1.8, step: 0.1, min: 1.1, title: 'Radius of the head arc, half-widths (large = nearly flat)' },
-  { key: 'shoulder', label: 'Shoulder radius', default: 0.4, step: 0.05, min: 0.1, max: 0.9, title: 'Radius of the shoulder arcs, half-widths' },
+  { key: 'headRadius', label: 'Head radius', default: 3.5, step: 0.1, min: 1.1, title: 'Radius of the head arc, half-widths (large = nearly flat); below about 3 the single upper girdle facet across each half of the head digs through a 3.3% girdle' },
+  { key: 'shoulder', label: 'Shoulder radius', default: 0.35, step: 0.05, min: 0.1, max: 0.9, title: 'Radius of the shoulder arcs, half-widths' },
   { key: 'crownAngle', label: 'Head bezel', default: 35, step: 0.5 }, { key: 'shoulderAngle', label: 'Shoulder bezels', default: 35, step: 0.5 }, { key: 'sideAngle', label: 'Belly bezels', default: 35, step: 0.5 }, { key: 'wingAngle', label: 'Wing bezels', default: 33, step: 0.5 },
-  { key: 'crownHeight', label: 'Crown height', default: 0.14, step: 0.005 }, { key: 'girdle', label: 'Girdle', default: 0.033, step: 0.005 }, { key: 'pavilionDepth', label: 'Pavilion depth', default: 0.43, step: 0.005 },
+  { key: 'crownHeight', label: 'Crown height', default: 0.14, step: 0.005 }, { key: 'girdle', label: 'Girdle', default: 0.04, step: 0.005, title: 'At the contacts; single chord facets over the curved girdle cut it to about half this between them' }, { key: 'pavilionDepth', label: 'Pavilion depth', default: 0.46, step: 0.005 },
   { key: 'wingContact', label: 'Wing contact', default: 330, step: 1, title: 'Radial azimuth of the wing bezel contact on the lower side (270 = the point, 360 = the side)' },
-  { key: 'starHeight', label: 'Star tips', default: 0.45, step: 0.05, min: 0.2, max: 0.95, title: 'Star tip height, fraction of the crown height (lower tips give flatter upper girdle facets that dig less)' },
-  { key: 'headStarHeight', label: 'Head star tips', default: 0.6, step: 0.05, min: 0.2, max: 0.95, title: 'Tip height of the head star, fraction of the crown height: higher tips shorten the head star and lengthen the upper girdle facets at the head' },
-  { key: 'maxDip', label: 'Max girdle dig', default: 0.2, step: 0.05, min: 0.05, max: 0.5, title: 'How far an upper or lower girdle facet may dig into the girdle, fraction of its thickness; a facet that would dig more is split at the deepest point' },
+  { key: 'starHeight', label: 'Star tips', default: 0.6, step: 0.05, min: 0.2, max: 0.95, title: 'Star tip height, fraction of the crown height: higher tips give shorter stars and larger upper girdle facets, which then dig more into the curved girdle' },
+  { key: 'lowerDepth', label: 'Lower junctions', default: 0.6, step: 0.05, min: 0.2, max: 0.95, title: 'Lower girdle facet junctions on the main ridges, fraction of the pavilion depth' },
   { key: 'culetPos', label: 'Culet', default: 0.5, step: 0.01, title: 'Fraction of the length from the top' },
 ];
 const french = [
