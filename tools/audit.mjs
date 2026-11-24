@@ -16,7 +16,12 @@ for (const key of keys) {
   const m = designMesh(d);
   const tier = (f) => d.tiers.find((t) => t.id === f.tag);
   const isG = (f) => { const t = tier(f); return t && Math.abs(t.angle) === 90; };
-  const gTop = 0, gBot = Math.min(...m.faces.filter(isG).flatMap((f) => f.idx.map((i) => m.verts[i][2])));
+  // nominal girdle: the girdle facets outside any zone the design declares as intentionally thick
+  // (`girdleThickAt: [{ az, span }]`, e.g. the heart's cleft)
+  const allowed = d.girdleThickAt || [];
+  const inAllowed = (f) => { const c = f.idx.map((i) => m.verts[i]); const az = Math.atan2(c.reduce((s, v) => s + v[1], 0), c.reduce((s, v) => s + v[0], 0)) * 180 / Math.PI; return allowed.some((a) => Math.abs(((az - a.az + 540) % 360) - 180) <= a.span); };
+  const gFaces = m.faces.filter((f) => isG(f) && !inAllowed(f));
+  const gTop = 0, gBot = Math.min(...gFaces.flatMap((f) => f.idx.map((i) => m.verts[i][2])));
   const girdleT = gTop - gBot;
   const problems = [];
   // vertex -> faces
@@ -25,6 +30,7 @@ for (const key of keys) {
   let minTop = Infinity, maxBot = -Infinity;
   for (const f of m.faces) {
     if (isG(f)) {
+      if (inAllowed(f)) continue;
       const zs = f.idx.map((i) => m.verts[i][2]);
       minTop = Math.min(minTop, Math.max(...zs)); maxBot = Math.max(maxBot, Math.min(...zs));
       continue;
@@ -45,9 +51,6 @@ for (const key of keys) {
   if (maxBot > gBot + 0.5 * girdleT) problems.push(`girdle cut to ${(100 * (gTop - maxBot) / girdleT).toFixed(0)}% of its thickness by a pavilion facet`);
   // hills: a girdle facet reaching far above the girdle top or below its bottom means the crown or
   // pavilion facets beside it touch the girdle only at points and leave a wedge of girdle between them
-  // (a design may declare zones where a thick girdle is intended, e.g. the heart's cleft: `girdleThickAt: [{ az, span }]`)
-  const allowed = d.girdleThickAt || [];
-  const inAllowed = (f) => { const c = f.idx.map((i) => m.verts[i]); const az = Math.atan2(c.reduce((s, v) => s + v[1], 0), c.reduce((s, v) => s + v[0], 0)) * 180 / Math.PI; return allowed.some((a) => Math.abs(((az - a.az + 540) % 360) - 180) <= a.span); };
   let maxTop = -Infinity, minBot = Infinity;
   for (const f of m.faces) if (isG(f) && !inAllowed(f)) { const zs = f.idx.map((i) => m.verts[i][2]); maxTop = Math.max(maxTop, Math.max(...zs)); minBot = Math.min(minBot, Math.min(...zs)); }
   const thickest = (maxTop - minBot) / girdleT;
