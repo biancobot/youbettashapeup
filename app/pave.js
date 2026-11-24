@@ -243,7 +243,7 @@ export function hexafoilStones(hull, area, obstacles, scale, opacity, random) {
 }
 
 /** Text as a transparent plane: the carat weight centred in an outline stone. */
-function makeLabel(text, worldHeight, opacity) {
+function makeLabel(text, worldHeight, opacity) {   // worldHeight: text height in world units
   const c = document.createElement('canvas'); c.width = 256; c.height = 128;
   const ctx = c.getContext('2d'); ctx.clearRect(0, 0, 256, 128);
   ctx.fillStyle = '#000'; ctx.font = '600 72px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -260,40 +260,54 @@ export function createPave(scene, occluderMat) {
   const group = new THREE.Group(); group.position.z = -3; scene.add(group);
   let mats = [], lastKey = null, count = 0, resolution = [1, 1], lineWidth = 1.5;
   function clear() {
-    for (const ch of [...group.children]) { group.remove(ch); ch.traverse((o) => { if (o.geometry && o.userData.own) o.geometry.dispose(); if (o.material && o.material.map) o.material.map.dispose(); }); }
+    for (const ch of [...group.children]) { group.remove(ch); ch.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material && o.material.map) o.material.map.dispose(); }); }
     for (const m of mats) m.dispose();
     mats = []; count = 0; lastKey = null;
   }
+  /** Append the segment positions `src` (x y z triples) transformed by the stone's placement to `dst`. */
+  const appendTransformed = (dst, src, st) => {
+    const c = Math.cos(st.angle), sn = Math.sin(st.angle), sx = Array.isArray(st.scale) ? st.scale[0] : st.scale, sy = Array.isArray(st.scale) ? st.scale[1] : st.scale;
+    for (let i = 0; i < src.length; i += 3) { const x = src[i] * sx, y = src[i + 1] * sy; dst.push(st.x + x * c - y * sn, st.y + x * sn + y * c, src[i + 2] * Math.min(sx, sy)); }
+  };
   /**
-   * Build (or rebuild when the inputs changed). opts: { key, stones, meshGeometry, hardGeometry,
-   * smoothPositions, hullEdges }; stones from packStones or hexafoilStones.
+   * Build (or rebuild when the inputs changed). opts: { key, stones, meshPositions, hardEdges,
+   * smoothPositions, hullEdges } with the geometry as raw position arrays. All the stones are
+   * merged into one occluder mesh and a few line objects (one per opacity bucket), so the page
+   * stays a handful of draw calls however many stones it holds.
    */
   function build(o) {
     if (o.key === lastKey) return;
     clear();
     lastKey = o.key;
     const stones = o.stones;
-    const outlineGeo = new LineSegmentsGeometry().setPositions(o.hullEdges);
-    const smoothGeo = o.smoothPositions && o.smoothPositions.length ? new LineSegmentsGeometry().setPositions(o.smoothPositions) : null;
+    const BUCKETS = 8;
+    const lo = Math.min(...stones.map((s) => s.opacity), 1), hi = Math.max(...stones.map((s) => s.opacity), 0);
+    const bucketOf = (op) => (hi > lo ? Math.min(BUCKETS - 1, Math.floor(((op - lo) / (hi - lo)) * BUCKETS)) : 0);
+    const lines = Array.from({ length: BUCKETS }, () => []), meshPos = [];
     for (const st of stones) {
-      const g = new THREE.Group();
-      g.position.set(st.x, st.y, 0); g.rotation.z = st.angle;
-      if (Array.isArray(st.scale)) g.scale.set(st.scale[0], st.scale[1], 1); else g.scale.setScalar(st.scale);
-      const mat = new LineMaterial({ color: 0x000000, linewidth: lineWidth, worldUnits: false, transparent: true, opacity: st.opacity, depthTest: true, depthWrite: true });
-      mat.resolution.set(resolution[0], resolution[1]); mats.push(mat);
+      const dst = lines[bucketOf(st.opacity)];
       if (st.label) {
-        g.add(new LineSegments2(outlineGeo, mat));
-        const lbl = makeLabel(`${st.label} ct`, 0.42, st.opacity);   // text height: 0.21 of the stone's width
-        lbl.position.z = 0.1; lbl.rotation.z = -st.angle;            // keep the number upright
-        if (Array.isArray(st.scale)) lbl.scale.set(1 / st.scale[0] * Math.min(...st.scale), 1 / st.scale[1] * Math.min(...st.scale), 1);   // undo the stretch on the text
-        g.add(lbl);
+        appendTransformed(dst, o.hullEdges, st);
+        const lbl = makeLabel(`${st.label} ct`, 0.42 * Math.min(...(Array.isArray(st.scale) ? st.scale : [st.scale])), st.opacity);   // text height: 0.21 of the stone's width
+        lbl.position.set(st.x, st.y, 0.1);
+        group.add(lbl);
       } else {
-        const mesh = new THREE.Mesh(o.meshGeometry, occluderMat);
-        g.add(mesh, new LineSegments2(o.hardGeometry, mat));
-        if (smoothGeo) g.add(new LineSegments2(smoothGeo, mat));
+        appendTransformed(meshPos, o.meshPositions, st);
+        appendTransformed(dst, o.hardEdges, st);
+        if (o.smoothPositions && o.smoothPositions.length) appendTransformed(dst, o.smoothPositions, st);
       }
-      group.add(g);
     }
+    if (meshPos.length) {
+      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(meshPos, 3));
+      const mesh = new THREE.Mesh(g, occluderMat); mesh.renderOrder = 0; group.add(mesh);
+    }
+    lines.forEach((arr, b) => {
+      if (!arr.length) return;
+      const op = hi > lo ? lo + ((b + 0.5) / BUCKETS) * (hi - lo) : lo;
+      const mat = new LineMaterial({ color: 0x000000, linewidth: lineWidth, worldUnits: false, transparent: true, opacity: op, depthTest: true, depthWrite: true });
+      mat.resolution.set(resolution[0], resolution[1]); mats.push(mat);
+      const ls = new LineSegments2(new LineSegmentsGeometry().setPositions(new Float32Array(arr)), mat); ls.renderOrder = 1; group.add(ls);
+    });
     count = stones.length;
   }
   function setResolution(w, h) { resolution = [w, h]; for (const m of mats) m.resolution.set(w, h); }
