@@ -1,7 +1,7 @@
 // Design editor: tiers table, symmetry-aware index entry, cut-to-meet-point, .asc import/export.
-import { newTier, expandIndex, distanceThrough, parseAsc, toAsc, resetIds } from './gemcad/design.js?v=65';
-import { roundBrilliant } from './gemcad/generators.js?v=65';
-import { templates, preforms } from './gemcad/templates.js?v=65';
+import { newTier, expandIndex, distanceThrough, parseAsc, toAsc, resetIds } from './gemcad/design.js?v=66';
+import { roundBrilliant } from './gemcad/generators.js?v=66';
+import { templates, preforms } from './gemcad/templates.js?v=66';
 
 export function createEditor({ onChange, getSelectedVertex, saveText }) {
   let design = roundBrilliant();

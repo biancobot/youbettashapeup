@@ -3,11 +3,11 @@
 // FDR749558450) or 4 mains (FDR733542179). Built the way ../fancy.js builds the marquise: a facet
 // that reaches the girdle touches the girdle polygon at a vertex chosen by radial azimuth, and its
 // azimuth is the outline normal there; the other facets are planes through three meet points.
-import { newTier } from '../design.js?v=65';
+import { newTier } from '../design.js?v=66';
 import {
   ellipseOutline, girdleVertices, vertexNear, lift, planeThrough, planeAz, mainThrough,
   mirrorX, mirrorY, zPlane, yPlane, xPlane, azPlane, perpPlane, classTier, girdleFromSupport, girdleEqualLength, plane3, intersect3, chordRun,
-} from '../shapebuild.js?v=65';
+} from '../shapebuild.js?v=66';
 
 /*
  * Positions measured on the IGI plots (units: the half-width; y along the length; radial azimuth
@@ -166,7 +166,7 @@ export function ovalStart({
  */
 export function ovalHeadStart({
   ratio = PLOT.ratio, crownHeight = 0.16, girdle = 0.033, pavilionDepth = 0.43, table = 0.58, shoulderAz = 53,
-  starHeight = 0.65, lowerDepth = 0.55, gear = 96, girdleFacets = 128, maxDip = 0.2,
+  starHeight = 0.5, lowerDepth = 0.55, gear = 96, girdleFacets = 128, maxDip = 0.2,
 } = {}) {
   const W = 2, l = ratio, H = crownHeight * W, g = girdle * W, Pd = pavilionDepth * W;
   const outline = ellipseOutline(l);
@@ -244,7 +244,7 @@ export const templates = {
     { key: 'crownHeight', label: 'Crown height', default: 0.16, step: 0.005, title: 'Fraction of the width; with the table it sets the bezel angles' },
     { key: 'table', label: 'Table', default: 0.58, step: 0.01, min: 0.4, max: 0.75, title: 'Table corners at this fraction of the bezel contacts\' radii (table width and length as fractions of the stone\'s)' },
     { key: 'shoulderAz', label: 'Shoulder contact', default: 53, step: 1, min: 35, max: 70, title: 'Radial azimuth of the shoulder bezel and main contacts, degrees from the side' },
-    { key: 'starHeight', label: 'Star tips', default: 0.65, step: 0.05, min: 0.2, max: 0.95, title: 'Fraction of the crown height' },
+    { key: 'starHeight', label: 'Star tips', default: 0.5, step: 0.05, min: 0.2, max: 0.95, title: 'Fraction of the crown height (above about 0.6 the head stars thin to slivers against the table edge)' },
     { key: 'girdle', label: 'Girdle', default: 0.033, step: 0.005 },
     { key: 'pavilionDepth', label: 'Pavilion depth', default: 0.43, step: 0.005 },
     { key: 'lowerDepth', label: 'Lower junctions', default: 0.55, step: 0.05, min: 0.2, max: 0.9, title: 'Lower girdle junctions on the main ridges, fraction of the pavilion depth' },

@@ -35,8 +35,8 @@
 //          (corner, Vi, Vi+1); and at each corner a kite (corner, V4, culet, H4) whose far
 //          vertex is the culet. The plot gives no heights, so the depths of V1..V3 on the ridge
 //          are parameters (`ridge`); V4 is fixed by the corner kite through the culet.
-import { newTier } from '../design.js?v=65';
-import { deg, girdleFromPolygon, plane3, classTier } from '../shapebuild.js?v=65';
+import { newTier } from '../design.js?v=66';
+import { deg, girdleFromPolygon, plane3, classTier } from '../shapebuild.js?v=66';
 
 // measured plan positions (half-width units)
 const TC = 0.682, KA = 0.697, KB = 0.853, XA = 0.766;
