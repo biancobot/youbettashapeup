@@ -3,16 +3,18 @@
 // guidelines do not cover them and GIA assigns no cut grade), so the pattern follows the pear's:
 // bezels at the head, the shoulders, the bellies and the wings, a French tip (default) or a point bezel,
 // stars between the bezels, upper girdle facets in pairs meeting at junctions on the girdle, and
-// a pavilion of mains meeting at the culet with lower girdle facets in pairs. Built like the
+// a pavilion of mains under every bezel (head, shoulders, bellies, wings and the point) meeting at
+// the culet, with lower girdle facets in pairs whose junctions share the girdle vertices of the
+// upper girdle facets' junctions. Built like the
 // marquise in ../fancy.js: girdle contacts are polygon vertices (the point is an exact vertex),
 // facets touching the girdle have the
 // outline normal as azimuth, the rest pass through meet points. One mirror line: fold 1 + mirror.
 //
 // Orientation: width 2 along x, length along y, top edge at +y, point at -y (radial azimuth 270).
-import { newTier } from '../design.js?v=61';
+import { newTier } from '../design.js?v=62';
 import {
   rad, deg, norm360, polygonSupport, girdleVertices, vertexNear, vertexNearY, lift,
-  planeThrough, mirrorX, zPlane, yPlane, azPlane, perpPlane, classTier, girdleEqualLength, plane3, intersect3, chordRun } from '../shapebuild.js?v=61';
+  planeThrough, mirrorX, zPlane, yPlane, azPlane, perpPlane, classTier, girdleEqualLength, plane3, intersect3, chordRun } from '../shapebuild.js?v=62';
 
 /**
  * Shield outline, half-width 1 at the widest point, length 2 * ratio: a head arc of large radius
@@ -70,11 +72,11 @@ export function shieldOutline(ratio, widest = 0.45, headRadius = 1.8, shoulder =
  * Shield brilliant starting point, the pear's pattern on the shield outline. Contacts (radial
  * azimuths, right half): head (90), shoulder (middle of the shoulder arc), belly (the widest
  * point, or `sideContact`), wing (`wingContact`), point (270); pavilion mains at the head, the
- * shoulder, `pavSideContact` and `lowerContact`.
+ * shoulder, the widest point, the wing contact and the point (one under each bezel).
  */
 export function shieldStart({
   ratio = 1.3, widest = 0.45, headRadius = 1.8, shoulder = 0.4, crownAngle = 35, shoulderAngle = 35, sideAngle = 35, wingAngle = 33, pointAngle = 25, crownHeight = 0.14, girdle = 0.033, pavilionDepth = 0.43,
-  sideContact = null, wingContact = 330, pavShoulderContact = null, pavSideContact = 15, lowerContact = 300, starHeight = 0.45, culetPos = 0.5, lowerDepth = 0.65, maxDip = 0.2,
+  sideContact = null, wingContact = 330, starHeight = 0.45, headStarHeight = 0.6, culetPos = 0.5, lowerDepth = 0.65, maxDip = 0.2,
   gear = 96, girdleFacets = 128,
   frenchTip = true, tipHubHeight = 0.8, tipTable = 0.28, tipGirdle = 0.08,
 } = {}) {
@@ -109,9 +111,10 @@ export function shieldStart({
   const T1 = intersect3(shoulderB, table, azPlane((azOf(R1) + azOf(R2)) / 2));
   const T2 = intersect3(belly, table, yPlane((R2[1] + R3[1]) / 2));
   const T3 = intersect3(wing, table, yPlane((R3[1] + R4[1]) / 2));
-  // ---- stars: between neighbouring bezels, tip on their ridge at starHeight of the crown
+  // ---- stars: between neighbouring bezels, tip on their ridge at starHeight of the crown; the
+  // head star's tips sit higher (headStarHeight), a shorter star with longer upper girdle facets
   const zs = zPlane(starHeight * H);
-  const Ths = intersect3(head, shoulderB, zs), Tsb = intersect3(shoulderB, belly, zs), Tbw = intersect3(belly, wing, zs);
+  const Ths = intersect3(head, shoulderB, zPlane(headStarHeight * H)), Tsb = intersect3(shoulderB, belly, zs), Tbw = intersect3(belly, wing, zs);
   addClass('C head', plane3(T0, T1, Ths, true));
   addClass('C shoulder', plane3(T1, T2, Tsb, true));
   addClass('C belly', plane3(T2, T3, Tbw, true));
@@ -150,7 +153,9 @@ export function shieldStart({
     addClass('tip', plane3(P, V, G, true));
   }
 
-  // ---- pavilion: mains through the culet, tangent at the top edge, the corner, the side and the lower contact
+  // ---- pavilion: a main under each bezel, through the culet and tangent at the bezel's contact
+  // (head, shoulder, belly, wing and the point), so the lower girdle facets' junctions fall on the
+  // same girdle vertices as the upper girdle facets' junctions
   const cY = outline.yT - culetPos * L;
   const culet = [0, cY, -g - Pd];
   const mainAt = (az, p) => {
@@ -158,25 +163,26 @@ export function shieldStart({
     const h = u[0] * p[0] + u[1] * p[1] - u[1] * cY;
     return planeThrough(-deg(Math.atan2(Pd, h)), az, p);
   };
-  const Lv = vertexNear(verts, lowerContact), Spv = vertexNear(verts, pavSideContact), Pshv = vertexNear(verts, pavShoulderContact ?? shAz);
-  const Hg = lift(Hv, -g), Ag = lift(Pshv, -g), Sg = lift(Spv, -g), Lg = lift(Lv, -g), Pg = lift(Pv, -g);
+  const Hg = lift(Hv, -g), Ag = lift(Shv, -g), Sg = lift(Sv, -g), Lg = lift(Wv, -g), Pg = lift(Pv, -g);
   const mHead = addClass('P head', mainAt(90, Hg));
-  const mCorner = addClass('P shoulder', mainAt(outline.normalAz(Pshv.az), Ag));
-  const mSide = addClass('P side', mainAt(outline.normalAz(Spv.az), Sg));
-  const mLower = addClass('P lower', mainAt(outline.normalAz(Lv.az), Lg));
+  const mCorner = addClass('P shoulder', mainAt(outline.normalAz(Shv.az), Ag));
+  const mSide = addClass('P belly', mainAt(outline.normalAz(Sv.az), Sg));
+  const mLower = addClass('P wing', mainAt(outline.normalAz(Wv.az), Lg));
+  const mPoint = addClass('P point', mainAt(270, Pg));
   // lower girdle facets: junctions on the main ridges at lowerDepth of the pavilion depth
   const jz = zPlane(-g - lowerDepth * Pd);
-  const Jcs = intersect3(mCorner, mSide, jz), Jsl = intersect3(mSide, mLower, jz), Kp = intersect3(mLower, mirrorX(mLower), jz);
+  const Jcs = intersect3(mCorner, mSide, jz), Jsl = intersect3(mSide, mLower, jz), Jlp = intersect3(mLower, mPoint, jz);
   const Jhs = intersect3(mHead, mCorner, jz);
-  const azG2 = (pavSideContact + lowerContact - 360) / 2 + 360;
+  const azJ4 = (wingContact + 270) / 2;
   const lowers = (name, apex, azA, azB) => chordRun(verts, azA, azB, apex, -g, false, dip).forEach((c, i, arr) => addClass(arr.length > 1 ? `${name} ${i + 1}` : name, c.plane));
   lowers('L head a', Jhs, 90, azT2);
-  lowers('L head b', Jhs, azT2, Pshv.az);
-  lowers('L a', Jcs, Pshv.az, azT1);
-  lowers('L b', Jcs, azT1, pavSideContact);
-  lowers('L c', Jsl, pavSideContact, azG2);
-  lowers('L d', Jsl, azG2, lowerContact);
-  lowers('L point', Kp, lowerContact, 270);
+  lowers('L head b', Jhs, azT2, shAz);
+  lowers('L shoulder a', Jcs, shAz, azT1);
+  lowers('L shoulder b', Jcs, azT1, sideAz);
+  lowers('L belly a', Jsl, sideAz, azJ3);
+  lowers('L belly b', Jsl, azJ3, wingContact);
+  lowers('L wing a', Jlp, wingContact, azJ4);
+  lowers('L wing b', Jlp, azJ4, 270);
 
   const pct = (v) => `${Math.round(v * 100)}%`;
   const hubNote = hub ? `Hub at ${pct((hub[1] - yP) / L)} of the length from the point, ${pct(hub[2] / H)} of the crown height.` : '';
@@ -188,7 +194,7 @@ export function shieldStart({
       'Ideal dimensions: none published. GIA assigns no cut grade to shield-cut diamonds and IGI\'s fancy-shape cut guidelines do not cover the shape; trade practice puts shields at L:W 1.2-1.5 with proportions like a pear\'s (crown height 12-16%, pavilion depth 41-46%, girdle 2-6%).',
       `This design: L:W ${ratio}, widest point ${pct(widest)} of the half-length above the centre, head radius ${headRadius} and shoulder radius ${shoulder} half-widths, crown height ${pct(crownHeight)}, head bezel ${crownAngle}, shoulder bezels ${shoulderAngle}, belly bezels ${sideAngle}, wing bezels ${wingAngle}, pavilion depth ${pct(pavilionDepth)}, girdle ${pct(girdle)}, culet ${pct(culetPos)} of the length from the top. Bezel angles are measured in each facet's own slope direction.`,
       `Point: ${frenchTip ? 'French tip (GIA 4Cs marquise wireframe arrangement): no bezel at the point; two tip facets, two small upper girdle facets, the two side bezels and two half-bezels meet at a hub on the axis. ' + hubNote : 'uncorrected, a shallow bezel at the point (' + pointAngle + ') with a star either side.'}`,
-      'Pattern (the pear\'s): crown: table, head bezel, 2 shoulder bezels, 2 belly bezels at the widest point, 2 wing bezels on the lower sides, point bezel or French tip, 8 stars, 16 upper girdle facets in pairs meeting at junctions; pavilion: head, 2 shoulder, 2 side and 2 lower mains meeting at the culet, 14 lower girdle facets with junctions on the main ridges.',
+      'Pattern (the pear\'s): crown: table, head bezel, 2 shoulder bezels, 2 belly bezels at the widest point, 2 wing bezels on the lower sides, point bezel or French tip, 8 stars, 16 upper girdle facets in pairs meeting at junctions; pavilion: head, 2 shoulder, 2 belly, 2 wing and point mains meeting at the culet (one under each bezel contact), 16 lower girdle facets in pairs whose junctions share the upper girdle facets\' girdle vertices.',
       'Outline: a head arc of large radius blending through rounded shoulders into the side arcs that meet at the point, all tangent; the widest point part way down the sides. Facets touch the girdle at polygon vertices with the outline normal as azimuth.',
     ],
     tiers,
@@ -204,9 +210,8 @@ const params = [
   { key: 'crownAngle', label: 'Head bezel', default: 35, step: 0.5 }, { key: 'shoulderAngle', label: 'Shoulder bezels', default: 35, step: 0.5 }, { key: 'sideAngle', label: 'Belly bezels', default: 35, step: 0.5 }, { key: 'wingAngle', label: 'Wing bezels', default: 33, step: 0.5 },
   { key: 'crownHeight', label: 'Crown height', default: 0.14, step: 0.005 }, { key: 'girdle', label: 'Girdle', default: 0.033, step: 0.005 }, { key: 'pavilionDepth', label: 'Pavilion depth', default: 0.43, step: 0.005 },
   { key: 'wingContact', label: 'Wing contact', default: 330, step: 1, title: 'Radial azimuth of the wing bezel contact on the lower side (270 = the point, 360 = the side)' },
-  { key: 'pavSideContact', label: 'Side main', default: 15, step: 1, title: 'Radial azimuth of the pavilion side main contact' },
-  { key: 'lowerContact', label: 'Lower contact', default: 300, step: 1, title: 'Radial azimuth of the lower main contact' },
   { key: 'starHeight', label: 'Star tips', default: 0.45, step: 0.05, min: 0.2, max: 0.95, title: 'Star tip height, fraction of the crown height (lower tips give flatter upper girdle facets that dig less)' },
+  { key: 'headStarHeight', label: 'Head star tips', default: 0.6, step: 0.05, min: 0.2, max: 0.95, title: 'Tip height of the head star, fraction of the crown height: higher tips shorten the head star and lengthen the upper girdle facets at the head' },
   { key: 'maxDip', label: 'Max girdle dig', default: 0.2, step: 0.05, min: 0.05, max: 0.5, title: 'How far an upper or lower girdle facet may dig into the girdle, fraction of its thickness; a facet that would dig more is split at the deepest point' },
   { key: 'culetPos', label: 'Culet', default: 0.5, step: 0.01, title: 'Fraction of the length from the top' },
 ];

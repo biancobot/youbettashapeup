@@ -1,5 +1,5 @@
 // Marquise brilliant templates (generator in ../fancy.js).
-import { marquiseStart } from '../fancy.js?v=61';
+import { marquiseStart } from '../fancy.js?v=62';
 
 const base = [
   { key: 'ratio', label: 'L:W', default: 2.0, step: 0.01, min: 1.2 },
@@ -18,7 +18,6 @@ const french = [
 const withDefaults = (list, over) => list.map((p) => (p.key in over ? { ...p, default: over[p.key] } : p));
 
 export const templates = {
-  marquise: { name: 'Marquise brilliant, French tips (starting point)', note: 'IGI plot pattern with typical angles and GIA-style French tips; trace against the underlay and cut meet points.', params: [...base, ...french], make: (o = {}) => marquiseStart({ ...o }) },
   marquiseGia: { name: 'Marquise brilliant, French tips, GIA wireframe proportions', note: 'Same construction with the proportions read off GIA\'s 4Cs French-tip wireframe: table 52%, hub 23% from the point.', params: [...withDefaults(base, { ratio: 2.03, crownAngle: 33, crownHeight: 0.156 }), ...withDefaults(french, { tipHubHeight: 0.89, tipTable: 0.40 })], make: (o = {}) => marquiseStart({ ratio: 2.03, crownAngle: 33, crownHeight: 0.156, tipHubHeight: 0.89, tipTable: 0.40, ...o }) },
   marquiseStd: { name: 'Marquise brilliant, uncorrected points (starting point)', note: 'IGI plot pattern with typical angles and a shallow bezel at each point.', params: base, make: (o = {}) => marquiseStart({ frenchTips: false, ...o }) },
   marquiseSideHub: { name: 'Marquise brilliant, side hubs, French tips (IGI FDR762535113)', note: 'IGI side-hub crown pattern (no side bezel: two half-side bezels, two flank facets and a side star meet at a hub on each side) with typical angles and GIA-style French tips.', params: [...base, { key: 'sideHub', label: 'Side hub', default: 0.82, step: 0.01, title: 'Side hub position, fraction of the half-width' }, ...french], make: (o = {}) => marquiseStart({ crown: 'sideHub', ...o }) },

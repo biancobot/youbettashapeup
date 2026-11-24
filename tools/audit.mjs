@@ -92,7 +92,9 @@ for (const spec of keys) {
     const area = Math.hypot(...n) / 2;
     if (area / longest < 0.01) problems.push(`${tier(f)?.name || f.tag}: sliver (width ${(area / longest).toFixed(4)})`);
   }
-  // 3. every tier has faces
+  // 3. the table has the declared number of sides (a design that declares `tableSides`: a corner clipped by a facet that should stop short of it shows up as an extra side)
+  if (d.tableSides) { const tf = m.faces.find((f) => tier(f)?.name === 'T'); if (tf && tf.idx.length !== d.tableSides) problems.push(`table has ${tf.idx.length} sides instead of ${d.tableSides}: a facet clips a table corner`); }
+  // 4. every tier has faces
   for (const t of d.tiers) if (!t.hidden && !m.faces.some((f) => f.tag === t.id)) problems.push(`${t.name}: no faces`);
   const uniq = [...new Set(problems)];
   console.log(`${uniq.length ? 'FAIL' : 'ok  '} ${key} (${m.faceCount} facets, girdle ${(100 * girdleT / 2).toFixed(1)}%, thinnest ${(100 * thinnestRemaining / girdleT).toFixed(0)}%, thickest ${(100 * thickest).toFixed(0)}%)`);
