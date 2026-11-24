@@ -176,16 +176,16 @@
         <button id="clearviews">Remove all projected views</button>
         <div class="row"><label for="page">Page</label><input type="checkbox" id="page"></div>
         <div class="row"><label for="pagesize">Page size</label>
-          <select id="pagesize"><option value="letter">Letter 8.5 × 11 in</option><option value="letterL">Letter landscape 11 × 8.5</option><option value="square85">Square 8.5 × 8.5</option><option value="a4">A4 8.27 × 11.69</option><option value="a4L">A4 landscape</option><option value="custom">Custom</option></select></div>
+          <select id="pagesize"><option value="square85" selected>Square 8.5 × 8.5 in</option><option value="letter">Letter 8.5 × 11</option><option value="letterL">Letter landscape 11 × 8.5</option><option value="a4">A4 8.27 × 11.69</option><option value="a4L">A4 landscape</option><option value="custom">Custom</option></select></div>
         <div class="gaps">
           <label>Width (in) <input type="number" id="pagew" step="0.25" min="0.5"></label>
           <label>Height (in) <input type="number" id="pageh" step="0.25" min="0.5"></label>
-          <label>Stone width (in) <input type="number" id="pagestone" step="0.1" min="0.05" title="How wide the stone is drawn on the page; everything scales with it"></label>
+          <label>Stone width (in) <input type="number" id="pagestone" step="0.1" min="0.05" title="The drawing scale: how wide the stone is drawn on the page. Every view is the same stone, so this enlarges or shrinks all the projected views together"></label>
           <label>Export DPI <input type="number" id="pagedpi" step="50" min="36"></label>
         </div>
-        <div class="row"><label for="pageoutline">Show page outline</label><input type="checkbox" id="pageoutline" checked></div>
+        <div class="row"><label for="pagefit">Fit all views to <input type="number" id="pagefit" step="5" min="5" max="100" style="width:56px"> % of the page</label><button id="pagefitbtn" title="Set the stone width so the whole arrangement of views spans this share of the page's height (or width, if that binds), and centre it">Fit views</button></div>
         <div class="row"><span class="hint">Wheel zooms about the cursor; right- or middle-button drag (or ctrl-drag) pans.</span><button id="fitview" title="Zoom to fit the page (or the sheet) again">Fit</button></div>
-        <div class="hint">With a page set, the preview frames the page, the view list's &#8660; and &#8661; buttons centre a view on it horizontally or vertically (a 3D view moves alone; any other view moves the whole arrangement), alt-drag on the base moves the arrangement, and Export PNG writes the page at the chosen DPI (8.5 × 11 at 300 DPI is 2550 × 3300 pixels).</div>
+        <div class="hint">With a page set, the preview frames the page and its outline is always drawn. <b>Stone width</b> is the drawing scale, so it enlarges or shrinks all the projected views together; <b>Fit views</b> sets it so the arrangement spans the chosen share of the page and centres it. The view list's &#8660; and &#8661; buttons centre a view on the page horizontally or vertically (a 3D view moves alone; any other view moves the whole arrangement), alt-drag on the base moves the arrangement, and Export PNG writes the page at the chosen DPI (8.5 × 8.5 at 300 DPI is 2550 × 2550 pixels).</div>
         <div class="row"><label for="grid">Grid (a table with a cell per view)</label><input type="checkbox" id="grid"></div>
         <div class="row"><label for="gridopacity">Grid opacity <span id="gridopacityv"></span></label><input type="range" id="gridopacity" min="0.05" max="1" step="0.05"></div>
         <div class="row"><label for="gridmargin">Grid border (stone widths)</label><input type="number" id="gridmargin" step="0.05" min="0" style="width:70px"></div>

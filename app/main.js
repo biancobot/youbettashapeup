@@ -35,7 +35,7 @@ const state = {
     gridOpacity: parseFloat(params.get('gridopacity') || '0.5'),
     origin: [0, 0],                                            // where the base view sits on the page (world units)
     // Page: a sheet of paper centred on the origin; the stone's width occupies `stoneWidth` inches of it
-    page: { enabled: params.get('page') === '1', width: 8.5, height: 11, stoneWidth: 2, dpi: 300, outline: true },
+    page: { enabled: params.get('page') === '1', width: 8.5, height: 8.5, stoneWidth: 2, dpi: 300, fit: 0.8 },
     // Background: cobblestone pavé of the current stone in random sizes and orientations, or a hexafoil of marquises
     pave: { enabled: false, pattern: 'cobblestone', minOpacity: 0.15, maxOpacity: 0.6, maxCarats: 5, minCarats: 0.02, mmPerInch: 25.4, margin: 0.03, seedCount: 6, samples: 40, patience: 80, maxCircles: 3000, seed: 1, labels: true, hexCarats: 1, hexOpacity: 0.3 },
     nextId: 1,
@@ -262,7 +262,7 @@ const pageLines = new THREE.LineSegments(new THREE.BufferGeometry(), pageMat);
 pageLines.renderOrder = -2; pageLines.visible = false; scene.add(pageLines);
 function updatePage() {
   const pg = state.sheet.page;
-  pageLines.visible = pg.enabled && pg.outline;
+  pageLines.visible = pg.enabled;   // the page outline is always drawn (and exported) with the page
   if (!pg.enabled) return;
   const r = pageRect();
   const pts = [r.minX, r.minY, -4.5, r.maxX, r.minY, -4.5, r.maxX, r.minY, -4.5, r.maxX, r.maxY, -4.5, r.maxX, r.maxY, -4.5, r.minX, r.maxY, -4.5, r.minX, r.maxY, -4.5, r.minX, r.minY, -4.5];
@@ -541,6 +541,21 @@ canvas.addEventListener('wheel', (e) => {
 }, { passive: false });
 /** Fit the sheet (or the page) in the preview again. */
 function fitView() { state.zoom = 1; state.pan = [0, 0]; resize(); }
+/**
+ * Scale all the views together so the whole arrangement spans `fraction` of the page (of its
+ * height or width, whichever binds) and centre it: sets the page's stone width and the origin.
+ */
+function fitViewsToPage(fraction = state.sheet.page.fit) {
+  const pg = state.sheet.page; if (!instances.size) return;
+  const bb = [Infinity, Infinity, -Infinity, -Infinity];
+  for (const inst of instances.values()) { bb[0] = Math.min(bb[0], inst.pos[0] + inst.bbox.minX); bb[1] = Math.min(bb[1], inst.pos[1] + inst.bbox.minY); bb[2] = Math.max(bb[2], inst.pos[0] + inst.bbox.maxX); bb[3] = Math.max(bb[3], inst.pos[1] + inst.bbox.maxY); }
+  const wStone = (bb[2] - bb[0]) / 2, hStone = (bb[3] - bb[1]) / 2;   // arrangement size in stone widths
+  pg.stoneWidth = Math.min((fraction * pg.height) / hStone, (fraction * pg.width) / wStone);
+  // centre: the arrangement's extent in world units does not change with the stone width, so shift the origin by its centre
+  state.sheet.origin[0] -= (bb[0] + bb[2]) / 2; state.sheet.origin[1] -= (bb[1] + bb[3]) / 2;
+  const el = document.getElementById('pagestone'); if (el) el.value = pg.stoneWidth.toFixed(3);
+  layout(true);
+}
 
 let anim = null;
 function snapTo(viewId, instant = false) {
@@ -575,12 +590,11 @@ function exportPNG(scaleFactor) {
   const filename = `${state.shapeId}-${suffix}.png`;
   saveFile(filename, url);
 }
-/** Export exactly the page at its print resolution: width x height inches at `dpi`, the page outline left out. */
+/** Export exactly the page at its print resolution: width x height inches at `dpi`, page outline included. */
 function exportPage() {
   const pg = state.sheet.page, r = pageRect();
   const pw = Math.round(pg.width * pg.dpi), ph = Math.round(pg.height * pg.dpi);
   const showMeet = state.showMeet; state.showMeet = false; updateMeetPoints();
-  const outline = pageLines.visible; pageLines.visible = false;
   const pr = renderer.getPixelRatio(), lw = lineMat.linewidth;
   renderer.setPixelRatio(1);
   renderer.setSize(pw, ph, false);
@@ -592,7 +606,7 @@ function exportPage() {
   cam.left = r.minX; cam.right = r.maxX; cam.top = r.maxY; cam.bottom = r.minY; cam.position.set(0, 0, 5); cam.lookAt(0, 0, 0); cam.updateProjectionMatrix();
   renderer.render(scene, cam);
   const url = renderer.domElement.toDataURL('image/png');
-  renderer.setPixelRatio(pr); lineMat.linewidth = lw; hiddenMat.linewidth = lw; pave.setLineWidth(lw); pageLines.visible = outline;
+  renderer.setPixelRatio(pr); lineMat.linewidth = lw; hiddenMat.linewidth = lw; pave.setLineWidth(lw);
   resize();
   state.showMeet = showMeet; updateMeetPoints();
   saveFile(`${state.shapeId}-page-${pg.width}x${pg.height}in-${pg.dpi}dpi.png`, url);
@@ -796,13 +810,15 @@ fovIn.value = state.fov; fovv.textContent = `${state.fov}°`;
 fovIn.addEventListener('input', () => { state.fov = parseFloat(fovIn.value); fovv.textContent = `${state.fov}°`; resize(); });
 
 const PAGE_SIZES = { letter: [8.5, 11], letterL: [11, 8.5], square85: [8.5, 8.5], a4: [8.27, 11.69], a4L: [11.69, 8.27], custom: null };
-const pageChk = document.getElementById('page'), pageSize = document.getElementById('pagesize'), pageW = document.getElementById('pagew'), pageH = document.getElementById('pageh'), pageStone = document.getElementById('pagestone'), pageDpi = document.getElementById('pagedpi'), pageOutline = document.getElementById('pageoutline');
+const pageChk = document.getElementById('page'), pageSize = document.getElementById('pagesize'), pageW = document.getElementById('pagew'), pageH = document.getElementById('pageh'), pageStone = document.getElementById('pagestone'), pageDpi = document.getElementById('pagedpi'), pageFit = document.getElementById('pagefit'), pageFitBtn = document.getElementById('pagefitbtn');
 if (pageChk) {
   const pg = state.sheet.page;
-  const refresh = () => { pageW.value = pg.width; pageH.value = pg.height; pageStone.value = pg.stoneWidth; pageDpi.value = pg.dpi; pageChk.checked = pg.enabled; pageOutline.checked = pg.outline; };
+  const refresh = () => { pageW.value = pg.width; pageH.value = pg.height; pageStone.value = pg.stoneWidth; pageDpi.value = pg.dpi; pageChk.checked = pg.enabled; pageFit.value = Math.round(pg.fit * 100); };
   refresh();
+  pageSize.value = 'square85';
   pageChk.addEventListener('change', () => { pg.enabled = pageChk.checked; layout(true); });
-  pageOutline.addEventListener('change', () => { pg.outline = pageOutline.checked; layout(true); });
+  pageFit.addEventListener('change', () => { pg.fit = Math.min(1, Math.max(0.05, (parseFloat(pageFit.value) || 80) / 100)); });
+  pageFitBtn.addEventListener('click', () => fitViewsToPage(pg.fit));
   pageSize.addEventListener('change', () => { const sz = PAGE_SIZES[pageSize.value]; if (sz) { pg.width = sz[0]; pg.height = sz[1]; refresh(); layout(true); } });
   const num = (el, key, min) => el.addEventListener('change', () => { const v = parseFloat(el.value); if (v >= min) { pg[key] = v; pageSize.value = 'custom'; layout(true); } });
   num(pageW, 'width', 0.5); num(pageH, 'height', 0.5); num(pageStone, 'stoneWidth', 0.05); num(pageDpi, 'dpi', 36);
@@ -911,7 +927,7 @@ requestAnimationFrame(frame);
 
 // Exposed for the screenshot tool and for scripting.
 window.__viewer = {
-  state, setDesign, snapTo, exportPNG, resize, addView, removeView, clearViews, resetView3d, snapCentre, fitView, editor, paveInfo: () => paveInfo, paveStones: () => pave.lastStones, pageRect, instances, camera: () => camera, gridCells: () => gridLines.userData.cells,
+  state, setDesign, snapTo, exportPNG, resize, addView, removeView, clearViews, resetView3d, snapCentre, fitView, fitViewsToPage, editor, paveInfo: () => paveInfo, paveStones: () => pave.lastStones, pageRect, instances, camera: () => camera, gridCells: () => gridLines.userData.cells,
   loadShape(id) { const { templates } = window.__templates; if (templates[id]) editor.design = templates[id].make(); },
   setLineWidth(v) { state.lineWidth = v; lineMat.linewidth = v; hiddenMat.linewidth = v; pave.setLineWidth(v); },
   setGirdleLines(v) { state.girdleLines = v; layout(true); },

@@ -105,8 +105,9 @@ rolls it, alt-drag moves it, the wheel over it scales it, ↺ resets it) while i
 its parent when the base turns. Each view can be locked against accidental dragging and can
 show its hidden lines in light grey. A grid option draws a table with a cell per view (columns
 and rows found from the views' extents), with adjustable line opacity and border. A page
-(Letter, A4, 8.5 × 8.5 or custom inches, with the stone's width on the page in inches) frames
-the sheet; views can be centred on it horizontally or vertically, the arrangement can be
+(8.5 × 8.5 by default, or Letter, A4 or custom inches, with the stone's width on the page in
+inches as the drawing scale, and a Fit button that scales all the views together to a share of
+the page) frames the sheet with its outline always drawn; views can be centred on it horizontally or vertically, the arrangement can be
 alt-dragged across it, the preview pans (right-drag) and zooms about the cursor with a Fit button to
 reframe, and Export PNG then writes the page at the chosen DPI. A background option fills the
 free area, right up to the views' outlines, with a cobblestone pavé of the current stone (a tangent
