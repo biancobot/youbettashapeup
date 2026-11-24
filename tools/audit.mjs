@@ -49,6 +49,7 @@ for (const spec of keys) {
     if (!onG.length) continue;
     if (onG.length === 1) continue;   // a single girdle vertex at full height: the facet touches the girdle at a point (a tangency), which needs no second facet
     for (const i of onG) {
+      if (vf.get(i).some((fi) => isG(m.faces[fi]) && inAllowed(m.faces[fi]))) continue;   // inside a declared thick zone a facet may run along the girdle (the heart's cleft lowers)
       const others = vf.get(i).filter((fi) => m.faces[fi] !== f && !isG(m.faces[fi]));
       if (!others.length) problems.push(`${t.name}: girdle vertex (${m.verts[i].map((v) => v.toFixed(3)).join(', ')}) shared with no other crown/pavilion facet`);
     }
