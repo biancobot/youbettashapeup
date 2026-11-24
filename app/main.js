@@ -9,7 +9,7 @@ import { templates, plots } from './gemcad/templates.js';
 window.__templates = { templates, plots };
 import { VIEWS, getView } from './views.js';
 import { createPave, packStones, paveSizes, hexafoilStones, convexHull, rng } from './pave.js';
-import { weightEstimator, weightFamily } from './gemcad/weights.js';
+import { weightEstimator, weightFamily, chartSize, CHART_SOURCE } from './gemcad/weights.js';
 
 // ----------------------------------------------------------------------------- state
 const params = new URLSearchParams(location.search);
@@ -301,9 +301,9 @@ function updatePave() {
   const hullEdges = []; for (let i = 0; i < hull.length; i++) { const a = hull[i], b = hull[(i + 1) % hull.length]; hullEdges.push(a[0], a[1], 0, b[0], b[1], 0); }
   let stones;
   if (pattern === 'hexafoil') stones = hexafoilStones(hull, area, exclusions, (sizer.widthMm(pv.hexCarats) * worldPerMm) / 2, pv.hexOpacity, rng(pv.seed));
-  else stones = packStones(hull, area, exclusions, paveSizes(sizer, pv.maxCarats, worldPerMm, pv.labels && !!est), pv, rng(pv.seed));
+  else stones = packStones(hull, area, exclusions, paveSizes(sizer, pv.maxCarats, worldPerMm, pv.labels && !!est, (c) => chartSize(family, c, st.ratio), st.L, st.W), pv, rng(pv.seed));
   pave.build({ key, stones, meshGeometry, hardGeometry, smoothPositions: new Float32Array(smoothEdgesFor(new THREE.Quaternion())), hullEdges: new Float32Array(hullEdges) });
-  paveInfo = { count: stones.length, note: pattern === 'hexafoil' ? `Hexafoil: ${stones.length} marquises of ${pv.hexCarats} ct (${sizer.widthMm(pv.hexCarats).toFixed(2)} mm wide)` : est ? `${stones.length} stones, ${est.label} estimator (factor ${est.factor.toFixed(5)}): 1 ct is ${est.widthMm(1).toFixed(2)} mm wide, 5 ct ${est.widthMm(5).toFixed(2)} mm` : `${stones.length} stones; no weight estimator covers this shape, so sizes use the round factor and no carat labels are drawn` };
+  paveInfo = { count: stones.length, note: pattern === 'hexafoil' ? `Hexafoil: ${stones.length} marquises of ${pv.hexCarats} ct (${sizer.widthMm(pv.hexCarats).toFixed(2)} mm wide)` : est ? `${stones.length} stones, ${est.label} estimator (factor ${est.factor.toFixed(5)}): 1 ct is ${est.widthMm(1).toFixed(2)} mm wide, 5 ct ${est.widthMm(5).toFixed(2)} mm; the labelled outlines use the ${CHART_SOURCE} dimensions${chartSize(family, 1, st.ratio) ? ` (1 ct ${chartSize(family, 1, st.ratio).length.toFixed(1)} x ${chartSize(family, 1, st.ratio).width.toFixed(1)} mm)` : ''}` : `${stones.length} stones; no weight estimator covers this shape, so sizes use the round factor and no carat labels are drawn` };
   renderPaveInfo();
 }
 function renderPaveInfo() { const el = document.getElementById('paveinfo'); if (el) el.textContent = paveInfo.note; }

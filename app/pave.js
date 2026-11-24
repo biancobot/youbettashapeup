@@ -43,13 +43,15 @@ function overlap(A, B) {
   return true;
 }
 
-const transform = (hull, s, ang, cx, cy) => { const c = Math.cos(ang), sn = Math.sin(ang); return hull.map(([x, y]) => [cx + s * (x * c - y * sn), cy + s * (x * sn + y * c)]); };
+/** Hull scaled by s (a number, or [sx, sy] in the stone's own frame), turned by ang and moved to (cx, cy). */
+const transform = (hull, s, ang, cx, cy) => { const c = Math.cos(ang), sn = Math.sin(ang), sx = Array.isArray(s) ? s[0] : s, sy = Array.isArray(s) ? s[1] : s; return hull.map(([x, y]) => [cx + sx * x * c - sy * y * sn, cy + sx * x * sn + sy * y * c]); };
 const rectPoly = (r) => [[r.minX, r.minY], [r.maxX, r.minY], [r.maxX, r.maxY], [r.minX, r.maxY]];
 
 /**
  * Pack stones into `area` (world rect) avoiding `exclusions` (world rects). hull: the stone's
- * face-up outline at its natural size (width 2). sizes: [{ carats, scale, label }] largest
- * first. Returns [{ x, y, angle, scale, carats, label, opacity }].
+ * face-up outline at its natural size (width 2). sizes: [{ carats, scale, label, labelScale }]
+ * largest first; labelScale ([sx, sy]) is the chart-dimension scale a labelled stone gets instead
+ * of `scale`. Returns [{ x, y, angle, scale, carats, label, opacity }].
  */
 export function packStones(hull, area, exclusions, sizes, settings, random) {
   const placed = [];   // { poly, cx, cy, r }
@@ -60,23 +62,26 @@ export function packStones(hull, area, exclusions, sizes, settings, random) {
   const aw = area.maxX - area.minX, ah = area.maxY - area.minY;
   const labelled = new Set();
   for (const size of sizes) {
-    const s = size.scale, r = hullR * s * (1 + gap);
-    if (2 * r > Math.min(aw, ah)) continue;
-    const stoneArea = Math.PI * r * r;
-    const attempts = Math.min(4000, Math.max(300, Math.round((aw * ah) / stoneArea) * 6));
-    let fails = 0;
-    for (let k = 0; k < attempts && fails < settings.patience; k++) {
+    for (let k = 0, fails = 0, attempts = 0; k < attempts || k === 0; k++) {
+      // the first placement of a labelled size is the labelled stone, at the chart's dimensions
+      const labelThis = size.label && !labelled.has(size.carats);
+      const s = labelThis && size.labelScale ? size.labelScale : size.scale;
+      const smax = Array.isArray(s) ? Math.max(...s) : s;
+      const r = hullR * smax * (1 + gap);
+      if (2 * r > Math.min(aw, ah)) break;
+      if (k === 0) attempts = Math.min(4000, Math.max(300, Math.round((aw * ah) / (Math.PI * r * r)) * 6));
+      if (fails >= settings.patience) break;
       const cx = area.minX + r + random() * (aw - 2 * r), cy = area.minY + r + random() * (ah - 2 * r);
       const ang = random() * Math.PI * 2;
       // cheap circle pre-check against placed stones, then exact polygon tests
       let bad = false;
-      const poly = transform(hull, s * (1 + gap), ang, cx, cy);
+      const poly = transform(hull, Array.isArray(s) ? [s[0] * (1 + gap), s[1] * (1 + gap)] : s * (1 + gap), ang, cx, cy);
       for (const e of excl) if (overlap(poly, e)) { bad = true; break; }
       if (!bad) for (const q of placed) { if (Math.hypot(q.cx - cx, q.cy - cy) < q.r + r && overlap(poly, q.poly)) { bad = true; break; } }
       if (bad) { fails++; continue; }
       fails = 0;
       placed.push({ poly, cx, cy, r });
-      const label = size.label && !labelled.has(size.carats) ? size.carats : null;
+      const label = labelThis ? size.carats : null;
       if (label) labelled.add(size.carats);
       out.push({ x: cx, y: cy, angle: ang, scale: s, carats: size.carats, label, opacity: settings.minOpacity + random() * (settings.maxOpacity - settings.minOpacity) });
     }
@@ -150,13 +155,15 @@ export function createPave(scene, occluderMat) {
     const smoothGeo = o.smoothPositions && o.smoothPositions.length ? new LineSegmentsGeometry().setPositions(o.smoothPositions) : null;
     for (const st of stones) {
       const g = new THREE.Group();
-      g.position.set(st.x, st.y, 0); g.rotation.z = st.angle; g.scale.setScalar(st.scale);
+      g.position.set(st.x, st.y, 0); g.rotation.z = st.angle;
+      if (Array.isArray(st.scale)) g.scale.set(st.scale[0], st.scale[1], 1); else g.scale.setScalar(st.scale);
       const mat = new LineMaterial({ color: 0x000000, linewidth: lineWidth, worldUnits: false, transparent: true, opacity: st.opacity, depthTest: true, depthWrite: true });
       mat.resolution.set(resolution[0], resolution[1]); mats.push(mat);
       if (st.label) {
         g.add(new LineSegments2(outlineGeo, mat));
         const lbl = makeLabel(`${st.label} ct`, 0.42, st.opacity);   // text height: 0.21 of the stone's width
         lbl.position.z = 0.1; lbl.rotation.z = -st.angle;            // keep the number upright
+        if (Array.isArray(st.scale)) lbl.scale.set(1 / st.scale[0] * Math.min(...st.scale), 1 / st.scale[1] * Math.min(...st.scale), 1);   // undo the stretch on the text
         g.add(lbl);
       } else {
         const mesh = new THREE.Mesh(o.meshGeometry, occluderMat);
@@ -172,10 +179,18 @@ export function createPave(scene, occluderMat) {
   return { group, build, clear, setResolution, setLineWidth, get count() { return count; }, set visible(v) { group.visible = v; }, get visible() { return group.visible; } };
 }
 
-/** Stone sizes to pack, largest first: the chart sizes (labelled when the estimator covers the shape) plus filler sizes. */
-export function paveSizes(estimator, maxCarats, worldPerMm, labels) {
+/**
+ * Stone sizes to pack, largest first: the chart sizes (labelled when the estimator covers the
+ * shape) plus filler sizes. chartDims(carats) -> { length, width } mm from the trade chart, or
+ * null: a labelled stone is stretched to those dimensions (stoneL, stoneW: the design's own
+ * length and width in its units); unlabelled stones use the estimator.
+ */
+export function paveSizes(estimator, maxCarats, worldPerMm, labels, chartDims = () => null, stoneL = 2, stoneW = 2) {
   const chart = CHART_CARATS.filter((c) => c <= maxCarats);
   const filler = [maxCarats, 2.5, 1.25, 0.75, 0.4, 0.2, 0.15, 0.1, 0.07, 0.05, 0.03].filter((c) => c <= maxCarats);
   const all = [...new Set([...chart, ...filler])].sort((a, b) => b - a);
-  return all.map((carats) => ({ carats, scale: (estimator.widthMm(carats) * worldPerMm) / 2, label: labels && chart.includes(carats) }));
+  return all.map((carats) => {
+    const d = chart.includes(carats) ? chartDims(carats) : null;
+    return { carats, scale: (estimator.widthMm(carats) * worldPerMm) / 2, label: labels && chart.includes(carats), labelScale: d ? [(d.width * worldPerMm) / stoneW, (d.length * worldPerMm) / stoneL] : null };
+  });
 }

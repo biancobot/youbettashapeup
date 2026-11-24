@@ -14,7 +14,7 @@ companion produces STEP solids and exact vector SVG views with OpenCascade.
 npm start
 ```
 
-Then open `http://localhost:8000/`. The page header shows its build number (currently 43); if it
+Then open `http://localhost:8000/`. The page header shows its build number (currently 44); if it
 shows an older one after a `git pull`, hard-reload (Ctrl+Shift+R). Pass another port as `node tools/serve.mjs 8123` if 8000
 is taken. The site is static ES modules, so it must be served over HTTP (not `file://`).
 `diag.html` runs a step-by-step load check if the page does not come up.
@@ -111,7 +111,7 @@ alt-dragged across it, the preview pans (right-drag) and zooms about the cursor 
 reframe, and Export PNG then writes the page at the chosen DPI. A background option fills the
 free area with a cobblestone pavé of the current stone (random sizes up to a chosen carat
 weight, sized by the trade weight estimators, random orientations and opacities, with outline
-stones labelled 0.25 to 5 ct for shapes the estimators cover) or, for the marquise, a hexafoil
+stones labelled 0.25 to 5 ct at the trade size chart's dimensions for shapes the estimators cover) or, for the marquise, a hexafoil
 tiling of one-size marquises at one opacity. Without a page,
 Export PNG writes the preview at 1x to 8x.
 
