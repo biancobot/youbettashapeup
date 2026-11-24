@@ -311,7 +311,9 @@ function updatePave() {
     // circle radii from carat weights: the circumscribed circle of the stone at that weight
     const hullR = Math.max(...hull.map(([x, y]) => Math.hypot(x, y)));
     const rOf = (ct) => (hullR * sizer.widthMm(ct) * worldPerMm) / 2;
-    const settings = { ...pv, rMin: rOf(pv.minCarats), rMax: rOf(pv.maxCarats), rSingle: rOf(pv.singleBelow), seedMin: rOf(pv.maxCarats) * 0.6, margin: pv.margin * 2, gapPad: 0.04 };
+    // melee as single cuts only on a round page: with any other shape the small stones stay that shape
+    const roundPage = family === 'round' || /single cut/i.test(design.name);
+    const settings = { ...pv, rMin: rOf(pv.minCarats), rMax: rOf(pv.maxCarats), rSingle: roundPage ? rOf(pv.singleBelow) : 0, seedMin: rOf(pv.maxCarats) * 0.6, margin: pv.margin * 2, gapPad: 0.04 };
     if (pave.lastKey !== key) {
       const t0 = performance.now();
       const res = cobblestoneStones(hull, area, obstacles, paveSizes(sizer, pv.maxCarats, worldPerMm, pv.labels && !!est, (c) => chartSize(family, c, st.ratio), st.L, st.W), settings, rng(pv.seed));
@@ -329,7 +331,7 @@ function updatePave() {
   pave.build({ key, stones, meshPositions: geo.positions, hardEdges: geo.hardEdges, smoothPositions: new Float32Array(smoothEdgesFor(new THREE.Quaternion())), hullEdges: new Float32Array(hullEdges), single: updatePave.single });
   pave.lastKey = key;
   const singles = stones.filter((q) => q.kind === 'single').length;
-  const packNote = check ? ` ${singles} stones under ${pv.singleBelow} ct are single cuts. Packing: ${check.count} circles, ${check.tangent2} touching two or more boundaries, ${check.overlaps} overlaps, ${check.intrusions} intrusions${check.gapFilled ? `, plus ${check.gapFilled} smaller stones fitted into the circles' corners` : ''} (${check.ms} ms).` : '';
+  const packNote = check ? `${singles ? ` ${singles} stones under ${pv.singleBelow} ct are single cuts.` : ''} Packing: ${check.count} circles, ${check.tangent2} touching two or more boundaries, ${check.overlaps} overlaps, ${check.intrusions} intrusions${check.gapFilled ? `, plus ${check.gapFilled} smaller stones fitted into the circles' corners` : ''} (${check.ms} ms).` : '';
   paveInfo = { count: stones.length, check, note: pattern === 'hexafoil' ? `Hexafoil: ${stones.length} marquises of ${pv.hexCarats} ct (${sizer.widthMm(pv.hexCarats).toFixed(2)} mm wide)` : (est ? `${stones.length} stones, ${est.label} estimator (factor ${est.factor.toFixed(5)}): 1 ct is ${est.widthMm(1).toFixed(2)} mm wide, 5 ct ${est.widthMm(5).toFixed(2)} mm; the labelled outlines use the ${CHART_SOURCE} dimensions${chartSize(family, 1, st.ratio) ? ` (1 ct ${chartSize(family, 1, st.ratio).length.toFixed(1)} x ${chartSize(family, 1, st.ratio).width.toFixed(1)} mm)` : ''}.` : `${stones.length} stones; no weight estimator covers this shape, so sizes use the round factor and no carat labels are drawn.`) + packNote };
   renderPaveInfo();
 }
