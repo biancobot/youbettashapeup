@@ -25,7 +25,8 @@ const state = {
   sheet: {
     standard: params.get('standard') === 'first' ? 'first' : 'third',
     gaps: { left: 0.3, right: 0.3, above: 0.3, below: 0.3 },   // in stone widths, between view bounding boxes
-    views: [],                                                 // { id, parent, dir, gap, kind: 'ortho' | '3d', rot }
+    views: [],                                                 // { id, parent, dir, gap, kind: 'ortho' | '3d', rot, locked, hidden, offset, scale }
+    base: { locked: false, hidden: false },                    // the base view's own lock and hidden-line flags
     nextId: 1,
   },
 };
@@ -50,6 +51,12 @@ const occluderMat = new THREE.MeshBasicMaterial({
 });
 const lineMat = new LineMaterial({ color: 0x000000, linewidth: state.lineWidth, worldUnits: false, depthTest: true, depthWrite: true });
 lineMat.resolution.set(1, 1);
+// Hidden lines: the same edges drawn light grey only where they lie behind the stone's surface
+// (depth test "greater" against the occluder faces); drawn after the faces and before the
+// visible lines, so visible black lines stay on top where the two cross.
+const hiddenMat = new LineMaterial({ color: 0xbdbdbd, linewidth: state.lineWidth, worldUnits: false, depthTest: true, depthWrite: false });
+hiddenMat.depthFunc = THREE.GreaterDepth;
+hiddenMat.resolution.set(1, 1);
 
 let geo = null;                 // current shape buffers
 let meshGeometry = null, hardGeometry = null;
@@ -77,9 +84,13 @@ function makeInstance(id) {
   const hard = new LineSegments2(hardGeometry, lineMat);
   const smooth = new LineSegments2(new LineSegmentsGeometry().setPositions(new Float32Array(6)), lineMat);
   smooth.visible = false;
-  group.add(mesh, hard, smooth);
+  const hiddenHard = new LineSegments2(hardGeometry, hiddenMat);
+  const hiddenSmooth = new LineSegments2(new LineSegmentsGeometry().setPositions(new Float32Array(6)), hiddenMat);
+  hiddenHard.visible = false; hiddenSmooth.visible = false;
+  mesh.renderOrder = 0; hiddenHard.renderOrder = 1; hiddenSmooth.renderOrder = 1; hard.renderOrder = 2; smooth.renderOrder = 2;
+  group.add(mesh, hiddenHard, hiddenSmooth, hard, smooth);
   scene.add(group);
-  const inst = { id, group, mesh, hard, smooth, lastQ: null, lastMode: null, q: new THREE.Quaternion(), pos: [0, 0], bbox: null };
+  const inst = { id, group, mesh, hard, smooth, hiddenHard, hiddenSmooth, lastQ: null, lastMode: null, q: new THREE.Quaternion(), pos: [0, 0], bbox: null, scale: 1 };
   instances.set(id, inst);
   return inst;
 }
@@ -88,6 +99,7 @@ function disposeInstances() {
   for (const inst of instances.values()) {
     scene.remove(inst.group);
     inst.smooth.geometry.dispose();
+    inst.hiddenSmooth.geometry.dispose();
   }
   instances.clear();
 }
@@ -149,6 +161,7 @@ function syncInstances() {
       const inst = instances.get(id);
       scene.remove(inst.group);
       inst.smooth.geometry.dispose();
+      inst.hiddenSmooth.geometry.dispose();
       instances.delete(id);
     }
   }
@@ -181,6 +194,15 @@ function updateSilhouette(inst, force) {
     inst.smooth.geometry = new LineSegmentsGeometry().setPositions(new Float32Array(6));
     inst.smooth.visible = false;
   }
+  // hidden girdle lines: every girdle edge when the girdle lines are on, otherwise none (a
+  // silhouette has no hidden part)
+  inst.hiddenSmooth.geometry.dispose();
+  inst.hiddenSmooth.geometry = state.girdleLines && s.positions.length ? new LineSegmentsGeometry().setPositions(s.positions) : new LineSegmentsGeometry().setPositions(new Float32Array(6));
+}
+/** Show or hide an instance's hidden-line pass. */
+function applyHidden(inst, on) {
+  inst.hiddenHard.visible = on;
+  inst.hiddenSmooth.visible = on && state.girdleLines;
 }
 
 /** Screen-space bounding box of the stone under rotation q. */
@@ -207,12 +229,17 @@ function layout(force) {
   base.q.copy(baseQ).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), (state.spin * Math.PI) / 180));
   base.pos = [0, 0];
   base.bbox = bboxFor(base.q);
+  base.scale = 1;
+  applyHidden(base, state.sheet.base.hidden);
   const placed = [];   // views laid out so far, to stack siblings that share a side of the same parent
   for (const v of state.sheet.views) {
     const parent = instances.get(v.parent);
     const inst = instances.get(v.id);
     inst.q.copy(v.kind === '3d' ? v.rot : PROJECT[state.sheet.standard][v.dir]).multiply(parent.q);
+    inst.scale = v.kind === '3d' ? v.scale || 1 : 1;
     inst.bbox = bboxFor(inst.q);
+    if (inst.scale !== 1) for (const k of ['minX', 'minY', 'maxX', 'maxY']) inst.bbox[k] *= inst.scale;
+    applyHidden(inst, !!v.hidden);
     const gap = v.gap ?? state.sheet.gaps[v.dir];
     // anchor: the parent, or the outermost earlier sibling on the same side, so views on one side line up outward
     const sibling = placed.filter((w) => w.parent === v.parent && w.dir === v.dir).pop();
@@ -223,11 +250,13 @@ function layout(force) {
     else if (v.dir === 'left') inst.pos = [pp[0] + pb.minX - gap - cb.maxX, pp[1]];
     else if (v.dir === 'above') inst.pos = [pp[0], pp[1] + pb.maxY + gap - cb.minY];
     else inst.pos = [pp[0], pp[1] + pb.minY - gap - cb.maxY];
+    if (v.kind === '3d' && v.offset) { inst.pos[0] += v.offset[0]; inst.pos[1] += v.offset[1]; }   // dragged to a new place
   }
   overall = { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity };
   for (const inst of instances.values()) {
     inst.group.quaternion.copy(inst.q);
     inst.group.position.set(inst.pos[0], inst.pos[1], 0);
+    inst.group.scale.setScalar(inst.scale || 1);
     updateSilhouette(inst, force);
     overall.minX = Math.min(overall.minX, inst.pos[0] + inst.bbox.minX);
     overall.maxX = Math.max(overall.maxX, inst.pos[0] + inst.bbox.maxX);
@@ -245,6 +274,7 @@ function resize() {
   renderer.setSize(w, h, false);
   updateCamera(w, h);
   lineMat.resolution.set(renderer.domElement.width, renderer.domElement.height);
+  hiddenMat.resolution.set(renderer.domElement.width, renderer.domElement.height);
 }
 
 function updateCamera(w, h) {
@@ -295,14 +325,23 @@ function hitView3d(clientX, clientY) {
   return best;
 }
 canvas.addEventListener('pointerdown', (e) => {
-  drag = { x: e.clientX, y: e.clientY, roll: e.shiftKey, moved: false, view3d: hitView3d(e.clientX, e.clientY) };
+  drag = { x: e.clientX, y: e.clientY, roll: e.shiftKey, move: e.altKey, moved: false, view3d: hitView3d(e.clientX, e.clientY) };
   canvas.setPointerCapture(e.pointerId);
 });
+/** World units per CSS pixel of the current orthographic camera. */
+function worldPerPixel() { const rect = canvas.getBoundingClientRect(); return (camera.right - camera.left) / rect.width; }
 canvas.addEventListener('pointermove', (e) => {
   if (!drag) return;
   const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
   if (Math.abs(dx) + Math.abs(dy) > 2) drag.moved = true;
   if (!drag.moved) return;
+  // locks: a locked 3D view ignores the drag; a locked base ignores drags everywhere else (the projected views follow it)
+  if (drag.view3d ? drag.view3d.locked : state.sheet.base.locked) { drag.x = e.clientX; drag.y = e.clientY; return; }
+  if (drag.view3d && drag.move) {   // alt-drag: move the 3D view on the sheet
+    const wpp = worldPerPixel(); const v = drag.view3d; v.offset = v.offset || [0, 0];
+    v.offset[0] += dx * wpp; v.offset[1] -= dy * wpp;
+    drag.x = e.clientX; drag.y = e.clientY; layout(false); return;
+  }
   const rect = canvas.getBoundingClientRect();
   const target = drag.view3d ? drag.view3d.rot : baseQ;   // a 3D view rotates on its own; anything else rotates the base
   if (drag.roll) {
@@ -339,6 +378,12 @@ const endDrag = () => { drag = null; };
 canvas.addEventListener('pointercancel', endDrag);
 canvas.addEventListener('wheel', (e) => {
   e.preventDefault();
+  const v = hitView3d(e.clientX, e.clientY);
+  if (v) {   // the wheel over a 3D view scales that view; elsewhere it zooms the sheet
+    if (v.locked) return;
+    v.scale = Math.min(5, Math.max(0.2, (v.scale || 1) * Math.exp(-e.deltaY * 0.0015)));
+    renderViewList(); layout(true); return;
+  }
   state.zoom = Math.min(20, Math.max(0.2, state.zoom * Math.exp(-e.deltaY * 0.0015)));
   resize();
 }, { passive: false });
@@ -401,15 +446,15 @@ async function saveFile(filename, dataUrl) {
 // ----------------------------------------------------------------------------- sheet views
 function addView(parentId, dir, kind = 'ortho') {
   const id = `v${state.sheet.nextId++}`;
-  state.sheet.views.push({ id, parent: parentId, dir, gap: null, kind, rot: kind === '3d' ? ISO_TILT() : null });
+  state.sheet.views.push({ id, parent: parentId, dir, gap: null, kind, rot: kind === '3d' ? ISO_TILT() : null, locked: false, hidden: false, offset: [0, 0], scale: 1 });
   renderViewList();
   layout(true);
   return id;
 }
-/** Put a 3D view back to the isometric tilt of its parent. */
+/** Put a 3D view back to the isometric tilt of its parent, at its laid-out place and natural size. */
 function resetView3d(id) {
   const v = state.sheet.views.find((x) => x.id === id);
-  if (v && v.kind === '3d') { v.rot = ISO_TILT(); layout(false); }
+  if (v && v.kind === '3d') { v.rot = ISO_TILT(); v.offset = [0, 0]; v.scale = 1; renderViewList(); layout(true); }
 }
 function removeView(id) {
   const drop = new Set([id]);
@@ -446,6 +491,17 @@ function renderViewList() {
     name.textContent = viewLabel(id);
     row.appendChild(name);
     const v = state.sheet.views.find((x) => x.id === id);
+    const flags = document.createElement('span'); flags.className = 'viewflags';
+    const check = (label, title, get, set) => {
+      const l = document.createElement('label'); l.title = title;
+      const c = document.createElement('input'); c.type = 'checkbox'; c.checked = get();
+      c.addEventListener('change', () => { set(c.checked); layout(true); });
+      l.appendChild(c); l.appendChild(document.createTextNode(label)); flags.appendChild(l);
+    };
+    const holder = v || state.sheet.base;
+    if (!v || v.kind === '3d') check('lock', v ? 'Locked: dragging over this 3D view does nothing' : 'Locked: dragging the sheet does not rotate the base (projected views follow the base, so this locks them too)', () => !!holder.locked, (x) => { holder.locked = x; });
+    check('hidden', 'Draw the hidden lines of this view in light grey', () => !!holder.hidden, (x) => { holder.hidden = x; });
+    row.appendChild(flags);
     if (v) {
       const gap = document.createElement('input');
       gap.type = 'number'; gap.step = '0.05'; gap.min = '0'; gap.title = 'Gap to parent view (stone widths)';
@@ -458,6 +514,11 @@ function renderViewList() {
         side.value = v.dir;
         side.addEventListener('change', () => { v.dir = side.value; renderViewList(); layout(true); });
         row.appendChild(side);
+        const sc = document.createElement('input');
+        sc.type = 'number'; sc.step = '0.1'; sc.min = '0.2'; sc.max = '5'; sc.title = 'Scale of this 3D view (the wheel over it also scales it)';
+        sc.value = (v.scale || 1).toFixed(2);
+        sc.addEventListener('change', () => { v.scale = Math.min(5, Math.max(0.2, parseFloat(sc.value) || 1)); layout(true); });
+        row.appendChild(sc);
       }
     }
     const btns = document.createElement('span');
@@ -469,12 +530,12 @@ function renderViewList() {
       btns.appendChild(b);
     }
     const b3 = document.createElement('button');
-    b3.textContent = '3D'; b3.title = 'Add a 3D (isometric) view of this one, placed to its right; drag over it to turn it on its own, it still follows this view';
+    b3.textContent = '3D'; b3.title = 'Add a 3D (isometric) view of this one, placed to its right; drag over it to turn it, alt-drag to move it, wheel to scale it; it still follows this view';
     b3.addEventListener('click', () => addView(id, 'right', '3d'));
     btns.appendChild(b3);
     if (v && v.kind === '3d') {
       const r = document.createElement('button');
-      r.textContent = '↺'; r.title = 'Reset this 3D view to the isometric tilt';
+      r.textContent = '↺'; r.title = 'Reset this 3D view: isometric tilt, laid-out place, natural size';
       r.addEventListener('click', () => resetView3d(id));
       btns.appendChild(r);
     }

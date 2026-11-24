@@ -14,7 +14,7 @@ companion produces STEP solids and exact vector SVG views with OpenCascade.
 npm start
 ```
 
-Then open `http://localhost:8000/`. The page header shows its build number (currently 38); if it
+Then open `http://localhost:8000/`. The page header shows its build number (currently 39); if it
 shows an older one after a `git pull`, hard-reload (Ctrl+Shift+R). Pass another port as `node tools/serve.mjs 8123` if 8000
 is taken. The site is static ES modules, so it must be served over HTTP (not `file://`).
 `diag.html` runs a step-by-step load check if the page does not come up.
@@ -101,8 +101,9 @@ projection. Drawing sheets: choose first- or third-angle projection, then click 
 beside a view to project a new view from it; projected views can be projected from again,
 follow the base view, and are spaced by configurable gaps. **3D** beside a view adds an
 isometric view of it on a chosen side; dragging over a 3D view turns it on its own (shift-drag
-rolls it, ↺ resets it) while it still follows its parent when the base turns. Export PNG at 1x
-to 8x.
+rolls it, alt-drag moves it, the wheel over it scales it, ↺ resets it) while it still follows
+its parent when the base turns. Each view can be locked against accidental dragging and can
+show its hidden lines in light grey. Export PNG at 1x to 8x.
 
 ## Exact CAD output
 
