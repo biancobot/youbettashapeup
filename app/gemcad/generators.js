@@ -1,5 +1,5 @@
 // Design generators: standard designs expressed as tiers from published proportion parameters.
-import { newTier, tierFromPlane, expandIndex, azimuthDeg } from './design.js?v=63';
+import { newTier, tierFromPlane, expandIndex, azimuthDeg } from './design.js?v=64';
 
 const rad = (d) => (d * Math.PI) / 180;
 const unit = (v) => { const l = Math.hypot(...v); return v.map((c) => c / l); };
