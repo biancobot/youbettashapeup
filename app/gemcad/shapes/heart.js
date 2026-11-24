@@ -20,8 +20,7 @@
 import { newTier, tierFromPlane } from '../design.js';
 import {
   rad, deg, heartHalfOutline, mirrorSupport, chordAz, girdleVertices, vertexNear, vertexNearY, lift,
-  planeThrough, planeAz, mirrorX, zPlane, yPlane, azPlane, perpPlane, classTier, girdleFromSupport, girdleEqualLength, plane3, intersect3,
-} from '../shapebuild.js';
+  planeThrough, planeAz, mirrorX, zPlane, yPlane, azPlane, perpPlane, classTier, girdleFromSupport, girdleEqualLength, plane3, intersect3, azOf } from '../shapebuild.js';
 
 /*
  * Positions measured on IGI report FDR675586951 (plot 1055 x 530 px; crown left half, centre
@@ -125,6 +124,8 @@ export function heartStart({
   starHeight = 0.65, cleftTip = 0.65, culetOffset = 0.12, pavilionCleft = 0.41, bellyContact = 13, wingContact = -51,
   gear = 96, girdleFacets = 128,
   frenchTips = true, tipHubHeight = 0.75, tipTable = PLOT.crown.B0, tipGirdle = 0.16,
+  lobeContact = PLOT.crown.Gc, cleftTipAz = PLOT.crown.J1, lobeCorner = PLOT.crown.V, sideCorner = PLOT.crown.X, lowerCorner = PLOT.crown.D,
+  lobeUppers = 1, junctionsOnRidges = false,
 } = {}) {
   const W = 2, l = ratio, H = crownHeight * W, g = girdle * W, Pd = pavilionDepth * W;
   const outline = heartHalfOutline(l, lobe, lowerRadius);
@@ -152,7 +153,7 @@ export function heartStart({
     return plane;
   };
   const G = (az, z = 0) => lift(vertexNear(verts, az), z);
-  const pc = PLOT.crown;
+  const pc = { ...PLOT.crown, Gc: lobeContact, J1: cleftTipAz, V: lobeCorner, X: sideCorner, D: lowerCorner };
 
   // ---- crown bezels: lobe bezel tangent at Gc with the outline normal; side and lower bezels
   // through two girdle vertices (the template draws them touching the girdle along an arc)
@@ -167,7 +168,14 @@ export function heartStart({
   const Gs = G(sideAz), Gl = G(lowerAz);
   const sideBezel = planeThrough(crownAngle, outline.normalAz(vertexNear(verts, sideAz).az), Gs);
   const lowerBezel = planeThrough(lowerAngle, outline.normalAz(vertexNear(verts, lowerAz).az), Gl);
-  const j1Az = (pc.Gc + sideAz) / 2, fAz = (sideAz + lowerAz) / 2, j3Az = (lowerAz - 90) / 2;
+  // junction azimuths: where each bezel ridge (the two bezel planes' intersection) crosses the
+  // girdle level, so the two uppers, the two bezels and the girdle meet at one vertex there (the
+  // ridge of two planes tangent to a convex outline meets z = 0 just outside the outline; its
+  // radial azimuth is where the ridge crosses the girdle)
+  const ridgeAz = (p, q) => azOf(intersect3(p, q, zPlane(0)));
+  const j1Az = junctionsOnRidges ? ridgeAz(lobeBezel, sideBezel) : (pc.Gc + sideAz) / 2;
+  const fAz = junctionsOnRidges ? ridgeAz(sideBezel, lowerBezel) : (sideAz + lowerAz) / 2;
+  const j3Az = (lowerAz - 90) / 2;
   // girdle meet points: each upper passes through its star tip and two girdle vertices (a bezel
   // contact and a junction), so bezel tips and junctions are points where three facets meet the
   // girdle; between those points the upper dips into the girdle (the valley of a scalloped
@@ -216,7 +224,12 @@ export function heartStart({
   const zAt = (pl, p) => (pl.d - pl.n[0] * p[0] - pl.n[1] * p[1]) / pl.n[2];
   const GaC = [Ga[0], Ga[1], zAt(cleft, Ga)];
   addClass('B cleft-lobe', plane3(J1, GaC, Gb, true));
-  addClass('B lobe', plane3(J1, Gb, Gc, true));
+  if (lobeUppers >= 2) {
+    // a long lobe arc between the top junction and the bezel contact: two uppers meeting at a junction midway, as on the sides
+    const Gm = G((pc.Gb + pc.Gc) / 2);
+    addClass('B lobe-top', plane3(J1, Gb, Gm, true));
+    addClass('B lobe', plane3(J1, Gm, Gc, true));
+  } else addClass('B lobe', plane3(J1, Gb, Gc, true));
   addClass('B lobe-side', plane3(Wt, Gc, Gj1, true));
   addClass('B side-lobe', plane3(Wt, Gj1, Gs, true));
   addClass('B side', plane3(A, Gs, Gfj, true));
@@ -282,6 +295,7 @@ export function heartStart({
       `Non-convex: the cleft makes the heart the union of two convex halves split on the mirror plane. Tiers ${halves} cut one half only (marked half:right / half:left); the others are ordinary mirror pairs. GemCad has no such facets: the .asc export marks them in the cutting instructions.`,
     ],
     tiers,
+    points: { C, J1, T0, V, X, D, Wt, A, B0, E, hub, Gc, Gs, Gl, Ga, Gb, Gj1, Gfj, Gj3, cleftAngle: cleftA, j1Az, fAz, j3Az },   // key meet points (right half), for tooling
   };
 }
 
@@ -308,10 +322,33 @@ const french = [
   { key: 'tipGirdle', label: 'Tip girdle point', default: 0.16, step: 0.01, title: 'Tip facet girdle point from the point, fraction of the half-length' },
 ];
 
+/**
+ * Facet positions measured on the hand-drawn reference (symmetrised; radial azimuths from the
+ * stone's centre, degrees counter-clockwise from +x on the right half): lobe bezel contact 34.8
+ * (the IGI plot: 43.9), cleft star tip 52.6 (57.8) at (0.49, 0.64) of the half-width, i.e. the
+ * lobe kite's top edge runs nearly level from the girdle contact to the cleft star tip. On a
+ * 35-degree bezel with a 12% crown that tip would be above the table, so the drawn head needs a
+ * 32-degree crown 14% high with the cleft star tip at 83% of it and a 30-degree cleft bezel (the
+ * table apex then sits just below the cleft, as drawn). The table corners are brought in toward
+ * the drawing's (lobe 42, side 15, lower -40; the drawing's own 36 / 0 / -25 would put the
+ * lobe table corner past the lobe-side ridge and make the side-lower star as steep as the
+ * bezels, hiding the side uppers). The long lobe arc gets two uppers, and the upper-girdle
+ * junctions sit where the bezel ridges cross the girdle.
+ */
+const DRAWN = { ratio: 0.91, lobe: 0.53, lowerRadius: 2.0, crownAngle: 32, crownHeight: 0.14, cleftTip: 0.83, cleftAngle: 30, lobeContact: 34.8, cleftTipAz: 52.6, lobeCorner: 42, sideCorner: 15, lowerCorner: -40, lobeUppers: 2, junctionsOnRidges: true };
+const drawnContacts = [
+  { key: 'lobeContact', label: 'Lobe contact', default: DRAWN.lobeContact, step: 1, title: 'Radial azimuth where the lobe bezel touches the girdle (IGI plot 43.9)' },
+  { key: 'cleftTipAz', label: 'Cleft star tip', default: DRAWN.cleftTipAz, step: 1, title: 'Radial azimuth of the cleft star tip on the lobe bezel (IGI plot 57.8)' },
+  { key: 'lobeCorner', label: 'Lobe table corner', default: DRAWN.lobeCorner, step: 1, title: 'Radial azimuth of the table corner on the lobe bezel (IGI plot 47.6)' },
+  { key: 'sideCorner', label: 'Side table corner', default: DRAWN.sideCorner, step: 1, title: 'Radial azimuth of the table corner on the side bezel (IGI plot 20.6)' },
+  { key: 'lowerCorner', label: 'Lower table corner', default: DRAWN.lowerCorner, step: 1, title: 'Radial azimuth of the table corner on the lower bezel (IGI plot -48.2)' },
+];
 export const templates = {
   heart: { name: 'Heart brilliant, French tip (starting point)', note: 'IGI plot pattern with typical angles and a GIA-style French tip; the cleft makes the stone the union of two convex halves. Trace against the underlay and cut meet points.', params: [...base, ...french], make: (o = {}) => heartStart({ ...o }) },
   heartHand: { name: 'Heart brilliant, hand-drawn profile, French tip', note: 'The outline fitted to the hand-drawn reference (straighter wings, lower-side radius 2.0); same facets as the heart with a French tip.', params: [...base.map((p) => (p.key === 'lowerRadius' ? { ...p, default: 2.0 } : p)), ...french], make: (o = {}) => heartStart({ lowerRadius: 2.0, ...o }) },
   heartHandStd: { name: 'Heart brilliant, hand-drawn profile, uncorrected point', note: 'The outline fitted to the hand-drawn reference with a shallow bezel at the point.', params: [...base.map((p) => (p.key === 'lowerRadius' ? { ...p, default: 2.0 } : p)), { key: 'pointAngle', label: 'Point bezel', default: 31, step: 0.5, title: 'Angle of the point bezel' }], make: (o = {}) => heartStart({ frenchTips: false, lowerRadius: 2.0, ...o }) },
+  heartDrawn: { name: 'Heart brilliant, hand-drawn facets, French tip', note: 'Outline and facet positions fitted to the hand-drawn reference: lobe bezels touching the girdle lower on the lobes with a near-level top edge to the cleft star tip, a lower table corner at the lobes; French tip.', params: [...base.map((p) => DRAWN[p.key] != null ? { ...p, default: DRAWN[p.key] } : p), ...drawnContacts, ...french], make: (o = {}) => heartStart({ ...DRAWN, ...o }) },
+  heartDrawnStd: { name: 'Heart brilliant, hand-drawn facets, uncorrected point', note: 'Outline and facet positions fitted to the hand-drawn reference, with a shallow bezel at the point.', params: [...base.map((p) => DRAWN[p.key] != null ? { ...p, default: DRAWN[p.key] } : p), ...drawnContacts, { key: 'pointAngle', label: 'Point bezel', default: 31, step: 0.5, title: 'Angle of the point bezel' }], make: (o = {}) => heartStart({ frenchTips: false, ...DRAWN, ...o }) },
   heartStd: { name: 'Heart brilliant, uncorrected point (starting point)', note: 'IGI plot pattern with typical angles and a shallow bezel at the point, as drawn on the report.', params: [...base, { key: 'pointAngle', label: 'Point bezel', default: 31, step: 0.5, title: 'Angle of the point bezel' }], make: (o = {}) => heartStart({ frenchTips: false, ...o }) },
 };
 
