@@ -11,10 +11,12 @@
 import { templates } from '../app/gemcad/templates.js';
 import { designMesh } from '../app/gemcad/mesh.js';
 
+// a key may carry parameters: node tools/audit.mjs 'cushionModified:{"ratio":1.05}'
 const keys = process.argv.length > 2 ? process.argv.slice(2) : Object.keys(templates).filter((k) => k !== 'blank');
 let failed = 0;
-for (const key of keys) {
-  const d = templates[key].make();
+for (const spec of keys) {
+  const [key, json] = spec.split(/:(.+)/);
+  const d = templates[key].make(json ? JSON.parse(json) : undefined);
   const m = designMesh(d);
   const tier = (f) => d.tiers.find((t) => t.id === f.tag);
   const isG = (f) => { const t = tier(f); return t && Math.abs(t.angle) === 90; };
@@ -48,6 +50,19 @@ for (const key of keys) {
     for (const i of onG) {
       const others = vf.get(i).filter((fi) => m.faces[fi] !== f && !isG(m.faces[fi]));
       if (!others.length) problems.push(`${t.name}: girdle vertex (${m.verts[i].map((v) => v.toFixed(3)).join(', ')}) shared with no other crown/pavilion facet`);
+    }
+  }
+  // junctions: where two crown (or two pavilion) facets meet each other on the girdle, they must do
+  // so at the girdle's full height or depth; a junction above or below it means one facet touches
+  // the girdle at a point and the other meets it on its edge, with girdle between them
+  for (const [i, fis] of vf) {
+    if (!fis.some((fi) => isG(m.faces[fi])) || fis.some((fi) => isG(m.faces[fi]) && inAllowed(m.faces[fi]))) continue;
+    for (const side of [1, -1]) {
+      const fs = fis.filter((fi) => { const t = tier(m.faces[fi]); return t && Math.abs(t.angle) !== 90 && Math.sign(t.angle) === side; });
+      if (fs.length < 2) continue;
+      const level = side > 0 ? gTop : gBot, off = (m.verts[i][2] - level) * side;
+      // a design whose facets are flat planes on a round girdle (the single cut) declares `girdleScallop`: its junctions sit on the hills by nature
+      if (Math.abs(off) > (d.girdleScallop ? 0.6 : 0.02) * girdleT) problems.push(`${fs.map((fi) => tier(m.faces[fi]).name).join(' / ')}: junction on the girdle ${(100 * Math.abs(off) / girdleT).toFixed(0)}% ${off > 0 ? 'beyond' : 'short of'} the girdle ${side > 0 ? 'top' : 'bottom'} at (${m.verts[i].slice(0, 2).map((v) => v.toFixed(3)).join(', ')}): the facets should meet each other on the girdle, not ${off > 0 ? 'with girdle between them' : 'inside it'}`);
     }
   }
   // every girdle facet must exist and keep at least half the nominal thickness between the crown and pavilion facets

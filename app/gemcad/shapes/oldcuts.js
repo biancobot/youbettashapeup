@@ -14,12 +14,12 @@
 // 8 bezels (4 on the sides, 4 on the corners), 8 stars, 16 upper girdle facets, 8 pavilion mains,
 // 16 lower girdle facets, table and culet. Fold 2 + mirror so a slightly rectangular outline
 // keeps its symmetry.
-import { newTier } from '../design.js?v=58';
+import { newTier } from '../design.js?v=59';
 import {
   rad, deg, girdleEqualLength, girdleVertices, vertexNear, lift,
   planeThrough, zPlane, azPlane, perpPlane, classTier, plane3, intersect3, azOf,
-} from '../shapebuild.js?v=58';
-import { cushionOutline } from './cushion.js?v=58';
+} from '../shapebuild.js?v=59';
+import { cushionOutline } from './cushion.js?v=59';
 
 /** Single cut starting point. table: fraction of the diameter; culet: fraction of the diameter (0 = point). */
 export function singleCut({ table = 0.55, crownAngle = 36, pavilionAngle = 41, girdle = 0.03, culet = 0, gear = 96, girdleFacets = 64 } = {}) {
@@ -46,6 +46,7 @@ export function singleCut({ table = 0.55, crownAngle = 36, pavilionAngle = 41, g
   const total = H / W + girdle + Pd / W;
   return {
     name: 'Single cut (starting point)', gear, fold: 8, mirror: true, ri: 2.42,
+    girdleScallop: 'eight bezels and eight pavilion facets on a round girdle: the girdle is thinnest where each facet is tangent to it and thickest where two facets meet, as on every single cut',
     headings: ['Single cut (eight cut)', `table ${pct(table)}, crown ${crownAngle}, pavilion ${pavilionAngle}, girdle ${pct(girdle)}${culet ? `, culet ${pct(culet)}` : ', pointed culet'}`],
     footnotes: ['Starting point: the eight-facet crown and pavilion of a single cut on a round girdle.'],
     notes: [

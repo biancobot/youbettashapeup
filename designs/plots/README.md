@@ -14,10 +14,6 @@ app's underlay; they are the laboratories' artwork and are kept here only for th
 | heart-crown.png, heart-pavilion.png | IGI FDR675586951 (Heart Brilliant) |
 | marquise-sidehub-crown.png | IGI FDR762535113 (Marquise Brilliant, side-hub crown) |
 | cushion-crown.png, cushion-pavilion.png | IGI FDR687547817 (Cushion Brilliant) |
-| cushionmod-1-*.png | IGI 4 ct sample report (Square Cushion Modified Brilliant, fan pavilion) |
-| cushionmod-2-*.png | IGI FDR743505846 (Square Cushion Modified Brilliant, ring and chevron pavilion) |
-| cushionmod-3-*.png | IGI FDR631497388 (Square Cushion Modified Brilliant, dense crushed-ice pavilion; FDR778608949 is the same template) |
-| cushionmod-4-*.png | IGI FDR715558200 (Square Cushion Modified Brilliant, square culet) |
 | princess-crown.png, princess-pavilion.png | IGI FDR719531797 (Princess Cut) |
 | trillion-crown.png, trillion-pavilion.png | loosegrowndiamond.com, "History of Trillion Cut Diamond" top and bottom views (reference drawing, no lab template) |
 | radiant-crown.png, radiant-pavilion.png | IGI FDR719531732 (Cut Cornered Rectangular Modified Brilliant) |

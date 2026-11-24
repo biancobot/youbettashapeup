@@ -14,7 +14,7 @@ companion produces STEP solids and exact vector SVG views with OpenCascade.
 npm start
 ```
 
-Then open `http://localhost:8000/`. The preview pane has a menu (the three dots at its top right) with Export PNG, Fit views to page and Fit preview. The page header shows its build number (currently 58); if it
+Then open `http://localhost:8000/`. The preview pane has a menu (the three dots at its top right) with Export PNG, Fit views to page and Fit preview. The page header shows its build number (currently 59); if it
 shows an older one after a `git pull`, hard-reload (Ctrl+Shift+R). Pass another port as `node tools/serve.mjs 8123` if 8000
 is taken. The site is static ES modules, so it must be served over HTTP (not `file://`).
 `diag.html` runs a step-by-step load check if the page does not come up.
@@ -64,7 +64,7 @@ template per variant found on the reports (see `designs/plots/README.md` for the
 round brilliant (GIA proportions); marquise (French tips, GIA-wireframe proportions,
 uncorrected points, and the side-hub crown variant); pear and heart (French tip and uncorrected
 point); oval (8-main and 4-main pavilions); cushion brilliant; square cushion modified
-brilliant (fan, ring-and-chevron, dense crushed-ice and square-culet pavilions); princess;
+brilliant (the crushed-ice pattern of a GIA plotting diagram, optional square culet); princess;
 radiant; emerald; asscher; shield brilliant (French tip and uncorrected point, designed from the
 pear's pattern since no lab template exists); step-cut shields in three proportions (a kite shield, a
 hexagonal shield and a wide shield, all six-sided, measured from photographs and face-up silhouettes); trillion (triangular brilliant from a
