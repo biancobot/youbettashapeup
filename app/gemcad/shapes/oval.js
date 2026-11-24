@@ -3,11 +3,11 @@
 // FDR749558450) or 4 mains (FDR733542179). Built the way ../fancy.js builds the marquise: a facet
 // that reaches the girdle touches the girdle polygon at a vertex chosen by radial azimuth, and its
 // azimuth is the outline normal there; the other facets are planes through three meet points.
-import { newTier } from '../design.js?v=69';
+import { newTier } from '../design.js?v=70';
 import {
   ellipseOutline, girdleVertices, vertexNear, lift, planeThrough, planeAz, mainThrough,
   mirrorX, mirrorY, zPlane, yPlane, xPlane, azPlane, perpPlane, classTier, girdleFromSupport, girdleEqualLength, plane3, intersect3, chordRun,
-} from '../shapebuild.js?v=69';
+} from '../shapebuild.js?v=70';
 
 /*
  * Positions measured on the IGI plots (units: the half-width; y along the length; radial azimuth
@@ -166,7 +166,7 @@ export function ovalStart({
  */
 export function ovalHeadStart({
   ratio = PLOT.ratio, crownHeight = 0.16, girdle = 0.033, pavilionDepth = 0.43, table = 0.58, shoulderAz = 53,
-  starHeight = 0.5, lowerDepth = 0.9, gear = 96, girdleFacets = 128, maxDip = 0.2,
+  starHeight = 0.5, lowerDepth = 0.8, gear = 96, girdleFacets = 128, maxDip = 0.2,
 } = {}) {
   const W = 2, l = ratio, H = crownHeight * W, g = girdle * W, Pd = pavilionDepth * W;
   const outline = ellipseOutline(l);
@@ -204,12 +204,15 @@ export function ovalHeadStart({
   const main = (v) => mainThrough(v === Hv ? 90 : v === Sv ? 0 : outline.normalAz(v.az), lift(v, -g), zc);
   const mH = main(Hv), mD = main(Dv), mS = main(Sv);
   const mainTiers = [addClass('P head', mH), addClass('P shoulder', mD), addClass('P belly', mS)];
+  // lower girdle facets: exactly two between each pair of mains, one chord each from the main's
+  // contact to the junction vertex midway between the mains (never split, unlike the uppers)
   const jz = zPlane(-g - lowerDepth * Pd);
   const Jhs = intersect3(mH, mD, jz), Jsb = intersect3(mD, mS, jz);
-  run('L head', Jhs, 90, J1v.az, -g, false);
-  run('L shoulder a', Jhs, J1v.az, Dv.az, -g, false);
-  run('L shoulder b', Jsb, Dv.az, J2v.az, -g, false);
-  run('L belly', Jsb, J2v.az, 0, -g, false);
+  const chord = (name, vA, vB, apex) => addClass(name, plane3(lift(vA, -g), lift(vB, -g), apex, false));
+  chord('L head', Hv, J1v, Jhs);
+  chord('L shoulder a', J1v, Dv, Jhs);
+  chord('L shoulder b', Dv, J2v, Jsb);
+  chord('L belly', J2v, Sv, Jsb);
 
   const pct = (v) => `${Math.round(v * 1000) / 10}%`, ang = (t) => Math.round(Math.abs(t.angle) * 10) / 10;
   return {
@@ -220,7 +223,7 @@ export function ovalHeadStart({
       'Ideal dimensions: none published as a complete parameter set. GIA assigns no cut grade to oval diamonds.',
       'IGI Excellent ranges (oval brilliant): L:W 1.35-1.50, total depth 58-65%, table 56-62%, crown height 12.5-16%, crown angle 33-38.5, girdle 2-6% (thin to thick), pavilion depth 41-46.5%, pavilion angle 39.5-42.5, culet pointed to small, bow tie not significant.',
       `This design: L:W ${ratio}, crown height ${pct(crownHeight)}, bezels ${ang(headTier)} at the head, ${ang(shoulderTier)} at the shoulders (contact ${shoulderAz} degrees from the side) and ${ang(bellyTier)} at the belly, each through its girdle contact and its table corner; table ${pct(table)} of the width and of the length (octagon with corners on the bezel radii); stars ${starHeight * 100}% of the crown height at the apex; pavilion depth ${pct(pavilionDepth)}, mains ${mainTiers.map((t) => ang(t)).join(' / ')} under the bezels, lower junctions at ${pct(lowerDepth)} of the pavilion depth; girdle ${pct(girdle)}. Angles are measured in each facet\'s own slope direction.`,
-      'Pattern (the round brilliant\'s, as on the GemSociety oval diagram): crown of table, 8 bezels (2 head, 4 shoulder, 2 belly), 8 stars, 16 upper girdle facets whose pairs meet midway between the bezel contacts; pavilion of 8 mains under the bezels meeting at the culet and 16 lower girdle facets whose junctions share the uppers\' girdle vertices. Upper and lower girdle facets that would dig more than the set fraction of the girdle into the ellipse\'s tight ends are split at the deepest point.',
+      'Pattern (the round brilliant\'s, as on the GemSociety oval diagram): crown of table, 8 bezels (2 head, 4 shoulder, 2 belly), 8 stars, 16 upper girdle facets whose pairs meet midway between the bezel contacts; pavilion of 8 mains under the bezels meeting at the culet and 16 lower girdle facets, two between each pair of mains, whose junctions sit on the girdle midway (by arc length) between the mains and on the main ridges at the set depth. Upper girdle facets that would dig more than the set fraction of the girdle into the ellipse\'s tight ends are split at the deepest point; the lowers never are.',
     ],
     tiers,
   };
@@ -247,8 +250,8 @@ export const templates = {
     { key: 'starHeight', label: 'Star tips', default: 0.5, step: 0.05, min: 0.2, max: 0.95, title: 'Fraction of the crown height (above about 0.6 the head stars thin to slivers against the table edge)' },
     { key: 'girdle', label: 'Girdle', default: 0.033, step: 0.005 },
     { key: 'pavilionDepth', label: 'Pavilion depth', default: 0.43, step: 0.005 },
-    { key: 'lowerDepth', label: 'Lower junctions', default: 0.9, step: 0.05, min: 0.2, max: 0.95, title: 'Lower girdle junctions on the main ridges, fraction of the pavilion depth (0.9: long lower girdle facets reaching nearly to the culet, as on the diagram)' },
-    { key: 'maxDip', label: 'Max girdle dig', default: 0.2, step: 0.05, min: 0.05, max: 0.5, title: 'How far an upper or lower girdle facet may dig into the girdle, fraction of its thickness; a facet that would dig more is split at the deepest point' },
+    { key: 'lowerDepth', label: 'Lower junctions', default: 0.8, step: 0.05, min: 0.2, max: 0.95, title: 'Lower girdle junctions on the main ridges, fraction of the pavilion depth' },
+    { key: 'maxDip', label: 'Max girdle dig', default: 0.2, step: 0.05, min: 0.05, max: 0.5, title: 'How far an upper girdle facet may dig into the girdle, fraction of its thickness; a facet that would dig more is split at the deepest point (the lowers are never split)' },
   ], make: (o = {}) => ovalHeadStart(o) },
   oval4: { name: 'Oval brilliant, 4-main pavilion (starting point)', note: 'Same crown; the pavilion variant with four mains at the diagonals (IGI FDR733542179), under the crown\'s upper-girdle junctions, with the lower junctions under the bezels.', params: [...params, { key: 'alignMains', label: 'Mains under junctions', default: 1, step: 1, min: 0, max: 1, title: '1: the four mains under the crown\'s upper-girdle junctions and the lower junctions under the bezel contacts; 0: the plot\'s own positions (68.6 / 45.4 / 24.1)' }], make: (o = {}) => ovalStart({ pavilionMains: 4, ...o, alignMains: o.alignMains === undefined ? true : !!o.alignMains }) },
 };
