@@ -14,7 +14,7 @@ companion produces STEP solids and exact vector SVG views with OpenCascade.
 npm start
 ```
 
-Then open `http://localhost:8000/`. The page header shows its build number (currently 36); if it
+Then open `http://localhost:8000/`. The page header shows its build number (currently 37); if it
 shows an older one after a `git pull`, hard-reload (Ctrl+Shift+R). Pass another port as `node tools/serve.mjs 8123` if 8000
 is taken. The site is static ES modules, so it must be served over HTTP (not `file://`).
 `diag.html` runs a step-by-step load check if the page does not come up.
@@ -68,8 +68,7 @@ brilliant (fan, ring-and-chevron, dense crushed-ice and square-culet pavilions);
 radiant; emerald; asscher; shield brilliant (French tip and uncorrected point, designed from the
 pear's pattern since no lab template exists); step-cut shields in three proportions (a kite shield, a
 hexagonal shield and a wide shield, all six-sided, measured from photographs and face-up silhouettes); trillion (triangular brilliant from a
-reference drawing, bowed or straight sides); the heart also comes with hand-drawn-facet versions (French tip and uncorrected point, with the lobe
-kites, cleft and wings placed as in the sketch) and with the hand-drawn
+reference drawing, bowed or straight sides); the heart also comes with the hand-drawn
 reference profile. The heart is the one non-convex stone: it is built as the union of
 two convex halves split on the mirror plane, with the cleft facets applied to one half each.
 `node tools/gallery.mjs && python3 tools/gallery.py` renders every template's front, back and
