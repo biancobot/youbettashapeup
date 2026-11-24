@@ -18,13 +18,13 @@
 // pavilions; those designs use fold 2 + mirror and build one representative facet per class in the
 // top-right quadrant. FDR715558200 is four-fold throughout: fold 4 + mirror, one facet per class
 // in the 0 to 45 degree octant.
-import { newTier } from '../design.js';
-import { cushionOutline as bowedCushionOutline } from './cushion.js';
+import { newTier } from '../design.js?v=58';
+import { cushionOutline as bowedCushionOutline } from './cushion.js?v=58';
 const BOW = 0.01;   // outward bow of the sides, fraction of the half-width (the plots' sides are not quite straight)
 import {
   deg, lift, vertexNear, girdleVertices, planeThrough, planeAz, mainThrough, yPlane, xPlane, classTier,
   girdleFromSupport, girdleEqualLength, plane3, intersect3, cushionOutline, pointOn, azOf,
-} from '../shapebuild.js';
+} from '../shapebuild.js?v=58';
 
 const IGI_RANGES = 'IGI Excellent ranges (square cushion modified brilliant): L:W 1.00-1.05 (1.06+ is graded as rectangular), total depth 62-68%, table 55-62%, crown height 8-16%, girdle 2-6% (thin to thick), pavilion depth 40-56%, culet pointed to small. IGI publishes no crown or pavilion angle for this shape.';
 const NO_GIA = 'GIA assigns no cut grade to cushion diamonds.';
@@ -246,7 +246,11 @@ const VARIANTS = {
 export function cushionModified({ variant = 'cushionMod1', ratio = 1, crownHeight = 0.125, girdle = 0.035, pavilionDepth, gear = 96, girdleFacets = 128, ringAngle, sideAngle, mainAz } = {}) {
   const V = VARIANTS[variant];
   // the dense pavilion's feasible ring angle narrows with the L:W (63 at 1.00, 61 at 1.05)
-  pavilionDepth ??= V.pavilionDepth; ringAngle ??= V.ringAngle + (V.ringPerRatio || 0) * (ratio - 1); sideAngle ??= V.sideAngle ?? ringAngle; mainAz ??= V.mainAz;
+  // (plain `if`s rather than `??=` so the module parses in browsers without logical assignment)
+  if (pavilionDepth == null) pavilionDepth = V.pavilionDepth;
+  if (ringAngle == null) ringAngle = V.ringAngle + (V.ringPerRatio || 0) * (ratio - 1);
+  if (sideAngle == null) sideAngle = V.sideAngle != null ? V.sideAngle : ringAngle;
+  if (mainAz == null) mainAz = V.mainAz;
   const W = 2, l = ratio, H = crownHeight * W, g = girdle * W, Pd = pavilionDepth * W, zc = -g - Pd;
   const outline = bowedCushionOutline(ratio, V.r, BOW, BOW);   // slight bow on the sides so the girdle has no flats
   const girdleTier = girdleEqualLength(outline, girdleFacets, gear, 0);
