@@ -4,7 +4,8 @@
 //     a neighbouring facet (bezel tips and junctions are meet points; a single-vertex tangency is
 //     allowed), no facet cuts more than half way through it, every girdle facet survives, the
 //     valleys stay at least 1.5% of the width (GIA "thin") and a third of the hills, and the
-//     girdle does not bulge past 160% outside zones the design declares (the heart's cleft);
+//     girdle does not bulge past 160% outside zones the design declares (the heart's cleft; a
+//     zone excuses bulges and junctions above the girdle there, never cuts into it);
 //   slivers: no facet thinner than 1% of the half-width (area / longest edge);
 //   symmetry classes: every tier produced faces.
 // Exit code 1 if any template fails.
@@ -34,7 +35,7 @@ for (const spec of keys) {
   let minTop = Infinity, maxBot = -Infinity;
   for (const f of m.faces) {
     if (isG(f)) {
-      if (inAllowed(f)) continue;
+      // a declared thick zone (the heart's cleft) may bulge, but no facet may cut into the girdle there either
       const zs = f.idx.map((i) => m.verts[i][2]);
       minTop = Math.min(minTop, Math.max(...zs)); maxBot = Math.max(maxBot, Math.min(...zs));
       continue;
@@ -70,7 +71,7 @@ for (const spec of keys) {
   const gCount = m.faces.filter(isG).length;
   if (gTier && gCount < gTier.indices.length) problems.push(`${gTier.indices.length - gCount} of the ${gTier.indices.length} girdle facets are cut away entirely`);
   let thinnestRemaining = Infinity, thinnestAz = 0;
-  for (const f of m.faces) if (isG(f) && !inAllowed(f)) { const zs = f.idx.map((i) => m.verts[i][2]); const t = Math.max(...zs) - Math.min(...zs); if (t < thinnestRemaining) { thinnestRemaining = t; const c = f.idx.map((i) => m.verts[i]); thinnestAz = Math.atan2(c.reduce((s, v) => s + v[1], 0), c.reduce((s, v) => s + v[0], 0)) * 180 / Math.PI; } }
+  for (const f of m.faces) if (isG(f)) { const zs = f.idx.map((i) => m.verts[i][2]); const t = Math.max(...zs) - Math.min(...zs); if (t < thinnestRemaining) { thinnestRemaining = t; const c = f.idx.map((i) => m.verts[i]); thinnestAz = Math.atan2(c.reduce((s, v) => s + v[1], 0), c.reduce((s, v) => s + v[0], 0)) * 180 / Math.PI; } }
   // the valleys (where an upper and a lower girdle facet both cut in) must stay at least "thin" on
   // GIA's girdle scale (1.5% of the width) and no thinner than a third of the hills
   const width = m.bbox[1][0] - m.bbox[0][0];

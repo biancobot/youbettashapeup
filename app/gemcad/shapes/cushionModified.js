@@ -36,12 +36,12 @@
 // the contact between the axis-side and corner-side facets sits 12 degrees round the arc from the
 // flat's end so the two share the sagitta, which keeps the girdle at 3.5% on the hills (the
 // contacts) and 1.9% in the valleys, 2.9% on average.
-import { newTier } from '../design.js?v=66';
-import { cushionOutline as bowedCushionOutline } from './cushion.js?v=66';
+import { newTier } from '../design.js?v=67';
+import { cushionOutline as bowedCushionOutline } from './cushion.js?v=67';
 import {
   deg, lift, vertexNear, girdleVertices, planeThrough, planeAz, mainThrough, yPlane, xPlane, classTier,
   girdleEqualLength, plane3, intersect3, pointOn, azOf, chordAz,
-} from '../shapebuild.js?v=66';
+} from '../shapebuild.js?v=67';
 
 const BOW = 0.01;   // outward bow of the sides, fraction of the half-width
 
