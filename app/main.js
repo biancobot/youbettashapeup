@@ -27,6 +27,9 @@ const state = {
     gaps: { left: 0.3, right: 0.3, above: 0.3, below: 0.3 },   // in stone widths, between view bounding boxes
     views: [],                                                 // { id, parent, dir, gap, kind: 'ortho' | '3d', rot, locked, hidden, offset, scale }
     base: { locked: false, hidden: false },                    // the base view's own lock and hidden-line flags
+    grid: params.get('grid') === '1',                          // table of cells around the views
+    gridMargin: 0.15,                                          // border outside the outermost views, in stone widths
+    gridOpacity: parseFloat(params.get('gridopacity') || '0.5'),
     nextId: 1,
   },
 };
@@ -220,6 +223,38 @@ function bboxFor(q) {
 
 let overall = { minX: -1, minY: -1, maxX: 1, maxY: 1 };
 
+// ----------------------------------------------------------------------------- sheet grid
+// A table whose cells hold the views: views whose horizontal extents overlap share a column,
+// views whose vertical extents overlap share a row; lines run midway between neighbouring
+// columns and rows, with a border a margin outside the outermost views.
+const gridMat = new THREE.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: state.sheet.gridOpacity, depthTest: false });
+const gridLines = new THREE.LineSegments(new THREE.BufferGeometry(), gridMat);
+gridLines.renderOrder = -1; gridLines.visible = false; scene.add(gridLines);
+/** Merge overlapping intervals [a, b] into sorted disjoint bands. */
+function bands(intervals) {
+  const sorted = intervals.slice().sort((p, q) => p[0] - q[0]); const out = [];
+  for (const [a, b] of sorted) { const last = out[out.length - 1]; if (last && a <= last[1]) last[1] = Math.max(last[1], b); else out.push([a, b]); }
+  return out;
+}
+function updateGrid() {
+  gridLines.visible = state.sheet.grid && instances.size > 0;
+  if (!gridLines.visible) return;
+  const xs = [], ys = [];
+  for (const inst of instances.values()) { xs.push([inst.pos[0] + inst.bbox.minX, inst.pos[0] + inst.bbox.maxX]); ys.push([inst.pos[1] + inst.bbox.minY, inst.pos[1] + inst.bbox.maxY]); }
+  const cols = bands(xs), rows = bands(ys), m = state.sheet.gridMargin * 2;   // stone widths -> world units (width = 2)
+  const x0 = overall.minX - m, x1 = overall.maxX + m, y0 = overall.minY - m, y1 = overall.maxY + m;
+  const vx = [x0, x1], hy = [y0, y1];
+  for (let i = 0; i + 1 < cols.length; i++) vx.push((cols[i][1] + cols[i + 1][0]) / 2);
+  for (let i = 0; i + 1 < rows.length; i++) hy.push((rows[i][1] + rows[i + 1][0]) / 2);
+  const pts = [];
+  for (const x of vx) pts.push(x, y0, -4, x, y1, -4);
+  for (const y of hy) pts.push(x0, y, -4, x1, y, -4);
+  gridLines.geometry.dispose();
+  gridLines.geometry = new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+  gridMat.opacity = state.sheet.gridOpacity;
+  gridLines.userData.cells = (cols.length) * (rows.length);
+}
+
 /** Recompute orientations and positions of every view, then the camera. */
 function layout(force) {
   if (!geo) return;
@@ -263,6 +298,7 @@ function layout(force) {
     overall.minY = Math.min(overall.minY, inst.pos[1] + inst.bbox.minY);
     overall.maxY = Math.max(overall.maxY, inst.pos[1] + inst.bbox.maxY);
   }
+  updateGrid();
   updateCamera(stage.clientWidth, stage.clientHeight);
   const b = instances.get('base');
   if (b && geo) underlay.place(geo.bbox, b.pos, state.viewId);
@@ -280,7 +316,8 @@ function resize() {
 function updateCamera(w, h) {
   const aspect = w / h;
   const cx = (overall.minX + overall.maxX) / 2, cy = (overall.minY + overall.maxY) / 2;
-  const ex = (overall.maxX - overall.minX) / 2, ey = (overall.maxY - overall.minY) / 2;
+  const gm = state.sheet.grid ? state.sheet.gridMargin * 2 : 0;   // keep the grid border in view
+  const ex = (overall.maxX - overall.minX) / 2 + gm, ey = (overall.maxY - overall.minY) / 2 + gm;
   // half-height of the view in world units: fit the sheet with a margin
   let half = Math.max(ey, ex / aspect) * 1.12 / state.zoom;
   if (!isFinite(half) || half <= 0) half = 1;
@@ -597,6 +634,15 @@ const fovIn = document.getElementById('fov'), fovv = document.getElementById('fo
 fovIn.value = state.fov; fovv.textContent = `${state.fov}°`;
 fovIn.addEventListener('input', () => { state.fov = parseFloat(fovIn.value); fovv.textContent = `${state.fov}°`; resize(); });
 
+const gridChk = document.getElementById('grid'), gridOp = document.getElementById('gridopacity'), gridOpV = document.getElementById('gridopacityv'), gridMarginIn = document.getElementById('gridmargin');
+if (gridChk) {
+  gridChk.checked = state.sheet.grid;
+  gridChk.addEventListener('change', () => { state.sheet.grid = gridChk.checked; layout(true); });
+  gridOp.value = state.sheet.gridOpacity; gridOpV.textContent = `${Math.round(state.sheet.gridOpacity * 100)}%`;
+  gridOp.addEventListener('input', () => { state.sheet.gridOpacity = parseFloat(gridOp.value); gridOpV.textContent = `${Math.round(state.sheet.gridOpacity * 100)}%`; gridMat.opacity = state.sheet.gridOpacity; });
+  gridMarginIn.value = state.sheet.gridMargin;
+  gridMarginIn.addEventListener('change', () => { state.sheet.gridMargin = Math.max(0, parseFloat(gridMarginIn.value) || 0); layout(true); });
+}
 const standardSel = document.getElementById('standard');
 standardSel.value = state.sheet.standard;
 standardSel.addEventListener('change', () => { state.sheet.standard = standardSel.value; layout(true); });
@@ -683,7 +729,7 @@ requestAnimationFrame(frame);
 
 // Exposed for the screenshot tool and for scripting.
 window.__viewer = {
-  state, setDesign, snapTo, exportPNG, resize, addView, removeView, clearViews, resetView3d, editor, instances, camera: () => camera,
+  state, setDesign, snapTo, exportPNG, resize, addView, removeView, clearViews, resetView3d, editor, instances, camera: () => camera, gridCells: () => gridLines.userData.cells,
   loadShape(id) { const { templates } = window.__templates; if (templates[id]) editor.design = templates[id].make(); },
   setLineWidth(v) { state.lineWidth = v; lineMat.linewidth = v; },
   setGirdleLines(v) { state.girdleLines = v; layout(true); },
