@@ -2,15 +2,15 @@ import * as THREE from '../vendor/three/three.module.js';
 import { LineSegments2 } from '../vendor/three/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from '../vendor/three/lines/LineSegmentsGeometry.js';
 import { LineMaterial } from '../vendor/three/lines/LineMaterial.js';
-import { designMesh, stoneStats } from './gemcad/mesh.js?v=72';
-import { createEditor } from './editor.js?v=72';
-import { createUnderlay } from './underlay.js?v=72';
-import { templates, plots } from './gemcad/templates.js?v=72';
+import { designMesh, stoneStats } from './gemcad/mesh.js?v=73';
+import { createEditor } from './editor.js?v=73';
+import { createUnderlay } from './underlay.js?v=73';
+import { templates, plots } from './gemcad/templates.js?v=73';
 window.__templates = { templates, plots };
-import { VIEWS, getView } from './views.js?v=72';
-import { createPave, cobblestoneStones, checkPacking, paveSizes, hexafoilStones, convexHull, rng } from './pave.js?v=72';
-import { weightEstimator, weightFamily, chartSize, CHART_SOURCE } from './gemcad/weights.js?v=72';
-import { singleCut } from './gemcad/shapes/oldcuts.js?v=72';
+import { VIEWS, getView } from './views.js?v=73';
+import { createPave, cobblestoneStonesGen, checkPacking, paveSizes, hexafoilStones, convexHull, rng } from './pave.js?v=73';
+import { weightEstimator, weightFamily, chartSize, CHART_SOURCE } from './gemcad/weights.js?v=73';
+import { singleCut } from './gemcad/shapes/oldcuts.js?v=73';
 
 // ----------------------------------------------------------------------------- state
 const params = new URLSearchParams(location.search);
@@ -290,7 +290,7 @@ function paveObstacles() {
 function updatePave() {
   const pv = state.sheet.pave;
   pave.visible = pv.enabled;
-  if (!pv.enabled || !geo || !design) { paveInfo = { count: 0, note: '' }; renderPaveInfo(); return; }
+  if (!pv.enabled || !geo || !design) { pave.job = null; paveInfo = { count: 0, note: '', busy: false }; renderPaveInfo(); return; }
   const st = stoneStats(geo, design);
   const est = weightEstimator(design.name, st.ratio, st.depth);
   const family = weightFamily(design.name);
@@ -317,14 +317,41 @@ function updatePave() {
     const roundPage = family === 'round' || /single cut/i.test(design.name);
     const settings = { ...pv, rMin: rOf(pv.minCarats), rMax: rOf(pv.maxCarats), rSingle: roundPage ? rOf(pv.singleBelow) : 0, seedMin: rOf(pv.maxCarats) * 0.6, margin: pv.margin * 2, gapPad: 0.04 };
     if (pave.lastKey !== key) {
+      // the packing takes seconds on a full page: run it in time slices so the page keeps drawing
+      // and the info line shows progress; a newer request replaces the job in flight
+      if (pave.job && pave.job.key === key) return;
       const t0 = performance.now();
-      const res = cobblestoneStones(hull, area, obstacles, paveSizes(sizer, pv.maxCarats, worldPerMm, pv.labels && !!est, (c) => chartSize(family, c, st.ratio), st.L, st.W), settings, rng(pv.seed));
-      stones = res.stones;
-      check = { ...checkPacking(res.stones.slice(0, res.stones.length - (res.stats.gapFilled || 0)).map((q) => ({ x: q.x, y: q.y, r: q.r })), area, obstacles, settings.margin), gapFilled: res.stats.gapFilled || 0, ms: Math.round(performance.now() - t0) };
-      pave.lastCheck = check;
-    } else { stones = pave.lastStones; check = pave.lastCheck; }
-    pave.lastStones = stones;
+      const gen = cobblestoneStonesGen(hull, area, obstacles, paveSizes(sizer, pv.maxCarats, worldPerMm, pv.labels && !!est, (c) => chartSize(family, c, st.ratio), st.L, st.W), settings, rng(pv.seed));
+      const job = { key, t0, progress: { placed: 0 } };
+      pave.job = job;
+      const finish = (res) => {
+        if (pave.job !== job) return;   // superseded
+        pave.job = null;
+        const check = { ...checkPacking(res.stones.slice(0, res.stones.length - (res.stats.gapFilled || 0)).map((q) => ({ x: q.x, y: q.y, r: q.r })), area, obstacles, settings.margin), gapFilled: res.stats.gapFilled || 0, ms: Math.round(performance.now() - t0) };
+        pave.lastCheck = check; pave.lastStones = res.stones;
+        finishPave(res.stones, check);
+      };
+      const pump = () => {
+        if (pave.job !== job) return;
+        const slice = performance.now();
+        let r = gen.next();
+        while (!r.done && performance.now() - slice < 25) { job.progress = r.value; r = gen.next(); }
+        if (r.done) { finish(r.value); return; }
+        job.progress = r.value;
+        paveInfo = { count: job.progress.placed, check: null, note: `Packing the pavé: ${job.progress.placed} stones placed${job.progress.fitting ? `, fitting ${job.progress.fitting} ct stones into the gaps` : ''} (${((performance.now() - t0) / 1000).toFixed(1)} s)…`, busy: true };
+        renderPaveInfo();
+        setTimeout(pump, 0);
+      };
+      paveInfo = { count: 0, check: null, note: 'Packing the pavé…', busy: true };
+      renderPaveInfo();
+      setTimeout(pump, 0);
+      return;
+    }
+    stones = pave.lastStones; check = pave.lastCheck;
   }
+  pave.job = null;
+  finishPave(stones, check);
+  function finishPave(stones, check) {
   // melee geometry: a round single cut (bruted round girdle) for the stones under the threshold
   if (!updatePave.single || updatePave.single.girdleLines !== state.girdleLines) {
     const sg = designMesh(singleCut({ girdleFacets: 64 }));
@@ -334,10 +361,14 @@ function updatePave() {
   pave.lastKey = key;
   const singles = stones.filter((q) => q.kind === 'single').length;
   const packNote = check ? `${singles ? ` ${singles} stones under ${pv.singleBelow} ct are single cuts.` : ''} Packing: ${check.count} circles, ${check.tangent2} touching two or more boundaries, ${check.overlaps} overlaps, ${check.intrusions} intrusions${check.gapFilled ? `, plus ${check.gapFilled} smaller stones fitted into the circles' corners` : ''} (${check.ms} ms).` : '';
-  paveInfo = { count: stones.length, check, note: pattern === 'hexafoil' ? `Hexafoil: ${stones.length} marquises of ${pv.hexCarats} ct (${(sizer.widthMm(pv.hexCarats) * st.ratio).toFixed(1)} x ${sizer.widthMm(pv.hexCarats).toFixed(1)} mm) on circles of radius ${((stones.R / worldPerMm) || 0).toFixed(1)} mm${circles ? `, ${circles.length} circles drawn` : ''}.` : (est ? `${stones.length} stones, ${est.label} estimator (factor ${est.factor.toFixed(5)}): 1 ct is ${est.widthMm(1).toFixed(2)} mm wide, 5 ct ${est.widthMm(5).toFixed(2)} mm; the labelled outlines use the ${CHART_SOURCE} dimensions${chartSize(family, 1, st.ratio) ? ` (1 ct ${chartSize(family, 1, st.ratio).length.toFixed(1)} x ${chartSize(family, 1, st.ratio).width.toFixed(1)} mm)` : ''}.` : `${stones.length} stones; no weight estimator covers this shape, so sizes use the round factor and no carat labels are drawn.`) + packNote };
+  paveInfo = { count: stones.length, check, busy: false, note: pattern === 'hexafoil' ? `Hexafoil: ${stones.length} marquises of ${pv.hexCarats} ct (${(sizer.widthMm(pv.hexCarats) * st.ratio).toFixed(1)} x ${sizer.widthMm(pv.hexCarats).toFixed(1)} mm) on circles of radius ${((stones.R / worldPerMm) || 0).toFixed(1)} mm${circles ? `, ${circles.length} circles drawn` : ''}.` : (est ? `${stones.length} stones, ${est.label} estimator (factor ${est.factor.toFixed(5)}): 1 ct is ${est.widthMm(1).toFixed(2)} mm wide, 5 ct ${est.widthMm(5).toFixed(2)} mm; the labelled outlines use the ${CHART_SOURCE} dimensions${chartSize(family, 1, st.ratio) ? ` (1 ct ${chartSize(family, 1, st.ratio).length.toFixed(1)} x ${chartSize(family, 1, st.ratio).width.toFixed(1)} mm)` : ''}.` : `${stones.length} stones; no weight estimator covers this shape, so sizes use the round factor and no carat labels are drawn.`) + packNote };
   renderPaveInfo();
+  }
 }
-function renderPaveInfo() { const el = document.getElementById('paveinfo'); if (el) el.textContent = paveInfo.note; }
+function renderPaveInfo() {
+  const el = document.getElementById('paveinfo'); if (el) el.textContent = paveInfo.note;
+  const bar = document.getElementById('paveprogress'); if (bar) bar.hidden = !paveInfo.busy;
+}
 function updateGrid() {
   gridLines.visible = state.sheet.grid && instances.size > 0;
   if (!gridLines.visible) return;

@@ -9,7 +9,7 @@ import * as THREE from '../vendor/three/three.module.js';
 import { LineSegments2 } from '../vendor/three/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from '../vendor/three/lines/LineSegmentsGeometry.js';
 import { LineMaterial } from '../vendor/three/lines/LineMaterial.js';
-import { CHART_CARATS } from './gemcad/weights.js?v=72';
+import { CHART_CARATS } from './gemcad/weights.js?v=73';
 
 /** Deterministic random numbers so a layout is stable until reseeded. */
 function rng(seed) {
@@ -69,7 +69,14 @@ export function sdPolygon(poly, x, y) {
  * (the labelled chart-size stones, and a few large ones), each where it fits.
  * Returns { circles: [{ x, y, r, seed }], stats }.
  */
-export function packTangent(area, obstacles, settings, random, seeds = []) {
+export function packTangent(area, obstacles, settings, random, seeds = []) { return drain(packTangentGen(area, obstacles, settings, random, seeds)); }
+/** Runs a generator to the end and returns its result (the synchronous form of the packers). */
+const drain = (gen) => { let r = gen.next(); while (!r.done) r = gen.next(); return r.value; };
+/**
+ * The packing as a generator: yields { placed } every few placements so a page can run it in time
+ * slices and show progress; returns { circles, stats }.
+ */
+export function* packTangentGen(area, obstacles, settings, random, seeds = []) {
   const { rMin, rMax, margin } = settings;
   const circles = [];
   // spatial grid of placed circles, cell = 2 rMax
@@ -109,9 +116,10 @@ export function packTangent(area, obstacles, settings, random, seeds = []) {
     }
   }
   // fill: best of N random samples, hill-climbed to a local maximum of clearance
-  let fails = 0, climbs = 0;
+  let fails = 0, climbs = 0, iter = 0;
   const dirs = []; for (let k = 0; k < 8; k++) dirs.push([Math.cos((k * Math.PI) / 4), Math.sin((k * Math.PI) / 4)]);
   while (circles.length < settings.maxCircles && fails < settings.patience) {
+    if (++iter % 8 === 0) yield { placed: circles.length };
     let bx = 0, by = 0, bc = -Infinity;
     for (let n = 0; n < settings.samples; n++) {
       const x = area.minX + random() * aw, y = area.minY + random() * ah, c = clearance(x, y);
@@ -165,7 +173,9 @@ export function checkPacking(circles, area, obstacles, margin, tol = 1e-4) {
  * packed circle) at a random turn and opacity. Labelled chart-size stones are the first seeds.
  * hull: the face-up outline at natural size; hullR its circumradius.
  */
-export function cobblestoneStones(hull, area, obstacles, sizes, settings, random) {
+export function cobblestoneStones(hull, area, obstacles, sizes, settings, random) { return drain(cobblestoneStonesGen(hull, area, obstacles, sizes, settings, random)); }
+/** The cobblestone layout as a generator: yields { placed, fitting } (fitting: the carat size being fitted into the gaps) and returns { stones, stats }. */
+export function* cobblestoneStonesGen(hull, area, obstacles, sizes, settings, random) {
   const hullR = Math.max(...hull.map(([x, y]) => Math.hypot(x, y)));
   // melee: stones whose circle is smaller than rSingle are drawn as round single cuts (unit circle outline, scale = radius)
   const rSingle = settings.rSingle || 0;
@@ -176,7 +186,7 @@ export function cobblestoneStones(hull, area, obstacles, sizes, settings, random
     seeds.push({ r, carats: sz.carats, scale: sc });
   }
   seeds.sort((a, b) => b.r - a.r);
-  const { circles, stats } = packTangent(area, obstacles, settings, random, seeds);
+  const { circles, stats } = yield* packTangentGen(area, obstacles, settings, random, seeds);
   const stones = circles.map((c) => {
     const opacity = settings.minOpacity + random() * (settings.maxOpacity - settings.minOpacity);
     if (c.seed) return { x: c.x, y: c.y, angle: random() * Math.PI * 2, scale: c.seed.scale, carats: c.seed.carats, label: c.seed.carats, opacity, r: c.r };
@@ -201,6 +211,7 @@ export function cobblestoneStones(hull, area, obstacles, sizes, settings, random
       const useHull = single ? circleHull : hull, sc = single ? hullR * sz.scale : sz.scale;
       let fails = 0;
       for (let k = 0; k < 2500 && fails < settings.patience; k++) {
+        if (k % 100 === 0) yield { placed: stones.length, fitting: sz.carats };
         const x = area.minX + r + random() * (area.maxX - area.minX - 2 * r), y = area.minY + r + random() * (area.maxY - area.minY - 2 * r);
         const ang = random() * Math.PI * 2;
         const poly = transform(useHull, sc * g, ang, x, y);

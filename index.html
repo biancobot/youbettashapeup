@@ -80,7 +80,7 @@
   <div id="app">
     <aside id="panel">
       <div>
-        <h1>Gem Facet Designer <span class="build" title="Build number; if it does not match the README, hard-reload or git pull">build 72</span></h1>
+        <h1>Gem Facet Designer <span class="build" title="Build number; if it does not match the README, hard-reload or git pull">build 73</span></h1>
         <div class="hint">GemCad-style facet design: every facet is a plane by angle, index and distance; the stone is their intersection. Drag to rotate, shift-drag to roll, scroll to zoom, right-drag to pan, 0 or Home to reset the zoom and pan, click a vertex to pick a meet point.</div>
       </div>
 
@@ -226,6 +226,7 @@
         <div class="row"><label for="pavehexcircles">Hexafoil circles (the flower-of-life construction lines)</label><input type="checkbox" id="pavehexcircles" checked></div>
         <div class="row"><label for="pavelabels">Carat-size outlines with weights</label><input type="checkbox" id="pavelabels"></div>
         <div class="row"><span class="hint" id="paveinfo"></span><button id="pavereseed" title="Lay the stones out again at random">Reshuffle</button></div>
+        <progress id="paveprogress" hidden style="width:100%;height:6px"></progress>
         <div class="hint">Fills the page (or a border round the sheet) with face-up stones of the current shape, right up to the views' outlines and into the spaces between them: a tangent circle packing, where every stone's circumscribed circle touches its neighbours, a view or the page edge, and gaps are filled by ever smaller stones down to the smallest. Each stone is turned at random and drawn at a random opacity between the two limits; on a round page, stones under the single-cut threshold are round single cuts, as melee is (other shapes keep their shape at every size). Sizes follow the trade weight estimators (carats = length × width × depth × shape factor), so a 1 ct stone is drawn at its real width at the page scale. For shapes the estimators cover, one stone of each chart size (0.25, 0.33, 0.5, 1, 1.5, 2, 3, 4, 5 ct) is drawn as a plain outline with its weight in it, at the length and width the trade size chart gives for that weight. The hexafoil pattern (marquise pages only) lays out the flower of life: circles on a triangular lattice, each lens where two circles overlap holding a marquise of one size, six meeting at every point, at one opacity, with the circles drawn as thin lines so the figure reads.</div>
       </div>
 
@@ -275,6 +276,6 @@
       const el = document.getElementById('info'); if (el) { el.style.color = '#b00020'; el.textContent = 'Load error: ' + (e.reason && e.reason.message || e.reason); }
     });
   </script>
-  <script type="module" src="./app/main.js?v=72"></script>
+  <script type="module" src="./app/main.js?v=73"></script>
 </body>
 </html>
