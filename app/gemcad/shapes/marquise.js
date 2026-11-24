@@ -7,7 +7,7 @@ const base = [
   { key: 'pointAngle', label: 'Point bezel', default: 21.5, step: 0.5, title: 'Angle of the point bezel (uncorrected points) or of the line from the point to the table corner' },
   { key: 'crownHeight', label: 'Crown height', default: 0.14, step: 0.005, title: 'Fraction of the width' },
   { key: 'pavilionDepth', label: 'Pavilion depth', default: 0.435, step: 0.005, title: 'Fraction of the width' },
-  { key: 'girdle', label: 'Girdle', default: 0.035, step: 0.005 },
+  { key: 'girdle', label: 'Girdle', default: 0.038, step: 0.005 },
   { key: 'starHeight', label: 'Star tips', default: 0.65, step: 0.05, min: 0.2, max: 0.95, title: 'Star tip height, fraction of the crown height' },
 ];
 const french = [

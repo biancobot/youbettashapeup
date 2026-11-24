@@ -36,7 +36,7 @@ export function intersect3(p1, p2, p3) {
  * table size, crown angle, pavilion angle, star length, lower-girdle length, girdle thickness.
  * Width is 2 (radius 1). Bezels at 22.5 + 45k degrees as on lab plots.
  */
-export function roundBrilliant({ table = 0.56, crownAngle = 34.5, pavilionAngle = 40.8, starLength = 0.50, lowerLength = 0.78, girdle = 0.03, gear = 96, girdleFacets = 64 } = {}) {
+export function roundBrilliant({ table = 0.56, crownAngle = 34.5, pavilionAngle = 40.8, starLength = 0.50, lowerLength = 0.78, girdle = 0.035, gear = 96, girdleFacets = 128 } = {}) {
   const R = 1, W = 2;
   const H = (R - table * R) * Math.tan(rad(crownAngle));
   const g = girdle * W;

@@ -23,7 +23,7 @@ export { marquiseSupport, marquiseOutline, girdleVertices };
  * wing bezels and two half-bezels reaching the table corner).
  */
 export function marquiseStart({
-  ratio = 2.0, crownAngle = 35, wingAngle = crownAngle, pointAngle = 21.5, crownHeight = 0.14, girdle = 0.035, pavilionDepth = 0.435,
+  ratio = 2.0, crownAngle = 35, wingAngle = crownAngle, pointAngle = 21.5, crownHeight = 0.14, girdle = 0.038, pavilionDepth = 0.435,
   starHeight = 0.65, lowerDepth = 0, gear = 96, girdleFacets = 128,
   frenchTips = true, tipHubHeight = 0.75, tipTable = 0.30, tipGirdle = 0.16,
   crown = 'sideBezel', sideHub = 0.82,

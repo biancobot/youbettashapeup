@@ -6,7 +6,7 @@
 import { newTier } from '../design.js';
 import {
   ellipseOutline, girdleVertices, vertexNear, lift, planeThrough, planeAz, mainThrough,
-  mirrorX, mirrorY, zPlane, yPlane, xPlane, azPlane, perpPlane, classTier, girdleFromSupport, girdleEqualLength, plane3, intersect3,
+  mirrorX, mirrorY, zPlane, yPlane, xPlane, azPlane, perpPlane, classTier, girdleFromSupport, girdleEqualLength, plane3, intersect3, chordRun,
 } from '../shapebuild.js';
 
 /*
@@ -55,9 +55,9 @@ const PLOT = {
  * half-width and half-length). Star apexes sit on the bezel ridges at `starHeight` of the crown.
  */
 export function ovalStart({
-  ratio = PLOT.ratio, crownHeight = 0.16, girdle = 0.04, pavilionDepth = 0.43,
+  ratio = PLOT.ratio, crownHeight = 0.16, girdle = 0.033, pavilionDepth = 0.43,
   tableCornerHead = PLOT.crown.T1, tableCornerSide = PLOT.crown.T2,
-  starHeight = 0.65, lowerDepth = 0, gear = 96, girdleFacets = 128, pavilionMains = 8,
+  starHeight = 0.65, lowerDepth = 0, gear = 96, girdleFacets = 128, pavilionMains = 8, maxDip = 0.2, alignMains = true,
 } = {}) {
   const W = 2, l = ratio, H = crownHeight * W, g = girdle * W, Pd = pavilionDepth * W;
   const outline = ellipseOutline(l);
@@ -86,11 +86,15 @@ export function ovalStart({
   addClass('C head', plane3(A90, T1, mx(T1), true));
   addClass('C diagonal', plane3(A45, T1, T2, true));
   addClass('C side', plane3(A0, T2, my(T2), true));
-  // upper girdle facets: through a star apex and two girdle vertices
-  addClass('B head', plane3(A90, M90, G1, true));
-  addClass('B shoulder', plane3(A45, G1, Gm, true));
-  addClass('B side-shoulder', plane3(A45, Gm, G2, true));
-  addClass('B side', plane3(A0, G2, M0, true));
+  // upper girdle facets: through a star apex and two girdle vertices; a facet that would dig more
+  // than maxDip of the girdle into it (the ellipse curves fastest at the ends) is split at the
+  // deepest point so the girdle keeps an even thickness
+  const dip = maxDip * g;
+  const run = (name, apex, azA, azB, z, up) => chordRun(verts, azA, azB, apex, z, up, dip).forEach((c, i, arr) => addClass(arr.length > 1 ? `${name} ${i + 1}` : name, c.plane));
+  run('B head', A90, 90, pc.G1, 0, true);
+  run('B shoulder', A45, pc.G1, pc.Gm, 0, true);
+  run('B side-shoulder', A45, pc.Gm, pc.G2, 0, true);
+  run('B side', A0, pc.G2, 0, 0, true);
 
   // ---- pavilion
   const zc = -g - Pd, culet = [0, 0, zc];
@@ -100,30 +104,37 @@ export function ovalStart({
   const mainTiers = [];
   if (pavilionMains === 8) {
     const pp = PLOT.pav8;
-    const Gv1 = vertexNear(verts, pp.G1), Mv49 = vertexNear(verts, pp.M49), Gv2 = vertexNear(verts, pp.G2);
-    const Gp1 = lift(Gv1, -g), Mp49 = lift(Mv49, -g), Gp2 = lift(Gv2, -g);
+    // mains under the bezels (contacts at the crown's azimuths, lower junction under the upper
+    // junction) so hills and valleys line up round the girdle; or the plot's own positions
+    const az1 = alignMains ? pc.G1 : pp.G1, azm = alignMains ? pc.Gm : pp.M49, az2 = alignMains ? pc.G2 : pp.G2;
+    const Gv1 = vertexNear(verts, az1), Gv2 = vertexNear(verts, az2);
+    const Gp1 = lift(Gv1, -g), Gp2 = lift(Gv2, -g);
     const mH = main(Gv1, Gp1), mS = main(Gv2, Gp2);
     mainTiers.push(addClass('P head', mH), addClass('P side', mS));
     // lower girdle junctions on the ridges between mains, at the plot's plan positions
     const Jh = intersect3(mH, mirrorX(mH), jz || yPlane(pp.Jhead * l));
     const Jd = intersect3(mH, mS, jz || perpPlane(pp.Jdiag[0], pp.Jdiag[1]));
     const Js = intersect3(mS, mirrorY(mS), jz || xPlane(pp.Jside));
-    addClass('L head', plane3(Jh, M90p, Gp1, false));
-    addClass('L a', plane3(Jd, Gp1, Mp49, false));
-    addClass('L b', plane3(Jd, Mp49, Gp2, false));
-    addClass('L side', plane3(Js, Gp2, M0p, false));
+    run('L head', Jh, 90, az1, -g, false);
+    run('L a', Jd, az1, azm, -g, false);
+    run('L b', Jd, azm, az2, -g, false);
+    run('L side', Js, az2, 0, -g, false);
   } else {
     const pp = PLOT.pav4;
-    const Mv68 = vertexNear(verts, pp.M68), Gv45 = vertexNear(verts, pp.G45), Mv24 = vertexNear(verts, pp.M24);
-    const Mp68 = lift(Mv68, -g), Gp45 = lift(Gv45, -g), Mp24 = lift(Mv24, -g);
+    // the four mains sit at the diagonals, under the crown's upper-girdle junctions (not under a
+    // bezel), and the lower-girdle junctions sit under the bezel contacts, so the girdle's hills
+    // and valleys line up top and bottom; or the plot's own positions
+    const az45 = alignMains ? pc.Gm : pp.G45, az68 = alignMains ? pc.G1 : pp.M68, az24 = alignMains ? pc.G2 : pp.M24;
+    const Gv45 = vertexNear(verts, az45);
+    const Gp45 = lift(Gv45, -g);
     const m = main(Gv45, Gp45);
     mainTiers.push(addClass('P', m));
     const Jh = intersect3(m, mirrorX(m), jz || yPlane(pp.Jhead * l));
     const Js = intersect3(m, mirrorY(m), jz || xPlane(pp.Jside));
-    addClass('L head', plane3(Jh, M90p, Mp68, false));
-    addClass('L head b', plane3(Jh, Mp68, Gp45, false));
-    addClass('L side b', plane3(Js, Gp45, Mp24, false));
-    addClass('L side', plane3(Js, Mp24, M0p, false));
+    run('L head', Jh, 90, az68, -g, false);
+    run('L head b', Jh, az68, az45, -g, false);
+    run('L side b', Js, az45, az24, -g, false);
+    run('L side', Js, az24, 0, -g, false);
   }
 
   const pct = (v) => `${Math.round(v * 1000) / 10}%`, ang = (t) => Math.round(Math.abs(t.angle) * 10) / 10;
@@ -138,7 +149,7 @@ export function ovalStart({
       'IGI Excellent ranges (oval brilliant): L:W 1.35-1.50, total depth 58-65%, table 56-62%, crown height 12.5-16%, crown angle 33-38.5, girdle 2-6% (thin to thick), pavilion depth 41-46.5%, pavilion angle 39.5-42.5, culet pointed to small, bow tie not significant. IGI\'s guideline brochure publishes only the Excellent column for the oval.',
       `This design: L:W ${ratio}, crown height ${pct(crownHeight)}, side bezels ${ang(sideTier)} and shoulder bezels ${ang(headTier)} (each through its girdle contact and a table corner), stars ${starHeight * 100}% of the crown height at the apex, table about ${pct(tableW)} of the width by ${pct(tableL / ratio)} of the length, pavilion depth ${pct(pavilionDepth)}, mains ${mainTiers.map((t) => ang(t)).join(' and ')}, girdle ${pct(girdle)}. Angles are measured in each facet's own slope direction; they vary around the outline at a constant crown height.`,
       `Plot pattern (IGI template, L:W ${PLOT.ratio} as drawn): crown 8 bezel kites (4 at the shoulders, contact 74.5 degrees from the side; 4 at the sides, contact 32 degrees), 8 stars (4 on the axes, 4 on the diagonals), 16 upper girdle facets whose pairs meet on the girdle at the axes and at 54 degrees, octagonal table (corners at 0.18 of the half-width on the ends and 0.22 of the half-length on the sides); pavilion ${pavilionMains === 8 ? '8 mains (contacts 70 and 26 degrees from the side) meeting at the culet, 16 lower girdle facets with junctions on the axes (24% of the half-length) and the diagonals' : '4 mains at the diagonals (contact 45 degrees from the side) meeting at the culet, 16 lower girdle facets, four at each junction on the axes (18% of the half-length on the long axis, 26% of the half-width on the short)'}.`,
-      'Facets touch the girdle at the plot positions; each facet azimuth is the outline normal at its contact point. The template draws the star apexes where the bezel ridges reach the table, which no real star can do; the design puts them on the ridges at the star height.',
+      `Facets touch the girdle at the plot positions; each facet azimuth is the outline normal at its contact point. ${alignMains ? (pavilionMains === 8 ? 'The pavilion mains are cut under the bezels (contacts at the bezel azimuths, the lower-girdle junction under the upper-girdle junction) so the girdle\'s hills and valleys line up top and bottom; the plot has them a few degrees off (70.3 / 48.8 / 26.4).' : 'The four mains are cut under the crown\'s upper-girdle junctions and the lower-girdle junctions under the bezel contacts, so hills and valleys line up top and bottom; the plot has them a few degrees off (68.6 / 45.4 / 24.1).') : 'The pavilion contacts are the plot\'s own.'} The template draws the star apexes where the bezel ridges reach the table, which no real star can do; the design puts them on the ridges at the star height.`,
     ],
     tiers,
   };
@@ -150,13 +161,14 @@ const params = [
   { key: 'tableCornerSide', label: 'Side table corner', default: PLOT.crown.T2, list: true, title: 'x in half-widths, y as a fraction of the half-length' },
   { key: 'tableCornerHead', label: 'Head table corner', default: PLOT.crown.T1, list: true, title: 'x in half-widths, y as a fraction of the half-length' },
   { key: 'starHeight', label: 'Star tips', default: 0.65, step: 0.05, min: 0.2, max: 0.95, title: 'Fraction of the crown height' },
-  { key: 'girdle', label: 'Girdle', default: 0.04, step: 0.005 },
+  { key: 'girdle', label: 'Girdle', default: 0.033, step: 0.005 },
   { key: 'pavilionDepth', label: 'Pavilion depth', default: 0.43, step: 0.005 },
+  { key: 'maxDip', label: 'Max girdle dig', default: 0.2, step: 0.05, min: 0.05, max: 0.5, title: 'How far an upper or lower girdle facet may dig into the girdle, fraction of its thickness; a facet that would dig more is split at the deepest point' },
 ];
 
 export const templates = {
-  oval: { name: 'Oval brilliant, 8-main pavilion (starting point)', note: 'IGI plot pattern (FDR749558450) with typical angles; trace against the underlay and cut meet points.', params, make: (o = {}) => ovalStart({ pavilionMains: 8, ...o }) },
-  oval4: { name: 'Oval brilliant, 4-main pavilion (starting point)', note: 'Same crown; the pavilion variant with four mains at the diagonals (IGI FDR733542179).', params, make: (o = {}) => ovalStart({ pavilionMains: 4, ...o }) },
+  oval: { name: 'Oval brilliant, 8-main pavilion (starting point)', note: 'IGI plot pattern (FDR749558450) with typical angles, the pavilion mains under the bezels; trace against the underlay and cut meet points.', params: [...params, { key: 'alignMains', label: 'Mains under bezels', default: 1, step: 1, min: 0, max: 1, title: '1: pavilion main contacts at the bezel contacts and the lower junction under the upper junction; 0: the plot\'s own positions (70.3 / 48.8 / 26.4)' }], make: (o = {}) => ovalStart({ pavilionMains: 8, ...o, alignMains: o.alignMains === undefined ? true : !!o.alignMains }) },
+  oval4: { name: 'Oval brilliant, 4-main pavilion (starting point)', note: 'Same crown; the pavilion variant with four mains at the diagonals (IGI FDR733542179), under the crown\'s upper-girdle junctions, with the lower junctions under the bezels.', params: [...params, { key: 'alignMains', label: 'Mains under junctions', default: 1, step: 1, min: 0, max: 1, title: '1: the four mains under the crown\'s upper-girdle junctions and the lower junctions under the bezel contacts; 0: the plot\'s own positions (68.6 / 45.4 / 24.1)' }], make: (o = {}) => ovalStart({ pavilionMains: 4, ...o, alignMains: o.alignMains === undefined ? true : !!o.alignMains }) },
 };
 
 /** Built-in plot underlays: { id, label }; the image is designs/plots/<id>.png. */

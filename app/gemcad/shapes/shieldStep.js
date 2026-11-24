@@ -67,7 +67,7 @@ function offsetPolygon(poly, d) {
  * per row from the girdle inwards; the last pavilion row runs from its step line to the culet.
  */
 export function shieldStep({
-  ratio = 1.4, topWidth = 0, c1Width = 0.59, c1Pos = 0.17, c2Width = 1, c2Pos = 0.73, girdle = 0.035,
+  ratio = 1.4, topWidth = 0, c1Width = 0.59, c1Pos = 0.17, c2Width = 1, c2Pos = 0.73, girdle = 0.03,
   crownRows = [[0.15, 42], [0.25, 32]], pavilionRows = [[0.22, 48], [0.2, 43]], culetPos = 0.6, gear = 96,
 } = {}) {
   const W = 2, g = girdle * W, L = 2 * ratio;
@@ -133,7 +133,7 @@ const params = (o) => [
   { key: 'c1Pos', label: 'at', default: o.c1Pos, step: 0.01, min: 0, max: 0.99, title: 'Upper corner pair: fraction of the length from the top' },
   { key: 'c2Width', label: 'Lower corners', default: o.c2Width, step: 0.01, min: 0, max: 1, title: 'Lower corner pair: half-width, fraction of the half-width (0 = none)' },
   { key: 'c2Pos', label: 'at', default: o.c2Pos, step: 0.01, min: 0, max: 0.99, title: 'Lower corner pair: fraction of the length from the top' },
-  { key: 'girdle', label: 'Girdle', default: 0.035, step: 0.005 },
+  { key: 'girdle', label: 'Girdle', default: 0.03, step: 0.005 },
   { key: 'culetPos', label: 'Culet', default: o.culetPos, step: 0.01, title: 'Fraction of the length from the top' },
 ];
 const KITE = { ratio: 1.4, topWidth: 0, c1Width: 0.59, c1Pos: 0.17, c2Width: 1, c2Pos: 0.73, culetPos: 0.6 };
