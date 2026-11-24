@@ -19,6 +19,7 @@ const state = {
   spin: parseFloat(params.get('spin') || '0'),
   exportScale: 2,
   zoom: parseFloat(params.get('zoom') || '1'),
+  pan: [0, 0],                     // camera offset across the sheet, world units
   projection: params.get('proj') === 'perspective' ? 'perspective' : 'orthographic',
   fov: parseFloat(params.get('fov') || '30'),
   // Drawing sheet: the base view is the stone as currently rotated; projected views hang off it.
@@ -30,6 +31,9 @@ const state = {
     grid: params.get('grid') === '1',                          // table of cells around the views
     gridMargin: 0.15,                                          // border outside the outermost views, in stone widths
     gridOpacity: parseFloat(params.get('gridopacity') || '0.5'),
+    origin: [0, 0],                                            // where the base view sits on the page (world units)
+    // Page: a sheet of paper centred on the origin; the stone's width occupies `stoneWidth` inches of it
+    page: { enabled: params.get('page') === '1', width: 8.5, height: 11, stoneWidth: 2, dpi: 300, outline: true },
     nextId: 1,
   },
 };
@@ -236,6 +240,24 @@ function bands(intervals) {
   for (const [a, b] of sorted) { const last = out[out.length - 1]; if (last && a <= last[1]) last[1] = Math.max(last[1], b); else out.push([a, b]); }
   return out;
 }
+/** Page rectangle in world units, centred on the origin (the stone's width, 2 units, is `stoneWidth` inches). */
+function pageRect() {
+  const pg = state.sheet.page, k = 2 / pg.stoneWidth;   // world units per inch
+  const w = pg.width * k, h = pg.height * k;
+  return { minX: -w / 2, maxX: w / 2, minY: -h / 2, maxY: h / 2, k };
+}
+const pageMat = new THREE.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.35, depthTest: false });
+const pageLines = new THREE.LineSegments(new THREE.BufferGeometry(), pageMat);
+pageLines.renderOrder = -2; pageLines.visible = false; scene.add(pageLines);
+function updatePage() {
+  const pg = state.sheet.page;
+  pageLines.visible = pg.enabled && pg.outline;
+  if (!pg.enabled) return;
+  const r = pageRect();
+  const pts = [r.minX, r.minY, -4.5, r.maxX, r.minY, -4.5, r.maxX, r.minY, -4.5, r.maxX, r.maxY, -4.5, r.maxX, r.maxY, -4.5, r.minX, r.maxY, -4.5, r.minX, r.maxY, -4.5, r.minX, r.minY, -4.5];
+  pageLines.geometry.dispose();
+  pageLines.geometry = new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+}
 function updateGrid() {
   gridLines.visible = state.sheet.grid && instances.size > 0;
   if (!gridLines.visible) return;
@@ -262,7 +284,7 @@ function layout(force) {
   const base = instances.get('base');
   // spin about the stone's own table axis, applied before the view rotation
   base.q.copy(baseQ).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), (state.spin * Math.PI) / 180));
-  base.pos = [0, 0];
+  base.pos = [state.sheet.origin[0], state.sheet.origin[1]];
   base.bbox = bboxFor(base.q);
   base.scale = 1;
   applyHidden(base, state.sheet.base.hidden);
@@ -299,6 +321,7 @@ function layout(force) {
     overall.maxY = Math.max(overall.maxY, inst.pos[1] + inst.bbox.maxY);
   }
   updateGrid();
+  updatePage();
   updateCamera(stage.clientWidth, stage.clientHeight);
   const b = instances.get('base');
   if (b && geo) underlay.place(geo.bbox, b.pos, state.viewId);
@@ -315,11 +338,13 @@ function resize() {
 
 function updateCamera(w, h) {
   const aspect = w / h;
-  const cx = (overall.minX + overall.maxX) / 2, cy = (overall.minY + overall.maxY) / 2;
+  let cx = (overall.minX + overall.maxX) / 2, cy = (overall.minY + overall.maxY) / 2;
   const gm = state.sheet.grid ? state.sheet.gridMargin * 2 : 0;   // keep the grid border in view
-  const ex = (overall.maxX - overall.minX) / 2 + gm, ey = (overall.maxY - overall.minY) / 2 + gm;
-  // half-height of the view in world units: fit the sheet with a margin
-  let half = Math.max(ey, ex / aspect) * 1.12 / state.zoom;
+  let ex = (overall.maxX - overall.minX) / 2 + gm, ey = (overall.maxY - overall.minY) / 2 + gm;
+  if (state.sheet.page.enabled) { const r = pageRect(); cx = 0; cy = 0; ex = (r.maxX - r.minX) / 2; ey = (r.maxY - r.minY) / 2; }   // frame the page
+  cx += state.pan[0]; cy += state.pan[1];
+  // half-height of the view in world units: fit the sheet (or the page) with a margin
+  let half = Math.max(ey, ex / aspect) * (state.sheet.page.enabled ? 1.04 : 1.12) / state.zoom;
   if (!isFinite(half) || half <= 0) half = 1;
   const multi = state.sheet.views.length > 0;
   if (state.projection === 'perspective' && !multi) {
@@ -362,9 +387,12 @@ function hitView3d(clientX, clientY) {
   return best;
 }
 canvas.addEventListener('pointerdown', (e) => {
-  drag = { x: e.clientX, y: e.clientY, roll: e.shiftKey, move: e.altKey, moved: false, view3d: hitView3d(e.clientX, e.clientY) };
+  const pan = e.button === 1 || e.button === 2 || e.ctrlKey || e.metaKey;   // middle or right button, or ctrl/cmd-drag: pan the sheet
+  drag = { x: e.clientX, y: e.clientY, roll: e.shiftKey, move: e.altKey, pan, moved: false, view3d: pan ? null : hitView3d(e.clientX, e.clientY) };
   canvas.setPointerCapture(e.pointerId);
+  if (pan) e.preventDefault();
 });
+canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 /** World units per CSS pixel of the current orthographic camera. */
 function worldPerPixel() { const rect = canvas.getBoundingClientRect(); return (camera.right - camera.left) / rect.width; }
 canvas.addEventListener('pointermove', (e) => {
@@ -372,11 +400,17 @@ canvas.addEventListener('pointermove', (e) => {
   const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
   if (Math.abs(dx) + Math.abs(dy) > 2) drag.moved = true;
   if (!drag.moved) return;
+  if (drag.pan) {   // pan the camera across the sheet
+    const wpp = worldPerPixel();
+    state.pan[0] -= dx * wpp; state.pan[1] += dy * wpp;
+    drag.x = e.clientX; drag.y = e.clientY; resize(); return;
+  }
   // locks: a locked 3D view ignores the drag; a locked base ignores drags everywhere else (the projected views follow it)
   if (drag.view3d ? drag.view3d.locked : state.sheet.base.locked) { drag.x = e.clientX; drag.y = e.clientY; return; }
-  if (drag.view3d && drag.move) {   // alt-drag: move the 3D view on the sheet
-    const wpp = worldPerPixel(); const v = drag.view3d; v.offset = v.offset || [0, 0];
-    v.offset[0] += dx * wpp; v.offset[1] -= dy * wpp;
+  if (drag.move) {   // alt-drag: move the 3D view on the sheet, or the whole arrangement (the base and everything hung off it)
+    const wpp = worldPerPixel();
+    if (drag.view3d) { const v = drag.view3d; v.offset = v.offset || [0, 0]; v.offset[0] += dx * wpp; v.offset[1] -= dy * wpp; }
+    else { state.sheet.origin[0] += dx * wpp; state.sheet.origin[1] -= dy * wpp; }
     drag.x = e.clientX; drag.y = e.clientY; layout(false); return;
   }
   const rect = canvas.getBoundingClientRect();
@@ -421,9 +455,20 @@ canvas.addEventListener('wheel', (e) => {
     v.scale = Math.min(5, Math.max(0.2, (v.scale || 1) * Math.exp(-e.deltaY * 0.0015)));
     renderViewList(); layout(true); return;
   }
+  // zoom about the cursor: the world point under it stays put
+  const rect = canvas.getBoundingClientRect();
+  const nx = ((e.clientX - rect.left) / rect.width) * 2 - 1, ny = 1 - ((e.clientY - rect.top) / rect.height) * 2;
+  const before = [camera.position.x + (nx * (camera.right - camera.left)) / 2, camera.position.y + (ny * (camera.top - camera.bottom)) / 2];
   state.zoom = Math.min(20, Math.max(0.2, state.zoom * Math.exp(-e.deltaY * 0.0015)));
   resize();
+  if (camera === orthoCamera) {
+    const after = [camera.position.x + (nx * (camera.right - camera.left)) / 2, camera.position.y + (ny * (camera.top - camera.bottom)) / 2];
+    state.pan[0] += before[0] - after[0]; state.pan[1] += before[1] - after[1];
+    resize();
+  }
 }, { passive: false });
+/** Fit the sheet (or the page) in the preview again. */
+function fitView() { state.zoom = 1; state.pan = [0, 0]; resize(); }
 
 let anim = null;
 function snapTo(viewId, instant = false) {
@@ -436,6 +481,7 @@ function snapTo(viewId, instant = false) {
 
 // ----------------------------------------------------------------------------- export
 function exportPNG(scaleFactor) {
+  if (state.sheet.page.enabled) return exportPage();
   const w = stage.clientWidth, h = stage.clientHeight;
   // never export the meet-point markers
   const showMeet = state.showMeet; state.showMeet = false; updateMeetPoints();
@@ -444,17 +490,40 @@ function exportPNG(scaleFactor) {
   renderer.setPixelRatio(1);
   renderer.setSize(Math.round(w * scaleFactor), Math.round(h * scaleFactor), false);
   lineMat.resolution.set(renderer.domElement.width, renderer.domElement.height);
-  lineMat.linewidth = lw * scaleFactor / pr;
+  hiddenMat.resolution.copy(lineMat.resolution);
+  lineMat.linewidth = lw * scaleFactor / pr; hiddenMat.linewidth = lineMat.linewidth;
   updateCamera(w, h);
   renderer.render(scene, camera);
   const url = renderer.domElement.toDataURL('image/png');
   renderer.setPixelRatio(pr);
-  lineMat.linewidth = lw;
+  lineMat.linewidth = lw; hiddenMat.linewidth = lw;
   resize();
   state.showMeet = showMeet; updateMeetPoints();
   const suffix = state.sheet.views.length ? `sheet-${state.sheet.standard}-angle` : state.viewId;
   const filename = `${state.shapeId}-${suffix}.png`;
   saveFile(filename, url);
+}
+/** Export exactly the page at its print resolution: width x height inches at `dpi`, the page outline left out. */
+function exportPage() {
+  const pg = state.sheet.page, r = pageRect();
+  const pw = Math.round(pg.width * pg.dpi), ph = Math.round(pg.height * pg.dpi);
+  const showMeet = state.showMeet; state.showMeet = false; updateMeetPoints();
+  const outline = pageLines.visible; pageLines.visible = false;
+  const pr = renderer.getPixelRatio(), lw = lineMat.linewidth;
+  renderer.setPixelRatio(1);
+  renderer.setSize(pw, ph, false);
+  lineMat.resolution.set(pw, ph); hiddenMat.resolution.set(pw, ph);
+  // keep the lines the same thickness relative to the stone as on screen
+  const screenPxPerUnit = stage.clientWidth / (orthoCamera.right - orthoCamera.left), pagePxPerUnit = pw / (r.maxX - r.minX);
+  lineMat.linewidth = lw * pagePxPerUnit / screenPxPerUnit / pr; hiddenMat.linewidth = lineMat.linewidth;
+  const cam = orthoCamera;
+  cam.left = r.minX; cam.right = r.maxX; cam.top = r.maxY; cam.bottom = r.minY; cam.position.set(0, 0, 5); cam.lookAt(0, 0, 0); cam.updateProjectionMatrix();
+  renderer.render(scene, cam);
+  const url = renderer.domElement.toDataURL('image/png');
+  renderer.setPixelRatio(pr); lineMat.linewidth = lw; hiddenMat.linewidth = lw; pageLines.visible = outline;
+  resize();
+  state.showMeet = showMeet; updateMeetPoints();
+  saveFile(`${state.shapeId}-page-${pg.width}x${pg.height}in-${pg.dpi}dpi.png`, url);
 }
 
 /** Hand a data: URL to the viewer: through the claude.ai downloads capability when the page runs as an artifact, otherwise a plain download. */
@@ -487,6 +556,20 @@ function addView(parentId, dir, kind = 'ortho') {
   renderViewList();
   layout(true);
   return id;
+}
+/**
+ * Centre a view on the page (or the origin when no page is set): axis 'x' centres it
+ * horizontally, 'y' vertically. A 3D view moves on its own; any other view moves the whole
+ * arrangement, since projected views are tied to the base.
+ */
+function snapCentre(id, axis) {
+  const inst = instances.get(id); if (!inst || !inst.bbox) return;
+  const v = state.sheet.views.find((x) => x.id === id);
+  const c = axis === 'x' ? inst.pos[0] + (inst.bbox.minX + inst.bbox.maxX) / 2 : inst.pos[1] + (inst.bbox.minY + inst.bbox.maxY) / 2;
+  const i = axis === 'x' ? 0 : 1;
+  if (v && v.kind === '3d') { v.offset = v.offset || [0, 0]; v.offset[i] -= c; }
+  else state.sheet.origin[i] -= c;
+  layout(false);
 }
 /** Put a 3D view back to the isometric tilt of its parent, at its laid-out place and natural size. */
 function resetView3d(id) {
@@ -566,6 +649,12 @@ function renderViewList() {
       b.addEventListener('click', () => addView(id, dir));
       btns.appendChild(b);
     }
+    for (const [axis, glyph, title] of [['x', '⇔', 'Centre this view horizontally on the page'], ['y', '⇕', 'Centre this view vertically on the page']]) {
+      const b = document.createElement('button');
+      b.textContent = glyph; b.title = title;
+      b.addEventListener('click', () => snapCentre(id, axis));
+      btns.appendChild(b);
+    }
     const b3 = document.createElement('button');
     b3.textContent = '3D'; b3.title = 'Add a 3D (isometric) view of this one, placed to its right; drag over it to turn it, alt-drag to move it, wheel to scale it; it still follows this view';
     b3.addEventListener('click', () => addView(id, 'right', '3d'));
@@ -634,6 +723,19 @@ const fovIn = document.getElementById('fov'), fovv = document.getElementById('fo
 fovIn.value = state.fov; fovv.textContent = `${state.fov}°`;
 fovIn.addEventListener('input', () => { state.fov = parseFloat(fovIn.value); fovv.textContent = `${state.fov}°`; resize(); });
 
+const PAGE_SIZES = { letter: [8.5, 11], letterL: [11, 8.5], square85: [8.5, 8.5], a4: [8.27, 11.69], a4L: [11.69, 8.27], custom: null };
+const pageChk = document.getElementById('page'), pageSize = document.getElementById('pagesize'), pageW = document.getElementById('pagew'), pageH = document.getElementById('pageh'), pageStone = document.getElementById('pagestone'), pageDpi = document.getElementById('pagedpi'), pageOutline = document.getElementById('pageoutline');
+if (pageChk) {
+  const pg = state.sheet.page;
+  const refresh = () => { pageW.value = pg.width; pageH.value = pg.height; pageStone.value = pg.stoneWidth; pageDpi.value = pg.dpi; pageChk.checked = pg.enabled; pageOutline.checked = pg.outline; };
+  refresh();
+  pageChk.addEventListener('change', () => { pg.enabled = pageChk.checked; layout(true); });
+  pageOutline.addEventListener('change', () => { pg.outline = pageOutline.checked; layout(true); });
+  pageSize.addEventListener('change', () => { const sz = PAGE_SIZES[pageSize.value]; if (sz) { pg.width = sz[0]; pg.height = sz[1]; refresh(); layout(true); } });
+  const num = (el, key, min) => el.addEventListener('change', () => { const v = parseFloat(el.value); if (v >= min) { pg[key] = v; pageSize.value = 'custom'; layout(true); } });
+  num(pageW, 'width', 0.5); num(pageH, 'height', 0.5); num(pageStone, 'stoneWidth', 0.05); num(pageDpi, 'dpi', 36);
+}
+const fitBtn = document.getElementById('fitview'); if (fitBtn) fitBtn.addEventListener('click', fitView);
 const gridChk = document.getElementById('grid'), gridOp = document.getElementById('gridopacity'), gridOpV = document.getElementById('gridopacityv'), gridMarginIn = document.getElementById('gridmargin');
 if (gridChk) {
   gridChk.checked = state.sheet.grid;
@@ -729,7 +831,7 @@ requestAnimationFrame(frame);
 
 // Exposed for the screenshot tool and for scripting.
 window.__viewer = {
-  state, setDesign, snapTo, exportPNG, resize, addView, removeView, clearViews, resetView3d, editor, instances, camera: () => camera, gridCells: () => gridLines.userData.cells,
+  state, setDesign, snapTo, exportPNG, resize, addView, removeView, clearViews, resetView3d, snapCentre, fitView, editor, instances, camera: () => camera, gridCells: () => gridLines.userData.cells,
   loadShape(id) { const { templates } = window.__templates; if (templates[id]) editor.design = templates[id].make(); },
   setLineWidth(v) { state.lineWidth = v; lineMat.linewidth = v; },
   setGirdleLines(v) { state.girdleLines = v; layout(true); },

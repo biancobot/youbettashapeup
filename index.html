@@ -74,8 +74,8 @@
   <div id="app">
     <aside id="panel">
       <div>
-        <h1>Gem Facet Designer <span class="build" title="Build number; if it does not match the README, hard-reload or git pull">build 40</span></h1>
-        <div class="hint">GemCad-style facet design: every facet is a plane by angle, index and distance; the stone is their intersection. Drag to rotate, shift-drag to roll, scroll to zoom, click a vertex to pick a meet point.</div>
+        <h1>Gem Facet Designer <span class="build" title="Build number; if it does not match the README, hard-reload or git pull">build 41</span></h1>
+        <div class="hint">GemCad-style facet design: every facet is a plane by angle, index and distance; the stone is their intersection. Drag to rotate, shift-drag to roll, scroll to zoom, right-drag to pan, click a vertex to pick a meet point.</div>
       </div>
 
       <div class="group">
@@ -174,6 +174,18 @@
         <div class="hint">To add a projected view, click L, R, A or B beside a view in the list below: it projects a new view to the Left, Right, Above or Below that view under the selected standard. Projected views can be projected from again, and all of them follow the base view as you rotate it. 3D adds an isometric view of that view (choose its side in the row); drag over a 3D view to turn it on its own, shift-drag to roll it, alt-drag (option on a Mac) to move it, wheel over it to scale it, &#8634; to reset it. It still follows its parent when the base turns. <b>lock</b> stops a view being moved by dragging (projected views follow the base, so lock the base for those); <b>hidden</b> draws that view's hidden lines in light grey. Gaps are in stone widths between view bounding boxes. Sheets are always orthographic.</div>
         <div id="viewlist"></div>
         <button id="clearviews">Remove all projected views</button>
+        <div class="row"><label for="page">Page</label><input type="checkbox" id="page"></div>
+        <div class="row"><label for="pagesize">Page size</label>
+          <select id="pagesize"><option value="letter">Letter 8.5 × 11 in</option><option value="letterL">Letter landscape 11 × 8.5</option><option value="square85">Square 8.5 × 8.5</option><option value="a4">A4 8.27 × 11.69</option><option value="a4L">A4 landscape</option><option value="custom">Custom</option></select></div>
+        <div class="gaps">
+          <label>Width (in) <input type="number" id="pagew" step="0.25" min="0.5"></label>
+          <label>Height (in) <input type="number" id="pageh" step="0.25" min="0.5"></label>
+          <label>Stone width (in) <input type="number" id="pagestone" step="0.1" min="0.05" title="How wide the stone is drawn on the page; everything scales with it"></label>
+          <label>Export DPI <input type="number" id="pagedpi" step="50" min="36"></label>
+        </div>
+        <div class="row"><label for="pageoutline">Show page outline</label><input type="checkbox" id="pageoutline" checked></div>
+        <div class="row"><span class="hint">Wheel zooms about the cursor; right- or middle-button drag (or ctrl-drag) pans.</span><button id="fitview" title="Zoom to fit the page (or the sheet) again">Fit</button></div>
+        <div class="hint">With a page set, the preview frames the page, the view list's &#8660; and &#8661; buttons centre a view on it horizontally or vertically (a 3D view moves alone; any other view moves the whole arrangement), alt-drag on the base moves the arrangement, and Export PNG writes the page at the chosen DPI (8.5 × 11 at 300 DPI is 2550 × 3300 pixels).</div>
         <div class="row"><label for="grid">Grid (a table with a cell per view)</label><input type="checkbox" id="grid"></div>
         <div class="row"><label for="gridopacity">Grid opacity <span id="gridopacityv"></span></label><input type="range" id="gridopacity" min="0.05" max="1" step="0.05"></div>
         <div class="row"><label for="gridmargin">Grid border (stone widths)</label><input type="number" id="gridmargin" step="0.05" min="0" style="width:70px"></div>
@@ -214,6 +226,6 @@
       const el = document.getElementById('info'); if (el) { el.style.color = '#b00020'; el.textContent = 'Load error: ' + (e.reason && e.reason.message || e.reason); }
     });
   </script>
-  <script type="module" src="./app/main.js?v=40"></script>
+  <script type="module" src="./app/main.js?v=41"></script>
 </body>
 </html>
