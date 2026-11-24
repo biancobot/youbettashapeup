@@ -45,48 +45,170 @@ function overlap(A, B) {
 
 /** Hull scaled by s (a number, or [sx, sy] in the stone's own frame), turned by ang and moved to (cx, cy). */
 const transform = (hull, s, ang, cx, cy) => { const c = Math.cos(ang), sn = Math.sin(ang), sx = Array.isArray(s) ? s[0] : s, sy = Array.isArray(s) ? s[1] : s; return hull.map(([x, y]) => [cx + sx * x * c - sy * y * sn, cy + sx * x * sn + sy * y * c]); };
-const rectPoly = (r) => [[r.minX, r.minY], [r.maxX, r.minY], [r.maxX, r.maxY], [r.minX, r.maxY]];
+
+/** Signed distance from (x, y) to a convex polygon (counter-clockwise): negative inside. */
+export function sdPolygon(poly, x, y) {
+  let inside = true, best = Infinity;
+  for (let i = 0; i < poly.length; i++) {
+    const [ax, ay] = poly[i], [bx, by] = poly[(i + 1) % poly.length];
+    const ex = bx - ax, ey = by - ay, px = x - ax, py = y - ay;
+    if (ex * py - ey * px < 0) inside = false;
+    const t = Math.max(0, Math.min(1, (px * ex + py * ey) / (ex * ex + ey * ey || 1)));
+    const d = Math.hypot(px - t * ex, py - t * ey);
+    if (d < best) best = d;
+  }
+  return inside ? -best : best;
+}
 
 /**
- * Pack stones into `area` (world rect) avoiding `exclusions` (world rects). hull: the stone's
- * face-up outline at its natural size (width 2). sizes: [{ carats, scale, label, labelScale }]
- * largest first; labelScale ([sx, sy]) is the chart-dimension scale a labelled stone gets instead
- * of `scale`. Returns [{ x, y, angle, scale, carats, label, opacity }].
+ * Tangent circle packing ("cobblestone pavé" / snow setting). Circles of many radii fill the
+ * free space of `area` around the obstacle polygons: each new circle is put at a local maximum
+ * of the clearance function (distance to the nearest page edge, obstacle edge or placed circle)
+ * with radius equal to that clearance, so it touches three boundaries; gaps are filled by
+ * progressively smaller circles down to rMin. `seeds` are circles placed first at random
+ * (the labelled chart-size stones, and a few large ones), each where it fits.
+ * Returns { circles: [{ x, y, r, seed }], stats }.
  */
-export function packStones(hull, area, exclusions, sizes, settings, random) {
-  const placed = [];   // { poly, cx, cy, r }
-  const out = [];
-  const gap = settings.gap;
-  const hullR = Math.max(...hull.map(([x, y]) => Math.hypot(x, y)));
-  const excl = exclusions.map(rectPoly);
+export function packTangent(area, obstacles, settings, random, seeds = []) {
+  const { rMin, rMax, margin } = settings;
+  const circles = [];
+  // spatial grid of placed circles, cell = 2 rMax
+  const cell = Math.max(2 * rMax, 1e-6), grid = new Map();
+  const key = (ix, iy) => ix * 100003 + iy;
+  const insert = (c) => {
+    const i0 = Math.floor((c.x - c.r) / cell), i1 = Math.floor((c.x + c.r) / cell), j0 = Math.floor((c.y - c.r) / cell), j1 = Math.floor((c.y + c.r) / cell);
+    for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) { const k = key(i, j); if (!grid.has(k)) grid.set(k, []); grid.get(k).push(c); }
+  };
+  const edgeClear = (x, y) => Math.min(x - area.minX, area.maxX - x, y - area.minY, area.maxY - y);
+  const obstacleClear = (x, y) => { let b = Infinity; for (const o of obstacles) { const d = sdPolygon(o, x, y) - margin; if (d < b) b = d; } return b; };
+  /** clearance(x, y): min distance to any boundary; `bound` lets the circle search stop early. */
+  const clearance = (x, y) => {
+    let b = Math.min(edgeClear(x, y), obstacleClear(x, y));
+    if (b <= 0) return b;
+    const reach = b + rMax, i0 = Math.floor((x - reach) / cell), i1 = Math.floor((x + reach) / cell), j0 = Math.floor((y - reach) / cell), j1 = Math.floor((y + reach) / cell);
+    for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) {
+      const list = grid.get(key(i, j)); if (!list) continue;
+      for (const c of list) { const d = Math.hypot(c.x - x, c.y - y) - c.r; if (d < b) { b = d; if (b <= 0) return b; } }
+    }
+    return b;
+  };
+  const place = (x, y, r, extra) => { const c = { x, y, r, ...extra }; circles.push(c); insert(c); return c; };
   const aw = area.maxX - area.minX, ah = area.maxY - area.minY;
-  const labelled = new Set();
-  for (const size of sizes) {
-    for (let k = 0, fails = 0, attempts = 0; k < attempts || k === 0; k++) {
-      // the first placement of a labelled size is the labelled stone, at the chart's dimensions
-      const labelThis = size.label && !labelled.has(size.carats);
-      const s = labelThis && size.labelScale ? size.labelScale : size.scale;
-      const smax = Array.isArray(s) ? Math.max(...s) : s;
-      const r = hullR * smax * (1 + gap);
-      if (2 * r > Math.min(aw, ah)) break;
-      if (k === 0) attempts = Math.min(4000, Math.max(300, Math.round((aw * ah) / (Math.PI * r * r)) * 6));
-      if (fails >= settings.patience) break;
-      const cx = area.minX + r + random() * (aw - 2 * r), cy = area.minY + r + random() * (ah - 2 * r);
-      const ang = random() * Math.PI * 2;
-      // cheap circle pre-check against placed stones, then exact polygon tests
-      let bad = false;
-      const poly = transform(hull, Array.isArray(s) ? [s[0] * (1 + gap), s[1] * (1 + gap)] : s * (1 + gap), ang, cx, cy);
-      for (const e of excl) if (overlap(poly, e)) { bad = true; break; }
-      if (!bad) for (const q of placed) { if (Math.hypot(q.cx - cx, q.cy - cy) < q.r + r && overlap(poly, q.poly)) { bad = true; break; } }
-      if (bad) { fails++; continue; }
-      fails = 0;
-      placed.push({ poly, cx, cy, r });
-      const label = labelThis ? size.carats : null;
-      if (label) labelled.add(size.carats);
-      out.push({ x: cx, y: cy, angle: ang, scale: s, carats: size.carats, label, opacity: settings.minOpacity + random() * (settings.maxOpacity - settings.minOpacity) });
+  // seeds: given circles first (where they fit), then a few random large ones
+  for (const sd of seeds) {
+    for (let k = 0; k < 400; k++) {
+      const x = area.minX + sd.r + random() * (aw - 2 * sd.r), y = area.minY + sd.r + random() * (ah - 2 * sd.r);
+      if (clearance(x, y) >= sd.r) { place(x, y, sd.r, { seed: sd }); break; }
     }
   }
-  return out;
+  for (let n = 0; n < settings.seedCount; n++) {
+    const r = settings.seedMin + random() * (rMax - settings.seedMin);
+    for (let k = 0; k < 200; k++) {
+      const x = area.minX + r + random() * (aw - 2 * r), y = area.minY + r + random() * (ah - 2 * r);
+      if (clearance(x, y) >= r) { place(x, y, r, {}); break; }
+    }
+  }
+  // fill: best of N random samples, hill-climbed to a local maximum of clearance
+  let fails = 0, climbs = 0;
+  const dirs = []; for (let k = 0; k < 8; k++) dirs.push([Math.cos((k * Math.PI) / 4), Math.sin((k * Math.PI) / 4)]);
+  while (circles.length < settings.maxCircles && fails < settings.patience) {
+    let bx = 0, by = 0, bc = -Infinity;
+    for (let n = 0; n < settings.samples; n++) {
+      const x = area.minX + random() * aw, y = area.minY + random() * ah, c = clearance(x, y);
+      if (c > bc) { bc = c; bx = x; by = y; }
+    }
+    let step = Math.max(bc, rMin);
+    for (let it = 0; it < 80 && step > rMin * 1e-3; it++) {
+      let improved = false;
+      for (const [dx, dy] of dirs) {
+        const x = bx + dx * step, y = by + dy * step;
+        if (x < area.minX || x > area.maxX || y < area.minY || y > area.maxY) continue;
+        const c = clearance(x, y);
+        if (c > bc + 1e-9) { bc = c; bx = x; by = y; improved = true; }
+      }
+      if (!improved) step /= 2;
+      climbs++;
+    }
+    if (bc < rMin) { fails++; continue; }
+    fails = 0;
+    place(bx, by, Math.min(bc, rMax), {});
+  }
+  return { circles, stats: { count: circles.length, climbs } };
+}
+
+/**
+ * Acceptance check for a packing: overlaps between circles, intrusions into obstacles or past
+ * the area edge, and how many circles touch at least two boundaries (within tol).
+ */
+export function checkPacking(circles, area, obstacles, margin, tol = 1e-4) {
+  let overlaps = 0, intrusions = 0, tangent2 = 0, maxOverlap = 0;
+  for (let i = 0; i < circles.length; i++) {
+    const a = circles[i]; let touches = 0;
+    const edge = Math.min(a.x - area.minX, area.maxX - a.x, a.y - area.minY, area.maxY - a.y) - a.r;
+    if (edge < -tol) intrusions++;
+    if (Math.abs(edge) <= tol) touches++;
+    for (const o of obstacles) { const d = sdPolygon(o, a.x, a.y) - margin - a.r; if (d < -tol) intrusions++; if (Math.abs(d) <= tol) touches++; }
+    for (let j = 0; j < circles.length; j++) {
+      if (i === j) continue; const b = circles[j];
+      const d = Math.hypot(a.x - b.x, a.y - b.y) - a.r - b.r;
+      if (d < -tol) { if (j > i) { overlaps++; maxOverlap = Math.max(maxOverlap, -d); } }
+      if (Math.abs(d) <= tol) touches++;
+    }
+    if (touches >= 2) tangent2++;
+  }
+  return { overlaps, maxOverlap, intrusions, tangent2, count: circles.length };
+}
+
+/**
+ * Stones for the cobblestone pattern: a tangent packing of the free space around the view
+ * outlines, with the current shape drawn inside every circle (its circumscribed circle is the
+ * packed circle) at a random turn and opacity. Labelled chart-size stones are the first seeds.
+ * hull: the face-up outline at natural size; hullR its circumradius.
+ */
+export function cobblestoneStones(hull, area, obstacles, sizes, settings, random) {
+  const hullR = Math.max(...hull.map(([x, y]) => Math.hypot(x, y)));
+  const seeds = [];
+  for (const sz of sizes) if (sz.label) {
+    const sc = sz.labelScale || sz.scale, r = Array.isArray(sc) ? Math.max(...hull.map(([x, y]) => Math.hypot(sc[0] * x, sc[1] * y))) : hullR * sc;
+    seeds.push({ r, carats: sz.carats, scale: sc });
+  }
+  seeds.sort((a, b) => b.r - a.r);
+  const { circles, stats } = packTangent(area, obstacles, settings, random, seeds);
+  const stones = circles.map((c) => {
+    const opacity = settings.minOpacity + random() * (settings.maxOpacity - settings.minOpacity);
+    if (c.seed) return { x: c.x, y: c.y, angle: random() * Math.PI * 2, scale: c.seed.scale, carats: c.seed.carats, label: c.seed.carats, opacity, r: c.r };
+    return { x: c.x, y: c.y, angle: random() * Math.PI * 2, scale: c.r / hullR, carats: null, label: null, opacity, r: c.r };
+  });
+  // Second pass for shapes that are not round: a stone inscribed in its circle leaves the circle's
+  // corners empty, so smaller stones are tried in those gaps with their real outlines (separating
+  // axis test against the placed stones' outlines and the obstacles), largest first.
+  const inR = Math.min(...hull.map(([x, y], i) => { const [bx, by] = hull[(i + 1) % hull.length]; return Math.abs(x * by - y * bx) / Math.hypot(bx - x, by - y); }));
+  if (hullR / inR > 1.12 && settings.gapFill !== false) {
+    const polys = stones.map((st) => transform(hull, st.scale, st.angle, st.x, st.y));
+    const areaPoly = [[area.minX, area.minY], [area.maxX, area.minY], [area.maxX, area.maxY], [area.minX, area.maxY]];
+    const grown = obstacles.map((o) => { const cx = o.reduce((a, p) => a + p[0], 0) / o.length, cy = o.reduce((a, p) => a + p[1], 0) / o.length; return o.map(([x, y]) => { const dx = x - cx, dy = y - cy, l = Math.hypot(dx, dy) || 1; return [x + (dx / l) * settings.margin, y + (dy / l) * settings.margin]; }); });
+    const g = 1 + settings.gapPad;
+    let added = 0;
+    for (const sz of sizes) {
+      if (sz.label) continue;
+      const sc = sz.scale, r = hullR * sc * g;
+      if (r < settings.rMin) break;
+      let fails = 0;
+      for (let k = 0; k < 2500 && fails < settings.patience; k++) {
+        const x = area.minX + r + random() * (area.maxX - area.minX - 2 * r), y = area.minY + r + random() * (area.maxY - area.minY - 2 * r);
+        const ang = random() * Math.PI * 2;
+        const poly = transform(hull, sc * g, ang, x, y);
+        let bad = poly.some(([px, py]) => px < area.minX || px > area.maxX || py < area.minY || py > area.maxY) || grown.some((o) => overlap(poly, o));
+        if (!bad) for (let i = 0; i < stones.length; i++) { const q = stones[i]; if (Math.hypot(q.x - x, q.y - y) < q.r + r && overlap(poly, polys[i])) { bad = true; break; } }
+        if (bad) { fails++; continue; }
+        fails = 0; added++;
+        stones.push({ x, y, angle: ang, scale: sc, carats: sz.carats, label: null, opacity: settings.minOpacity + random() * (settings.maxOpacity - settings.minOpacity), r: hullR * sc });
+        polys.push(transform(hull, sc, ang, x, y));
+      }
+    }
+    stats.gapFilled = added;
+  }
+  return { stones, stats };
 }
 
 /**
@@ -97,12 +219,12 @@ export function packStones(hull, area, exclusions, sizes, settings, random) {
  * exact vesica of the classic figure, longer ones leave slivers between petals.
  * Returns stones like packStones, all at one scale and opacity, centred on the area.
  */
-export function hexafoilStones(hull, area, exclusions, scale, opacity, random) {
+export function hexafoilStones(hull, area, obstacles, scale, opacity, random) {
   const ys = hull.map((p) => p[1]), L = (Math.max(...ys) - Math.min(...ys)) * scale;   // petal length along the stone's y axis
   const R = L / Math.sqrt(3);
   const a = [R, 0], b = [R / 2, (R * Math.sqrt(3)) / 2];
   const dirs = [a, b, [b[0] - a[0], b[1] - a[1]]];
-  const excl = exclusions.map(rectPoly);
+  const excl = obstacles;   // view outlines (convex polygons)
   const cx0 = (area.minX + area.maxX) / 2, cy0 = (area.minY + area.maxY) / 2;
   const n = Math.ceil(Math.max(area.maxX - area.minX, area.maxY - area.minY) / R) + 2;
   const out = [];

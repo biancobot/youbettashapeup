@@ -8,7 +8,7 @@ import { createUnderlay } from './underlay.js';
 import { templates, plots } from './gemcad/templates.js';
 window.__templates = { templates, plots };
 import { VIEWS, getView } from './views.js';
-import { createPave, packStones, paveSizes, hexafoilStones, convexHull, rng } from './pave.js';
+import { createPave, cobblestoneStones, checkPacking, paveSizes, hexafoilStones, convexHull, rng } from './pave.js';
 import { weightEstimator, weightFamily, chartSize, CHART_SOURCE } from './gemcad/weights.js';
 
 // ----------------------------------------------------------------------------- state
@@ -37,7 +37,7 @@ const state = {
     // Page: a sheet of paper centred on the origin; the stone's width occupies `stoneWidth` inches of it
     page: { enabled: params.get('page') === '1', width: 8.5, height: 11, stoneWidth: 2, dpi: 300, outline: true },
     // Background: cobblestone pavé of the current stone in random sizes and orientations, or a hexafoil of marquises
-    pave: { enabled: false, pattern: 'cobblestone', minOpacity: 0.15, maxOpacity: 0.6, maxCarats: 5, mmPerInch: 25.4, gap: 0.06, patience: 150, seed: 1, labels: true, hexCarats: 1, hexOpacity: 0.3 },
+    pave: { enabled: false, pattern: 'cobblestone', minOpacity: 0.15, maxOpacity: 0.6, maxCarats: 5, minCarats: 0.02, mmPerInch: 25.4, margin: 0.03, seedCount: 6, samples: 40, patience: 80, maxCircles: 3000, seed: 1, labels: true, hexCarats: 1, hexOpacity: 0.3 },
     nextId: 1,
   },
 };
@@ -276,10 +276,15 @@ function paveArea() {
   const w = overall.maxX - overall.minX, h = overall.maxY - overall.minY;   // no page: a generous border round the sheet
   return { minX: overall.minX - 0.75 * w, maxX: overall.maxX + 0.75 * w, minY: overall.minY - 0.75 * h, maxY: overall.maxY + 0.75 * h };
 }
-function paveExclusions() {
-  const m = 0.2;   // 0.1 stone widths clear of every view
-  if (state.sheet.grid) { const g = state.sheet.gridMargin * 2; return [{ minX: overall.minX - g, maxX: overall.maxX + g, minY: overall.minY - g, maxY: overall.maxY + g }]; }
-  return [...instances.values()].map((inst) => ({ minX: inst.pos[0] + inst.bbox.minX - m, maxX: inst.pos[0] + inst.bbox.maxX + m, minY: inst.pos[1] + inst.bbox.minY - m, maxY: inst.pos[1] + inst.bbox.maxY + m }));
+/** The views' outlines on the sheet (convex hull of each view's projected vertices), the obstacles the background flows round. */
+function paveObstacles() {
+  const v = new THREE.Vector3(), out = [];
+  for (const inst of instances.values()) {
+    const pts = [], a = geo.vertices, sc = inst.scale || 1;
+    for (let i = 0; i < a.length; i += 3) { v.set(a[i], a[i + 1], a[i + 2]).applyQuaternion(inst.q); pts.push([inst.pos[0] + v.x * sc, inst.pos[1] + v.y * sc]); }
+    out.push(convexHull(pts));
+  }
+  return out;
 }
 function updatePave() {
   const pv = state.sheet.pave;
@@ -292,18 +297,33 @@ function updatePave() {
   // sizes: the estimator's millimetre widths at the page's scale; shapes without an estimator use the round factor, unlabelled
   const sizer = est || weightEstimator('round', st.ratio, st.depth);
   const worldPerMm = pageRect().k / pv.mmPerInch;
-  const area = paveArea(), exclusions = paveExclusions();
-  const r3 = (v) => Math.round(v * 20) / 20;
-  const key = JSON.stringify([state.shapeId, geo.faceCount, state.girdleLines, pattern, pv, [area.minX, area.maxX, area.minY, area.maxY].map(r3), exclusions.map((e) => [e.minX, e.maxX, e.minY, e.maxY].map(r3)), st.W, st.L]);
+  const area = paveArea(), obstacles = paveObstacles();
+  const r3 = (v) => Math.round(v * 50) / 50;
+  const key = JSON.stringify([state.shapeId, geo.faceCount, state.girdleLines, pattern, pv, [area.minX, area.maxX, area.minY, area.maxY].map(r3), obstacles.map((o) => [o.length, ...o[0].map(r3), ...o[Math.floor(o.length / 2)].map(r3)]), [...instances.values()].map((i) => [i.pos.map(r3), i.scale]), st.W, st.L]);
   // the face-up outline (convex hull of the stone's plan) and its edges
   const pts = []; for (let i = 0; i < geo.vertices.length; i += 3) pts.push([geo.vertices[i], geo.vertices[i + 1]]);
   const hull = convexHull(pts);
   const hullEdges = []; for (let i = 0; i < hull.length; i++) { const a = hull[i], b = hull[(i + 1) % hull.length]; hullEdges.push(a[0], a[1], 0, b[0], b[1], 0); }
-  let stones;
-  if (pattern === 'hexafoil') stones = hexafoilStones(hull, area, exclusions, (sizer.widthMm(pv.hexCarats) * worldPerMm) / 2, pv.hexOpacity, rng(pv.seed));
-  else stones = packStones(hull, area, exclusions, paveSizes(sizer, pv.maxCarats, worldPerMm, pv.labels && !!est, (c) => chartSize(family, c, st.ratio), st.L, st.W), pv, rng(pv.seed));
+  let stones, check = null;
+  if (pattern === 'hexafoil') stones = hexafoilStones(hull, area, obstacles, (sizer.widthMm(pv.hexCarats) * worldPerMm) / 2, pv.hexOpacity, rng(pv.seed));
+  else {
+    // circle radii from carat weights: the circumscribed circle of the stone at that weight
+    const hullR = Math.max(...hull.map(([x, y]) => Math.hypot(x, y)));
+    const rOf = (ct) => (hullR * sizer.widthMm(ct) * worldPerMm) / 2;
+    const settings = { ...pv, rMin: rOf(pv.minCarats), rMax: rOf(pv.maxCarats), seedMin: rOf(pv.maxCarats) * 0.6, margin: pv.margin * 2, gapPad: 0.04 };
+    if (pave.lastKey !== key) {
+      const t0 = performance.now();
+      const res = cobblestoneStones(hull, area, obstacles, paveSizes(sizer, pv.maxCarats, worldPerMm, pv.labels && !!est, (c) => chartSize(family, c, st.ratio), st.L, st.W), settings, rng(pv.seed));
+      stones = res.stones;
+      check = { ...checkPacking(res.stones.slice(0, res.stones.length - (res.stats.gapFilled || 0)).map((q) => ({ x: q.x, y: q.y, r: q.r })), area, obstacles, settings.margin), gapFilled: res.stats.gapFilled || 0, ms: Math.round(performance.now() - t0) };
+      pave.lastCheck = check;
+    } else { stones = pave.lastStones; check = pave.lastCheck; }
+    pave.lastStones = stones;
+  }
   pave.build({ key, stones, meshGeometry, hardGeometry, smoothPositions: new Float32Array(smoothEdgesFor(new THREE.Quaternion())), hullEdges: new Float32Array(hullEdges) });
-  paveInfo = { count: stones.length, note: pattern === 'hexafoil' ? `Hexafoil: ${stones.length} marquises of ${pv.hexCarats} ct (${sizer.widthMm(pv.hexCarats).toFixed(2)} mm wide)` : est ? `${stones.length} stones, ${est.label} estimator (factor ${est.factor.toFixed(5)}): 1 ct is ${est.widthMm(1).toFixed(2)} mm wide, 5 ct ${est.widthMm(5).toFixed(2)} mm; the labelled outlines use the ${CHART_SOURCE} dimensions${chartSize(family, 1, st.ratio) ? ` (1 ct ${chartSize(family, 1, st.ratio).length.toFixed(1)} x ${chartSize(family, 1, st.ratio).width.toFixed(1)} mm)` : ''}` : `${stones.length} stones; no weight estimator covers this shape, so sizes use the round factor and no carat labels are drawn` };
+  pave.lastKey = key;
+  const packNote = check ? ` Packing: ${check.count} circles, ${check.tangent2} touching two or more boundaries, ${check.overlaps} overlaps, ${check.intrusions} intrusions${check.gapFilled ? `, plus ${check.gapFilled} smaller stones fitted into the circles' corners` : ''} (${check.ms} ms).` : '';
+  paveInfo = { count: stones.length, check, note: pattern === 'hexafoil' ? `Hexafoil: ${stones.length} marquises of ${pv.hexCarats} ct (${sizer.widthMm(pv.hexCarats).toFixed(2)} mm wide)` : (est ? `${stones.length} stones, ${est.label} estimator (factor ${est.factor.toFixed(5)}): 1 ct is ${est.widthMm(1).toFixed(2)} mm wide, 5 ct ${est.widthMm(5).toFixed(2)} mm; the labelled outlines use the ${CHART_SOURCE} dimensions${chartSize(family, 1, st.ratio) ? ` (1 ct ${chartSize(family, 1, st.ratio).length.toFixed(1)} x ${chartSize(family, 1, st.ratio).width.toFixed(1)} mm)` : ''}.` : `${stones.length} stones; no weight estimator covers this shape, so sizes use the round factor and no carat labels are drawn.`) + packNote };
   renderPaveInfo();
 }
 function renderPaveInfo() { const el = document.getElementById('paveinfo'); if (el) el.textContent = paveInfo.note; }
@@ -791,7 +811,7 @@ if (pageChk) {
 {
   const pv = state.sheet.pave, $ = (id) => document.getElementById(id);
   const bind = (id, key, parse = parseFloat, after = () => layout(true)) => { const el = $(id); if (!el) return; if (el.type === 'checkbox') el.checked = pv[key]; else el.value = pv[key]; el.addEventListener(el.type === 'range' ? 'change' : 'change', () => { pv[key] = el.type === 'checkbox' ? el.checked : parse(el.value); after(); }); };
-  bind('pave', 'enabled'); bind('pavepattern', 'pattern', String); bind('pavemin', 'minOpacity'); bind('pavemax', 'maxOpacity'); bind('pavemaxct', 'maxCarats'); bind('pavescale', 'mmPerInch'); bind('pavegap', 'gap'); bind('pavelabels', 'labels'); bind('pavehexct', 'hexCarats'); bind('pavehexop', 'hexOpacity');
+  bind('pave', 'enabled'); bind('pavepattern', 'pattern', String); bind('pavemin', 'minOpacity'); bind('pavemax', 'maxOpacity'); bind('pavemaxct', 'maxCarats'); bind('paveminct', 'minCarats'); bind('pavescale', 'mmPerInch'); bind('pavemargin', 'margin'); bind('paveseeds', 'seedCount', parseInt); bind('pavelabels', 'labels'); bind('pavehexct', 'hexCarats'); bind('pavehexop', 'hexOpacity');
   for (const id of ['pavemin', 'pavemax', 'pavehexop']) { const el = $(id), v = $(id + 'v'); if (el && v) { v.textContent = `${Math.round(el.value * 100)}%`; el.addEventListener('input', () => { v.textContent = `${Math.round(el.value * 100)}%`; }); } }
   const reseed = $('pavereseed'); if (reseed) reseed.addEventListener('click', () => { pv.seed = (pv.seed + 1) % 100000; layout(true); });
 }
