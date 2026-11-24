@@ -65,8 +65,8 @@ export function singleCut({ table = 0.55, crownAngle = 36, pavilionAngle = 41, g
  * to the girdle, and from the girdle towards the culet).
  */
 export function oldMine({
-  ratio = 1.05, corner = 0.6, bow = 0.03, table = 0.46, crownAngle = 42, pavilionAngle = 44, girdle = 0.06, culet = 0.13,
-  starLength = 0.45, lowerLength = 0.55, cornerSplit = 18, gear = 96, girdleFacets = 64,
+  ratio = 1.05, corner = 0.6, bow = 0.01, table = 0.46, crownAngle = 42, pavilionAngle = 44, girdle = 0.04, culet = 0.13,
+  starLength = 0.45, lowerLength = 0.55, cornerSplit = 22.5, gear = 96, girdleFacets = 64,
 } = {}) {
   const W = 2, l = ratio, r = Math.min(corner, Math.min(1, l) - bow - 1e-3), g = girdle * W, zb = -g;
   // the sides bow out slightly (antique stones are never dead straight), which also lets the upper
@@ -75,25 +75,33 @@ export function oldMine({
   const gT = girdleEqualLength(outline, girdleFacets, gear, 0);
   const verts = girdleVertices(gT, gear);
   const G = (az, z = 0) => lift(vertexNear(verts, az), z);
-  const H = (1 - table) * Math.tan(rad(crownAngle));   // the side bezel is tangent at distance 1 from the centre
+  // contacts: side (az 0), end (az 90), corner (middle of the corner arc); junctions where the flats meet the arcs
+  const cx = 1 - r - bow, cy = l - r - bow;   // centre of the corner arc (the outline is a bowed rectangle swept by a circle of radius r)
+  // the side and end bezels (and mains) are planes through the two ends of their flats, so the
+  // upper and lower girdle facets meet them exactly there; a bowed side then dips a little under
+  // the bezel at its middle (bow x tan(angle)) instead of leaving the bezel floating at the ends
+  const xS = vertexNear(verts, azOf([cx + r, cy])).p[0], yE = vertexNear(verts, azOf([cx, cy + r])).p[1];   // the flats' ends: the girdle vertices nearest the arc starts
+  const H = (xS - table) * Math.tan(rad(crownAngle));
   const tiers = [gT, newTier({ name: 'T', angle: 0, distance: H, indices: [] })];
   const table_ = zPlane(H);
   const addClass = (name, plane) => { tiers.push(classTier(name, plane, gear, 2, true)); return plane; };
-  // contacts: side (az 0), end (az 90), corner (middle of the corner arc); junctions where the flats meet the arcs
-  const cx = 1 - r - bow, cy = l - r - bow;   // centre of the corner arc (the outline is a bowed rectangle swept by a circle of radius r)
   const cornerPt = [cx + r * Math.SQRT1_2, cy + r * Math.SQRT1_2];
-  // the upper and lower girdle facet junctions sit ON the corner arcs, cornerSplit degrees round
-  // from each end, so no facet spans more than 45 - cornerSplit degrees of arc as a chord (a chord
-  // across a whole quarter arc would cut the girdle away at the corners)
+  // The side and end bezels sit along the (almost) straight sides; the upper and lower girdle
+  // facets cover the corner arcs only, two per quarter arc: from the end of the flat (J0) to a
+  // junction cornerSplit degrees round the arc (J1), then to the corner bezel's contact at 45
+  // degrees, and the same on the other side (J2, J3). Short chords dig little into the girdle, so
+  // it keeps an even thickness; a facet running diagonally from the middle of a side onto the
+  // corner arc would cut deep where it crosses the end of the flat.
   const sp = rad(cornerSplit);
-  const azC = azOf(cornerPt), azJ1 = azOf([cx + r * Math.cos(sp), cy + r * Math.sin(sp)]), azJ2 = azOf([cx + r * Math.sin(sp), cy + r * Math.cos(sp)]);
-  const Gs = G(0), Ge = G(90), Gc = G(azC), Gj1 = G(azJ1), Gj2 = G(azJ2);
+  const azC = azOf(cornerPt);
+  const azJ0 = azOf([cx + r, cy]), azJ1 = azOf([cx + r * Math.cos(sp), cy + r * Math.sin(sp)]), azJ2 = azOf([cx + r * Math.sin(sp), cy + r * Math.cos(sp)]), azJ3 = azOf([cx, cy + r]);
+  const Gs = G(0), Ge = G(90), Gc = G(azC), Gj0 = G(azJ0), Gj1 = G(azJ1), Gj2 = G(azJ2), Gj3 = G(azJ3);
   const Rc = Math.hypot(cornerPt[0], cornerPt[1]);   // corner contact distance from the centre
   // ---- crown: bezels tangent at the contacts. The side bezels have the given angle; the end and
   // corner bezels, whose contacts are further out, are flatter so the table is a scaled copy of
   // the outline (its edges at the same fraction of the way in all round), as on antique stones
-  const bezS = addClass('A side', planeThrough(crownAngle, 0, Gs));
-  const bezE = addClass('A end', planeThrough(deg(Math.atan(Math.tan(rad(crownAngle)) / l)), 90, Ge));
+  const bezS = addClass('A side', planeThrough(crownAngle, 0, [xS, 0, 0]));
+  const bezE = addClass('A end', planeThrough(deg(Math.atan(Math.tan(rad(crownAngle)) / l)), 90, [0, yE, 0]));
   const bezC = addClass('A corner', planeThrough(deg(Math.atan(Math.tan(rad(crownAngle)) / Rc)), 45, Gc));
   // table corners on each bezel's centreline, star tips on the ridges, stars through two table corners and the tip
   const Ts = intersect3(bezS, table_, azPlane(0)), Te = intersect3(bezE, table_, azPlane(90)), Tc = intersect3(bezC, table_, azPlane(azC));
@@ -105,27 +113,27 @@ export function oldMine({
   const tip1 = tipOn(bezS, bezC, Ts, Tc, Gj1, azJ1), tip2 = tipOn(bezC, bezE, Tc, Te, Gj2, azJ2);
   addClass('C side', plane3(Ts, Tc, tip1, true));
   addClass('C end', plane3(Tc, Te, tip2, true));
-  // upper girdle facets in pairs meeting at the junction vertices
-  addClass('B side', plane3(tip1, Gs, Gj1, true));
+  // upper girdle facets: two short chords over each half of the corner arc, meeting at the junctions
+  addClass('B side', plane3(tip1, Gj0, Gj1, true));
   addClass('B side-corner', plane3(tip1, Gj1, Gc, true));
   addClass('B corner-end', plane3(tip2, Gc, Gj2, true));
-  addClass('B end', plane3(tip2, Gj2, Ge, true));
+  addClass('B end', plane3(tip2, Gj2, Gj3, true));
   // ---- pavilion: mains tangent at the contacts, a flat culet, lower girdle facets in pairs
-  const mS = addClass('P side', planeThrough(-pavilionAngle, 0, lift(vertexNear(verts, 0), zb)));
+  const mS = addClass('P side', planeThrough(-pavilionAngle, 0, [xS, 0, zb]));
   const c = culet;   // culet half-width along the side direction
-  const Pd = (1 - c) * Math.tan(rad(pavilionAngle));
+  const Pd = (xS - c) * Math.tan(rad(pavilionAngle));
   const zc = zb - Pd;
   const culetPl = zPlane(zc);
   // the end and corner mains reach the culet plane at the same depth with the culet a scaled copy of the outline, so they are flatter
-  const mE = addClass('P end', planeThrough(-deg(Math.atan(Math.tan(rad(pavilionAngle)) / l)), 90, lift(vertexNear(verts, 90), zb)));
+  const mE = addClass('P end', planeThrough(-deg(Math.atan(Math.tan(rad(pavilionAngle)) / l)), 90, [0, yE, zb]));
   const mC = addClass('P corner', planeThrough(-deg(Math.atan(Math.tan(rad(pavilionAngle)) / Rc)), 45, lift(vertexNear(verts, azC), zb)));
   tiers.push(newTier({ name: 'culet', angle: -0.001, distance: -zc, indices: [0] }));
   const lowerJ = (a, b, Gj, az) => intersect3(a, b, perpPlane(az, (Gj[0] * Math.cos(rad(az)) + Gj[1] * Math.sin(rad(az))) * (1 - lowerLength)));
   const J1 = lowerJ(mS, mC, Gj1, azJ1), J2 = lowerJ(mC, mE, Gj2, azJ2);
-  addClass('L side', plane3(J1, lift(vertexNear(verts, 0), zb), lift(vertexNear(verts, azJ1), zb), false));
+  addClass('L side', plane3(J1, lift(vertexNear(verts, azJ0), zb), lift(vertexNear(verts, azJ1), zb), false));
   addClass('L side-corner', plane3(J1, lift(vertexNear(verts, azJ1), zb), lift(vertexNear(verts, azC), zb), false));
   addClass('L corner-end', plane3(J2, lift(vertexNear(verts, azC), zb), lift(vertexNear(verts, azJ2), zb), false));
-  addClass('L end', plane3(J2, lift(vertexNear(verts, azJ2), zb), lift(vertexNear(verts, 90), zb), false));
+  addClass('L end', plane3(J2, lift(vertexNear(verts, azJ2), zb), lift(vertexNear(verts, azJ3), zb), false));
   const pct = (v) => `${Math.round(v * 1000) / 10}%`;
   const ang = (pl) => Math.round(deg(Math.atan2(Math.hypot(pl.n[0], pl.n[1]), Math.abs(pl.n[2]))) * 10) / 10;
   const total = H / W + girdle + Pd / W;
@@ -138,7 +146,7 @@ export function oldMine({
     notes: [
       'Ideal dimensions: none published. GIA grades old mine cuts for polish and symmetry but assigns no cut grade, and no lab publishes proportion ranges; antique stones vary widely because each was cut by hand to its rough. Typical of surviving stones (GIA and auction-house descriptions): cushion outline with L:W 1.00-1.15, table 38-50%, crown height 15-20%, crown angle 40-45, pavilion depth 42-50%, pavilion angle 42-46, culet 8-15% of the width (large and open, visible face up), girdle thick and often uneven, short lower girdle facets (about 50-60%).',
       `This design: L:W ${ratio}, corner radius ${pct(corner)} of the half-width, sides bowed ${pct(bow)}, table ${pct(table)}, crown angle ${crownAngle} (side bezels; end bezels ${ang(bezE)}, corner bezels ${ang(bezC)}), crown height ${pct(H / W)}, girdle ${pct(girdle)}, pavilion angle ${pavilionAngle} (side mains; end ${ang(mE)}, corner ${ang(mC)}), pavilion depth ${pct(Pd / W)}, culet ${pct(culet)} of the width flat to flat (${pct(Math.hypot(culetCorner[0], culetCorner[1]))} of the half-width to its corners), star length ${pct(starLength)}, lower girdle length ${pct(lowerLength)}, total depth ${pct(total)}.`,
-      `Pattern: 58 facets as on a round brilliant: 8 bezels (4 on the sides tangent to the girdle, 4 on the rounded corners), 8 stars, 16 upper girdle facets meeting in pairs at junctions ${cornerSplit} degrees round each corner arc, 8 pavilion mains, 16 lower girdle facets, the table and a flat culet.`,
+      `Pattern: 58 facets as on a round brilliant: 8 bezels (4 along the sides, 4 on the rounded corners), 8 stars, 16 upper girdle facets as four short chords over each corner arc (junctions at ${cornerSplit} degrees from the arc ends and the corner contact at 45), 8 pavilion mains, 16 lower girdle facets the same way, the table and a flat culet. The upper and lower girdle facets dig only a little into the girdle, so its thickness stays even.`,
     ],
     tiers,
   };
@@ -163,15 +171,15 @@ export const templates = {
     params: [
       { key: 'ratio', label: 'L:W', default: 1.05, step: 0.01, min: 1, max: 1.3 },
       { key: 'corner', label: 'Corner radius', default: 0.6, step: 0.05, min: 0.2, max: 0.95, title: 'Corner arc radius, fraction of the half-width' },
-      { key: 'bow', label: 'Side bow', default: 0.03, step: 0.01, min: 0.005, max: 0.15, title: 'Outward bow of the sides, fraction of the half-width' },
+      { key: 'bow', label: 'Side bow', default: 0.01, step: 0.005, min: 0, max: 0.15, title: 'Outward bow of the sides, fraction of the half-width' },
       { key: 'table', label: 'Table', default: 0.46, step: 0.01, min: 0.3, max: 0.65, title: 'Fraction of the width' },
       { key: 'crownAngle', label: 'Crown angle', default: 42, step: 0.5 },
       { key: 'pavilionAngle', label: 'Pavilion angle', default: 44, step: 0.5 },
       { key: 'culet', label: 'Culet', default: 0.13, step: 0.01, min: 0.02, max: 0.3, title: 'Culet width, fraction of the width' },
-      { key: 'girdle', label: 'Girdle', default: 0.06, step: 0.005 },
+      { key: 'girdle', label: 'Girdle', default: 0.04, step: 0.005 },
       { key: 'starLength', label: 'Star length', default: 0.45, step: 0.05, min: 0.2, max: 0.8 },
       { key: 'lowerLength', label: 'Lower girdle', default: 0.55, step: 0.05, min: 0.3, max: 0.9 },
-      { key: 'cornerSplit', label: 'Corner junction', default: 18, step: 1, min: 5, max: 40, title: 'Where the upper and lower girdle facets meet on each corner arc, degrees round from the arc ends' },
+      { key: 'cornerSplit', label: 'Corner junction', default: 22.5, step: 0.5, min: 5, max: 40, title: 'Where the two upper (and lower) girdle facets on each half of a corner arc meet, degrees round from the arc end' },
     ],
     make: (o = {}) => oldMine(o),
   },

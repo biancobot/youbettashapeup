@@ -291,3 +291,35 @@ export function cushionOutline(r, l = 1) {
 export const pointOn = (pl, x, y) => intersect3(pl, xPlane(x), yPlane(y));
 /** Radial azimuth (degrees) of a plan position. */
 export const azOf = ([x, y]) => norm360(deg(Math.atan2(y, x)));
+
+/**
+ * Planes for a run of girdle facets (uppers or lowers) between the girdle vertices nearest
+ * azimuths azA and azB, all through `apex`: one chord facet through the two vertices (lifted to z)
+ * when it digs into the girdle by at most `maxDip`, otherwise the run is split at the vertex that
+ * deviates most from the chord and both parts are tried again. The dip is the outline's deviation
+ * from the chord times the facet's slope. Returns [{ plane, azA, azB }] in order from azA to azB.
+ * verts: girdleVertices(); the run goes the short way round from azA to azB.
+ */
+export function chordRun(verts, azA, azB, apex, z, up, maxDip) {
+  const sorted = verts.slice().sort((p, q) => p.az - q.az);
+  const idx = (az) => { const v = vertexNear(sorted, az); return sorted.indexOf(v); };
+  const iA = idx(azA), iB = idx(azB), n = sorted.length;
+  const fwd = ((iB - iA) % n + n) % n, back = ((iA - iB) % n + n) % n;
+  const step = fwd <= back ? 1 : -1, count = Math.min(fwd, back);
+  const run = (i0, i1) => {   // i0 -> i1 along `step`
+    const a = sorted[i0], b = sorted[i1];
+    const pl = plane3(apex, [a.p[0], a.p[1], z], [b.p[0], b.p[1], z], up);
+    const slope = Math.hypot(pl.n[0], pl.n[1]) / Math.max(1e-9, Math.abs(pl.n[2]));
+    // deviation of the intermediate vertices from the chord a-b (outward, along the chord's outward normal)
+    const dx = b.p[0] - a.p[0], dy = b.p[1] - a.p[1], L = Math.hypot(dx, dy) || 1;
+    let worst = 0, at = -1;
+    for (let k = (i0 + step + n) % n; k !== i1; k = (k + step + n) % n) {
+      const v = sorted[k], d = Math.abs(((v.p[0] - a.p[0]) * dy - (v.p[1] - a.p[1]) * dx) / L);
+      if (d > worst) { worst = d; at = k; }
+    }
+    if (at < 0 || worst * slope <= maxDip) return [{ plane: pl, azA: a.az, azB: b.az }];
+    return [...run(i0, at), ...run(at, i1)];
+  };
+  if (count === 0) return [];
+  return run(iA, iB);
+}
