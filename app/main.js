@@ -25,7 +25,7 @@ const state = {
   sheet: {
     standard: params.get('standard') === 'first' ? 'first' : 'third',
     gaps: { left: 0.3, right: 0.3, above: 0.3, below: 0.3 },   // in stone widths, between view bounding boxes
-    views: [],                                                 // { id, parent, dir, gap }
+    views: [],                                                 // { id, parent, dir, gap, kind: 'ortho' | '3d', rot }
     nextId: 1,
   },
 };
@@ -65,6 +65,9 @@ const PROJECT = {
   first: { right: q90([0, 1, 0], 90), left: q90([0, 1, 0], -90), above: q90([1, 0, 0], -90), below: q90([1, 0, 0], 90) },
 };
 const DIR_LABEL = { left: 'Left of', right: 'Right of', above: 'Above', below: 'Below' };
+// A 3D (pictorial) view hangs off its parent like a projected view but is the parent tilted by
+// its own rotation, initially the isometric tilt; dragging over it changes that rotation alone.
+const ISO_TILT = () => getView('iso').q.clone();
 
 function allViewIds() { return ['base', ...state.sheet.views.map((v) => v.id)]; }
 
@@ -204,13 +207,18 @@ function layout(force) {
   base.q.copy(baseQ).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), (state.spin * Math.PI) / 180));
   base.pos = [0, 0];
   base.bbox = bboxFor(base.q);
+  const placed = [];   // views laid out so far, to stack siblings that share a side of the same parent
   for (const v of state.sheet.views) {
     const parent = instances.get(v.parent);
     const inst = instances.get(v.id);
-    inst.q.copy(PROJECT[state.sheet.standard][v.dir]).multiply(parent.q);
+    inst.q.copy(v.kind === '3d' ? v.rot : PROJECT[state.sheet.standard][v.dir]).multiply(parent.q);
     inst.bbox = bboxFor(inst.q);
     const gap = v.gap ?? state.sheet.gaps[v.dir];
-    const pb = parent.bbox, cb = inst.bbox, pp = parent.pos;
+    // anchor: the parent, or the outermost earlier sibling on the same side, so views on one side line up outward
+    const sibling = placed.filter((w) => w.parent === v.parent && w.dir === v.dir).pop();
+    const anchor = sibling ? instances.get(sibling.id) : parent;
+    placed.push(v);
+    const pb = anchor.bbox, cb = inst.bbox, pp = anchor.pos;
     if (v.dir === 'right') inst.pos = [pp[0] + pb.maxX + gap - cb.minX, pp[1]];
     else if (v.dir === 'left') inst.pos = [pp[0] + pb.minX - gap - cb.maxX, pp[1]];
     else if (v.dir === 'above') inst.pos = [pp[0], pp[1] + pb.maxY + gap - cb.minY];
@@ -269,8 +277,25 @@ new ResizeObserver(resize).observe(stage);
 
 // ----------------------------------------------------------------------------- rotation
 let drag = null;
+/** The 3D view under a pointer position (world-space bounding boxes), or null for the base. */
+function hitView3d(clientX, clientY) {
+  if (camera !== orthoCamera || !state.sheet.views.some((v) => v.kind === '3d')) return null;
+  const rect = canvas.getBoundingClientRect();
+  const nx = ((clientX - rect.left) / rect.width) * 2 - 1, ny = 1 - ((clientY - rect.top) / rect.height) * 2;
+  const wx = camera.position.x + (nx * (camera.right - camera.left)) / 2, wy = camera.position.y + (ny * (camera.top - camera.bottom)) / 2;
+  let best = null, bestArea = Infinity;
+  for (const v of state.sheet.views) {
+    if (v.kind !== '3d') continue;
+    const inst = instances.get(v.id); if (!inst || !inst.bbox) continue;
+    const b = inst.bbox, p = inst.pos;
+    if (wx < p[0] + b.minX || wx > p[0] + b.maxX || wy < p[1] + b.minY || wy > p[1] + b.maxY) continue;
+    const area = (b.maxX - b.minX) * (b.maxY - b.minY);
+    if (area < bestArea) { best = v; bestArea = area; }
+  }
+  return best;
+}
 canvas.addEventListener('pointerdown', (e) => {
-  drag = { x: e.clientX, y: e.clientY, roll: e.shiftKey, moved: false };
+  drag = { x: e.clientX, y: e.clientY, roll: e.shiftKey, moved: false, view3d: hitView3d(e.clientX, e.clientY) };
   canvas.setPointerCapture(e.pointerId);
 });
 canvas.addEventListener('pointermove', (e) => {
@@ -279,19 +304,25 @@ canvas.addEventListener('pointermove', (e) => {
   if (Math.abs(dx) + Math.abs(dy) > 2) drag.moved = true;
   if (!drag.moved) return;
   const rect = canvas.getBoundingClientRect();
+  const target = drag.view3d ? drag.view3d.rot : baseQ;   // a 3D view rotates on its own; anything else rotates the base
   if (drag.roll) {
-    const cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
+    let cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
+    if (drag.view3d) {   // roll about the 3D view's own centre
+      const inst = instances.get(drag.view3d.id), b = inst.bbox;
+      const sx = rect.width / (camera.right - camera.left), sy = rect.height / (camera.top - camera.bottom);
+      cx = rect.left + rect.width / 2 + (inst.pos[0] + (b.minX + b.maxX) / 2 - camera.position.x) * sx;
+      cy = rect.top + rect.height / 2 - (inst.pos[1] + (b.minY + b.maxY) / 2 - camera.position.y) * sy;
+    }
     const a0 = Math.atan2(drag.y - cy, drag.x - cx), a1 = Math.atan2(e.clientY - cy, e.clientX - cx);
-    baseQ.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), -(a1 - a0)));
+    target.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), -(a1 - a0)));
   } else {
     const k = 0.008;
-    baseQ.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), dx * k));
-    baseQ.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), dy * k));
+    target.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), dx * k));
+    target.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), dy * k));
   }
   drag.x = e.clientX; drag.y = e.clientY;
-  state.viewId = 'custom';
   anim = null;
-  markView();
+  if (!drag.view3d) { state.viewId = 'custom'; markView(); }
   layout(false);
 });
 canvas.addEventListener('pointerup', (e) => {
@@ -368,12 +399,17 @@ async function saveFile(filename, dataUrl) {
 }
 
 // ----------------------------------------------------------------------------- sheet views
-function addView(parentId, dir) {
+function addView(parentId, dir, kind = 'ortho') {
   const id = `v${state.sheet.nextId++}`;
-  state.sheet.views.push({ id, parent: parentId, dir, gap: null });
+  state.sheet.views.push({ id, parent: parentId, dir, gap: null, kind, rot: kind === '3d' ? ISO_TILT() : null });
   renderViewList();
   layout(true);
   return id;
+}
+/** Put a 3D view back to the isometric tilt of its parent. */
+function resetView3d(id) {
+  const v = state.sheet.views.find((x) => x.id === id);
+  if (v && v.kind === '3d') { v.rot = ISO_TILT(); layout(false); }
 }
 function removeView(id) {
   const drop = new Set([id]);
@@ -395,7 +431,7 @@ function viewLabel(id) {
   if (id === 'base') return `Base (${state.viewId === 'custom' ? 'custom' : getView(state.viewId).label})`;
   const v = state.sheet.views.find((x) => x.id === id);
   const parentName = v.parent === 'base' ? 'base' : v.parent;
-  return `${v.id}: ${DIR_LABEL[v.dir]} ${parentName}`;
+  return v.kind === '3d' ? `${v.id}: 3D view, ${DIR_LABEL[v.dir].toLowerCase()} ${parentName}` : `${v.id}: ${DIR_LABEL[v.dir]} ${parentName}`;
 }
 
 function renderViewList() {
@@ -416,6 +452,13 @@ function renderViewList() {
       gap.value = (v.gap ?? state.sheet.gaps[v.dir]).toFixed(2);
       gap.addEventListener('change', () => { v.gap = parseFloat(gap.value) || 0; layout(true); });
       row.appendChild(gap);
+      if (v.kind === '3d') {
+        const side = document.createElement('select'); side.title = 'Which side of the parent view this 3D view sits on';
+        for (const [d, l] of [['right', 'right'], ['left', 'left'], ['above', 'above'], ['below', 'below']]) { const o = document.createElement('option'); o.value = d; o.textContent = l; side.appendChild(o); }
+        side.value = v.dir;
+        side.addEventListener('change', () => { v.dir = side.value; renderViewList(); layout(true); });
+        row.appendChild(side);
+      }
     }
     const btns = document.createElement('span');
     btns.className = 'viewbtns';
@@ -424,6 +467,16 @@ function renderViewList() {
       b.textContent = glyph; b.title = `Project a new view ${dir} of this one`;
       b.addEventListener('click', () => addView(id, dir));
       btns.appendChild(b);
+    }
+    const b3 = document.createElement('button');
+    b3.textContent = '3D'; b3.title = 'Add a 3D (isometric) view of this one, placed to its right; drag over it to turn it on its own, it still follows this view';
+    b3.addEventListener('click', () => addView(id, 'right', '3d'));
+    btns.appendChild(b3);
+    if (v && v.kind === '3d') {
+      const r = document.createElement('button');
+      r.textContent = '↺'; r.title = 'Reset this 3D view to the isometric tilt';
+      r.addEventListener('click', () => resetView3d(id));
+      btns.appendChild(r);
     }
     if (v) {
       const x = document.createElement('button');
@@ -569,7 +622,7 @@ requestAnimationFrame(frame);
 
 // Exposed for the screenshot tool and for scripting.
 window.__viewer = {
-  state, setDesign, snapTo, exportPNG, resize, addView, removeView, clearViews, editor,
+  state, setDesign, snapTo, exportPNG, resize, addView, removeView, clearViews, resetView3d, editor, instances, camera: () => camera,
   loadShape(id) { const { templates } = window.__templates; if (templates[id]) editor.design = templates[id].make(); },
   setLineWidth(v) { state.lineWidth = v; lineMat.linewidth = v; },
   setGirdleLines(v) { state.girdleLines = v; layout(true); },

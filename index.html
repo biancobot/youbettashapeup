@@ -73,7 +73,7 @@
   <div id="app">
     <aside id="panel">
       <div>
-        <h1>Gem Facet Designer <span class="build" title="Build number; if it does not match the README, hard-reload or git pull">build 37</span></h1>
+        <h1>Gem Facet Designer <span class="build" title="Build number; if it does not match the README, hard-reload or git pull">build 38</span></h1>
         <div class="hint">GemCad-style facet design: every facet is a plane by angle, index and distance; the stone is their intersection. Drag to rotate, shift-drag to roll, scroll to zoom, click a vertex to pick a meet point.</div>
       </div>
 
@@ -170,7 +170,7 @@
           <label>Gap above <input type="number" id="gap-above" step="0.05" min="0"></label>
           <label>Gap below <input type="number" id="gap-below" step="0.05" min="0"></label>
         </div>
-        <div class="hint">To add a projected view, click L, R, A or B beside a view in the list below: it projects a new view to the Left, Right, Above or Below that view under the selected standard. Projected views can be projected from again, and all of them follow the base view as you rotate it. Gaps are in stone widths between view bounding boxes. Sheets are always orthographic.</div>
+        <div class="hint">To add a projected view, click L, R, A or B beside a view in the list below: it projects a new view to the Left, Right, Above or Below that view under the selected standard. Projected views can be projected from again, and all of them follow the base view as you rotate it. 3D adds an isometric view of that view (choose its side in the row); drag over a 3D view to turn it on its own, shift-drag to roll it, &#8634; to reset it. It still follows its parent when the base turns. Gaps are in stone widths between view bounding boxes. Sheets are always orthographic.</div>
         <div id="viewlist"></div>
         <button id="clearviews">Remove all projected views</button>
       </div>
@@ -209,6 +209,6 @@
       const el = document.getElementById('info'); if (el) { el.style.color = '#b00020'; el.textContent = 'Load error: ' + (e.reason && e.reason.message || e.reason); }
     });
   </script>
-  <script type="module" src="./app/main.js?v=37"></script>
+  <script type="module" src="./app/main.js?v=38"></script>
 </body>
 </html>
