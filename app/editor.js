@@ -189,6 +189,9 @@ export function createEditor({ onChange, getSelectedVertex, saveText }) {
     get design() { return design; },
     set design(d) { design = resetIds(d); selectedTier = null; changed(); },
     render, setStatus,
+    /** Select a template in the form without loading it (restoring a saved setup); returns the param inputs. */
+    setTemplate(key) { if ([...sel.options].some((o) => o.value === key)) { sel.value = key; loadedKey = key; renderParams(); } return [...pbox.querySelectorAll('input[data-param]')]; },
+    get templateKey() { return sel.value; },
   };
 }
 

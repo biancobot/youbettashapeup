@@ -12,7 +12,8 @@ import * as asscher from './asscher.js';
 import * as shield from './shield.js';
 import * as shieldStep from './shieldStep.js';
 import * as trillion from './trillion.js';
+import * as oldcuts from './oldcuts.js';
 
-export const shapeModules = { marquise, pear, heart, oval, cushion, cushionModified, princess, radiant, emerald, asscher, shield, shieldStep, trillion };
+export const shapeModules = { marquise, pear, heart, oval, cushion, cushionModified, princess, radiant, emerald, asscher, shield, shieldStep, trillion, oldcuts };
 export const shapeTemplates = Object.assign({}, ...Object.values(shapeModules).map((m) => m.templates || {}));
 export const shapePlots = Object.values(shapeModules).flatMap((m) => m.plots || []);

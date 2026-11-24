@@ -10,6 +10,7 @@ window.__templates = { templates, plots };
 import { VIEWS, getView } from './views.js';
 import { createPave, cobblestoneStones, checkPacking, paveSizes, hexafoilStones, convexHull, rng } from './pave.js';
 import { weightEstimator, weightFamily, chartSize, CHART_SOURCE } from './gemcad/weights.js';
+import { singleCut } from './gemcad/shapes/oldcuts.js';
 
 // ----------------------------------------------------------------------------- state
 const params = new URLSearchParams(location.search);
@@ -37,7 +38,7 @@ const state = {
     // Page: a sheet of paper centred on the origin; the stone's width occupies `stoneWidth` inches of it
     page: { enabled: params.get('page') === '1', width: 8.5, height: 8.5, stoneWidth: 2, dpi: 300, fit: 0.8 },
     // Background: cobblestone pavé of the current stone in random sizes and orientations, or a hexafoil of marquises
-    pave: { enabled: false, pattern: 'cobblestone', minOpacity: 0.15, maxOpacity: 0.6, maxCarats: 5, minCarats: 0.02, mmPerInch: 25.4, margin: 0.03, seedCount: 6, samples: 40, patience: 80, maxCircles: 3000, seed: 1, labels: true, hexCarats: 1, hexOpacity: 0.3 },
+    pave: { enabled: false, pattern: 'cobblestone', minOpacity: 0.15, maxOpacity: 0.6, maxCarats: 5, minCarats: 0.02, singleBelow: 0.2, mmPerInch: 25.4, margin: 0.03, seedCount: 6, samples: 40, patience: 80, maxCircles: 3000, seed: 1, labels: true, hexCarats: 1, hexOpacity: 0.3 },
     nextId: 1,
   },
 };
@@ -181,8 +182,8 @@ function syncInstances() {
 
 /** Smooth girdle edges are drawn only where the girdle turns away from the viewer. */
 /** Positions of the girdle (smooth) edges to draw for rotation qn: all of them, or only the silhouette. */
-function smoothEdgesFor(qn) {
-  const s = geo.smooth;
+function smoothEdgesFor(qn, g = geo) {
+  const s = g.smooth;
   const n = s.normalsA.length / 3;
   const out = [];
   const va = new THREE.Vector3(), vb = new THREE.Vector3();
@@ -310,7 +311,7 @@ function updatePave() {
     // circle radii from carat weights: the circumscribed circle of the stone at that weight
     const hullR = Math.max(...hull.map(([x, y]) => Math.hypot(x, y)));
     const rOf = (ct) => (hullR * sizer.widthMm(ct) * worldPerMm) / 2;
-    const settings = { ...pv, rMin: rOf(pv.minCarats), rMax: rOf(pv.maxCarats), seedMin: rOf(pv.maxCarats) * 0.6, margin: pv.margin * 2, gapPad: 0.04 };
+    const settings = { ...pv, rMin: rOf(pv.minCarats), rMax: rOf(pv.maxCarats), rSingle: rOf(pv.singleBelow), seedMin: rOf(pv.maxCarats) * 0.6, margin: pv.margin * 2, gapPad: 0.04 };
     if (pave.lastKey !== key) {
       const t0 = performance.now();
       const res = cobblestoneStones(hull, area, obstacles, paveSizes(sizer, pv.maxCarats, worldPerMm, pv.labels && !!est, (c) => chartSize(family, c, st.ratio), st.L, st.W), settings, rng(pv.seed));
@@ -320,9 +321,15 @@ function updatePave() {
     } else { stones = pave.lastStones; check = pave.lastCheck; }
     pave.lastStones = stones;
   }
-  pave.build({ key, stones, meshPositions: geo.positions, hardEdges: geo.hardEdges, smoothPositions: new Float32Array(smoothEdgesFor(new THREE.Quaternion())), hullEdges: new Float32Array(hullEdges) });
+  // melee geometry: a round single cut (bruted round girdle) for the stones under the threshold
+  if (!updatePave.single || updatePave.single.girdleLines !== state.girdleLines) {
+    const sg = designMesh(singleCut({ girdleFacets: 64 }));
+    updatePave.single = { girdleLines: state.girdleLines, meshPositions: sg.positions, hardEdges: sg.hardEdges, smoothPositions: new Float32Array(smoothEdgesFor(new THREE.Quaternion(), sg)) };
+  }
+  pave.build({ key, stones, meshPositions: geo.positions, hardEdges: geo.hardEdges, smoothPositions: new Float32Array(smoothEdgesFor(new THREE.Quaternion())), hullEdges: new Float32Array(hullEdges), single: updatePave.single });
   pave.lastKey = key;
-  const packNote = check ? ` Packing: ${check.count} circles, ${check.tangent2} touching two or more boundaries, ${check.overlaps} overlaps, ${check.intrusions} intrusions${check.gapFilled ? `, plus ${check.gapFilled} smaller stones fitted into the circles' corners` : ''} (${check.ms} ms).` : '';
+  const singles = stones.filter((q) => q.kind === 'single').length;
+  const packNote = check ? ` ${singles} stones under ${pv.singleBelow} ct are single cuts. Packing: ${check.count} circles, ${check.tangent2} touching two or more boundaries, ${check.overlaps} overlaps, ${check.intrusions} intrusions${check.gapFilled ? `, plus ${check.gapFilled} smaller stones fitted into the circles' corners` : ''} (${check.ms} ms).` : '';
   paveInfo = { count: stones.length, check, note: pattern === 'hexafoil' ? `Hexafoil: ${stones.length} marquises of ${pv.hexCarats} ct (${sizer.widthMm(pv.hexCarats).toFixed(2)} mm wide)` : (est ? `${stones.length} stones, ${est.label} estimator (factor ${est.factor.toFixed(5)}): 1 ct is ${est.widthMm(1).toFixed(2)} mm wide, 5 ct ${est.widthMm(5).toFixed(2)} mm; the labelled outlines use the ${CHART_SOURCE} dimensions${chartSize(family, 1, st.ratio) ? ` (1 ct ${chartSize(family, 1, st.ratio).length.toFixed(1)} x ${chartSize(family, 1, st.ratio).width.toFixed(1)} mm)` : ''}.` : `${stones.length} stones; no weight estimator covers this shape, so sizes use the round factor and no carat labels are drawn.`) + packNote };
   renderPaveInfo();
 }
@@ -395,6 +402,7 @@ function layout(force) {
   updateCamera(stage.clientWidth, stage.clientHeight);
   const b = instances.get('base');
   if (b && geo) underlay.place(geo.bbox, b.pos, state.viewId);
+  if (typeof autosave === 'function') autosave();
 }
 
 // ----------------------------------------------------------------------------- camera / size
@@ -827,7 +835,7 @@ if (pageChk) {
 {
   const pv = state.sheet.pave, $ = (id) => document.getElementById(id);
   const bind = (id, key, parse = parseFloat, after = () => layout(true)) => { const el = $(id); if (!el) return; if (el.type === 'checkbox') el.checked = pv[key]; else el.value = pv[key]; el.addEventListener(el.type === 'range' ? 'change' : 'change', () => { pv[key] = el.type === 'checkbox' ? el.checked : parse(el.value); after(); }); };
-  bind('pave', 'enabled'); bind('pavepattern', 'pattern', String); bind('pavemin', 'minOpacity'); bind('pavemax', 'maxOpacity'); bind('pavemaxct', 'maxCarats'); bind('paveminct', 'minCarats'); bind('pavescale', 'mmPerInch'); bind('pavemargin', 'margin'); bind('paveseeds', 'seedCount', parseInt); bind('pavelabels', 'labels'); bind('pavehexct', 'hexCarats'); bind('pavehexop', 'hexOpacity');
+  bind('pave', 'enabled'); bind('pavepattern', 'pattern', String); bind('pavemin', 'minOpacity'); bind('pavemax', 'maxOpacity'); bind('pavemaxct', 'maxCarats'); bind('paveminct', 'minCarats'); bind('pavesingle', 'singleBelow'); bind('pavescale', 'mmPerInch'); bind('pavemargin', 'margin'); bind('paveseeds', 'seedCount', parseInt); bind('pavelabels', 'labels'); bind('pavehexct', 'hexCarats'); bind('pavehexop', 'hexOpacity');
   for (const id of ['pavemin', 'pavemax', 'pavehexop']) { const el = $(id), v = $(id + 'v'); if (el && v) { v.textContent = `${Math.round(el.value * 100)}%`; el.addEventListener('input', () => { v.textContent = `${Math.round(el.value * 100)}%`; }); } }
   const reseed = $('pavereseed'); if (reseed) reseed.addEventListener('click', () => { pv.seed = (pv.seed + 1) % 100000; layout(true); });
 }
@@ -881,6 +889,77 @@ const editor = createEditor({
   getSelectedVertex: () => selectedVertex,
   saveText: (filename, text) => saveFile(filename, 'data:text/plain;charset=utf-8,' + encodeURIComponent(text)),
 });
+// ----------------------------------------------------------------------------- setup save / restore
+// The whole working state (design, template form, views, page, grid, background, rotation) is
+// kept in the browser's local storage as you work and restored on the next load, and can be
+// saved to and loaded from a .json file.
+const SETUP_KEY = 'gem-facet-designer-setup-v1';
+function getSetup() {
+  const pbox = document.getElementById('tpl-params');
+  return {
+    app: 'gem-facet-designer', version: 1, saved: new Date().toISOString(),
+    template: editor.templateKey, templateParams: pbox ? [...pbox.querySelectorAll('input[data-param]')].map((i) => [i.dataset.param, i.value]) : [], girdleFacets: document.getElementById('tpl-gf').value,
+    design: editor.design,
+    viewId: state.viewId, baseQ: baseQ.toArray(), spin: state.spin, zoom: state.zoom, pan: state.pan, lineWidth: state.lineWidth, girdleLines: state.girdleLines,
+    projection: state.projection, fov: state.fov, exportScale: state.exportScale, showMeet: state.showMeet,
+    sheet: { ...state.sheet, views: state.sheet.views.map((v) => ({ ...v, rot: v.rot ? v.rot.toArray() : null })) },
+  };
+}
+/** Push the state into the controls that mirror it. */
+function syncInputs() {
+  const $ = (id) => document.getElementById(id);
+  const set = (id, v) => { const el = $(id); if (!el) return; if (el.type === 'checkbox') el.checked = !!v; else el.value = v; };
+  set('lw', state.lineWidth); if ($('lwv')) $('lwv').textContent = `${state.lineWidth} px`;
+  set('girdle', state.girdleLines); set('proj', state.projection); set('spin', state.spin); set('spinnum', state.spin); set('meet', state.showMeet); set('scale', state.exportScale);
+  const sh = state.sheet;
+  set('standard', sh.standard); for (const d of ['left', 'right', 'above', 'below']) set(`gap-${d}`, sh.gaps[d]);
+  set('grid', sh.grid); set('gridopacity', sh.gridOpacity); if ($('gridopacityv')) $('gridopacityv').textContent = `${Math.round(sh.gridOpacity * 100)}%`; set('gridmargin', sh.gridMargin);
+  const pg = sh.page; set('page', pg.enabled); set('pagew', pg.width); set('pageh', pg.height); set('pagestone', pg.stoneWidth); set('pagedpi', pg.dpi); set('pagefit', Math.round(pg.fit * 100));
+  const sizes = { 'letter': [8.5, 11], 'letterL': [11, 8.5], 'square85': [8.5, 8.5], 'a4': [8.27, 11.69], 'a4L': [11.69, 8.27] };
+  set('pagesize', Object.keys(sizes).find((k) => sizes[k][0] === pg.width && sizes[k][1] === pg.height) || 'custom');
+  const pv = sh.pave;
+  for (const [id, key] of [['pave', 'enabled'], ['pavepattern', 'pattern'], ['pavemin', 'minOpacity'], ['pavemax', 'maxOpacity'], ['pavemaxct', 'maxCarats'], ['paveminct', 'minCarats'], ['pavesingle', 'singleBelow'], ['pavescale', 'mmPerInch'], ['pavemargin', 'margin'], ['paveseeds', 'seedCount'], ['pavelabels', 'labels'], ['pavehexct', 'hexCarats'], ['pavehexop', 'hexOpacity']]) set(id, pv[key]);
+  for (const id of ['pavemin', 'pavemax', 'pavehexop']) if ($(id + 'v')) $(id + 'v').textContent = `${Math.round($(id).value * 100)}%`;
+}
+function applySetup(s) {
+  if (!s || s.app !== 'gem-facet-designer' || !s.sheet || !s.design) return false;
+  // the template form, then the saved design itself (so hand edits to tiers survive)
+  const inputs = editor.setTemplate(s.template);
+  for (const [k, v] of s.templateParams || []) { const inp = inputs.find((i) => i.dataset.param === k); if (inp) inp.value = v; }
+  document.getElementById('tpl-gf').value = s.girdleFacets || '';
+  Object.assign(state, { viewId: s.viewId || 'front', spin: s.spin || 0, zoom: s.zoom || 1, pan: s.pan || [0, 0], lineWidth: s.lineWidth || 1.5, girdleLines: s.girdleLines !== false, projection: s.projection || 'orthographic', fov: s.fov || 30, exportScale: s.exportScale || 2, showMeet: !!s.showMeet });
+  lineMat.linewidth = state.lineWidth; hiddenMat.linewidth = state.lineWidth; pave.setLineWidth(state.lineWidth);
+  if (s.baseQ) baseQ.fromArray(s.baseQ);
+  const sh = s.sheet;
+  state.sheet = { ...state.sheet, ...sh, gaps: { ...state.sheet.gaps, ...(sh.gaps || {}) }, base: { ...state.sheet.base, ...(sh.base || {}) }, page: { ...state.sheet.page, ...(sh.page || {}) }, pave: { ...state.sheet.pave, ...(sh.pave || {}) },
+    views: (sh.views || []).map((v) => ({ ...v, rot: v.rot ? new THREE.Quaternion().fromArray(v.rot) : null })) };
+  syncInputs();
+  editor.design = s.design;   // rebuilds the stone and lays the sheet out
+  renderViewList(); markView(); layout(true); resize();
+  return true;
+}
+let autosaveTimer = null;
+function autosave() {
+  clearTimeout(autosaveTimer);
+  autosaveTimer = setTimeout(() => { try { localStorage.setItem(SETUP_KEY, JSON.stringify(getSetup())); } catch (e) { /* storage full or disabled: nothing to do */ } }, 600);
+}
+function restoreSetup() {
+  if (params.get('fresh') === '1') return false;
+  try { const raw = localStorage.getItem(SETUP_KEY); if (!raw) return false; const s = JSON.parse(raw); const ok = applySetup(s); if (ok) { const st = document.getElementById('setupstatus'); if (st) st.textContent = `Restored the setup from ${new Date(s.saved).toLocaleString()}.`; } return ok; }
+  catch (e) { return false; }
+}
+{
+  const $ = (id) => document.getElementById(id);
+  if ($('setupsave')) $('setupsave').addEventListener('click', () => saveFile(`${state.shapeId}-setup.json`, 'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(getSetup(), null, 1))));
+  if ($('setupfile')) $('setupfile').addEventListener('change', async (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    try { const ok = applySetup(JSON.parse(await f.text())); $('setupstatus').textContent = ok ? `Loaded ${f.name}.` : `${f.name} is not a setup file.`; }
+    catch (err) { $('setupstatus').textContent = 'Could not load: ' + err.message; }
+    e.target.value = '';
+  });
+  if ($('setupreset')) $('setupreset').addEventListener('click', () => { try { localStorage.removeItem(SETUP_KEY); } catch (e) { /* ignore */ } location.href = location.pathname + '?fresh=1'; });
+}
+
 // ----------------------------------------------------------------------------- underlay UI
 const uSel = document.getElementById('u-builtin');
 for (const p of plots) { const o = document.createElement('option'); o.value = p.id; o.textContent = p.label; uSel.appendChild(o); }
@@ -910,6 +989,8 @@ setDesign(editor.design);
 snapTo(state.viewId, true);
 renderViewList();
 resize();
+// pick up where the last session left off (unless the page was opened with ?fresh=1 or a tool set a view)
+if (!params.has('view') && !params.has('ui')) restoreSetup();
 
 function frame(now) {
   if (anim) {
@@ -927,7 +1008,7 @@ requestAnimationFrame(frame);
 
 // Exposed for the screenshot tool and for scripting.
 window.__viewer = {
-  state, setDesign, snapTo, exportPNG, resize, addView, removeView, clearViews, resetView3d, snapCentre, fitView, fitViewsToPage, editor, paveInfo: () => paveInfo, paveStones: () => pave.lastStones, pageRect, instances, camera: () => camera, gridCells: () => gridLines.userData.cells,
+  state, setDesign, snapTo, exportPNG, resize, addView, removeView, clearViews, resetView3d, snapCentre, fitView, fitViewsToPage, editor, getSetup, applySetup, paveInfo: () => paveInfo, paveStones: () => pave.lastStones, pageRect, instances, camera: () => camera, gridCells: () => gridLines.userData.cells,
   loadShape(id) { const { templates } = window.__templates; if (templates[id]) editor.design = templates[id].make(); },
   setLineWidth(v) { state.lineWidth = v; lineMat.linewidth = v; hiddenMat.linewidth = v; pave.setLineWidth(v); },
   setGirdleLines(v) { state.girdleLines = v; layout(true); },

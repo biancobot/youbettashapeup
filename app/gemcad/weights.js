@@ -25,6 +25,7 @@ const LABELS = {
 export function weightFamily(name) {
   const n = (name || '').toLowerCase();
   if (n.includes('asscher') || n.includes('square emerald')) return 'asscher';
+  if (n.includes('old mine')) return 'cushion';   // antique cushion brilliant: the cushion factor and chart
   if (n.includes('round')) return 'round';
   if (n.includes('marquise')) return 'marquise';
   if (n.includes('pear')) return 'pear';

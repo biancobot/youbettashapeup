@@ -167,6 +167,9 @@ export function checkPacking(circles, area, obstacles, margin, tol = 1e-4) {
  */
 export function cobblestoneStones(hull, area, obstacles, sizes, settings, random) {
   const hullR = Math.max(...hull.map(([x, y]) => Math.hypot(x, y)));
+  // melee: stones whose circle is smaller than rSingle are drawn as round single cuts (unit circle outline, scale = radius)
+  const rSingle = settings.rSingle || 0;
+  const circleHull = Array.from({ length: 32 }, (_, k) => [Math.cos((k * Math.PI * 2) / 32), Math.sin((k * Math.PI * 2) / 32)]);
   const seeds = [];
   for (const sz of sizes) if (sz.label) {
     const sc = sz.labelScale || sz.scale, r = Array.isArray(sc) ? Math.max(...hull.map(([x, y]) => Math.hypot(sc[0] * x, sc[1] * y))) : hullR * sc;
@@ -177,6 +180,7 @@ export function cobblestoneStones(hull, area, obstacles, sizes, settings, random
   const stones = circles.map((c) => {
     const opacity = settings.minOpacity + random() * (settings.maxOpacity - settings.minOpacity);
     if (c.seed) return { x: c.x, y: c.y, angle: random() * Math.PI * 2, scale: c.seed.scale, carats: c.seed.carats, label: c.seed.carats, opacity, r: c.r };
+    if (c.r < rSingle) return { x: c.x, y: c.y, angle: random() * Math.PI * 2, scale: c.r, carats: null, label: null, opacity, r: c.r, kind: 'single' };
     return { x: c.x, y: c.y, angle: random() * Math.PI * 2, scale: c.r / hullR, carats: null, label: null, opacity, r: c.r };
   });
   // Second pass for shapes that are not round: a stone inscribed in its circle leaves the circle's
@@ -184,26 +188,28 @@ export function cobblestoneStones(hull, area, obstacles, sizes, settings, random
   // axis test against the placed stones' outlines and the obstacles), largest first.
   const inR = Math.min(...hull.map(([x, y], i) => { const [bx, by] = hull[(i + 1) % hull.length]; return Math.abs(x * by - y * bx) / Math.hypot(bx - x, by - y); }));
   if (hullR / inR > 1.12 && settings.gapFill !== false) {
-    const polys = stones.map((st) => transform(hull, st.scale, st.angle, st.x, st.y));
+    const polys = stones.map((st) => transform(st.kind === 'single' ? circleHull : hull, st.scale, st.angle, st.x, st.y));
     const areaPoly = [[area.minX, area.minY], [area.maxX, area.minY], [area.maxX, area.maxY], [area.minX, area.maxY]];
     const grown = obstacles.map((o) => { const cx = o.reduce((a, p) => a + p[0], 0) / o.length, cy = o.reduce((a, p) => a + p[1], 0) / o.length; return o.map(([x, y]) => { const dx = x - cx, dy = y - cy, l = Math.hypot(dx, dy) || 1; return [x + (dx / l) * settings.margin, y + (dy / l) * settings.margin]; }); });
     const g = 1 + settings.gapPad;
     let added = 0;
     for (const sz of sizes) {
       if (sz.label) continue;
-      const sc = sz.scale, r = hullR * sc * g;
+      const r = hullR * sz.scale * g;
       if (r < settings.rMin) break;
+      const single = hullR * sz.scale < rSingle;   // below the melee threshold: a round single cut filling the same circle
+      const useHull = single ? circleHull : hull, sc = single ? hullR * sz.scale : sz.scale;
       let fails = 0;
       for (let k = 0; k < 2500 && fails < settings.patience; k++) {
         const x = area.minX + r + random() * (area.maxX - area.minX - 2 * r), y = area.minY + r + random() * (area.maxY - area.minY - 2 * r);
         const ang = random() * Math.PI * 2;
-        const poly = transform(hull, sc * g, ang, x, y);
+        const poly = transform(useHull, sc * g, ang, x, y);
         let bad = poly.some(([px, py]) => px < area.minX || px > area.maxX || py < area.minY || py > area.maxY) || grown.some((o) => overlap(poly, o));
         if (!bad) for (let i = 0; i < stones.length; i++) { const q = stones[i]; if (Math.hypot(q.x - x, q.y - y) < q.r + r && overlap(poly, polys[i])) { bad = true; break; } }
         if (bad) { fails++; continue; }
         fails = 0; added++;
-        stones.push({ x, y, angle: ang, scale: sc, carats: sz.carats, label: null, opacity: settings.minOpacity + random() * (settings.maxOpacity - settings.minOpacity), r: hullR * sc });
-        polys.push(transform(hull, sc, ang, x, y));
+        stones.push({ x, y, angle: ang, scale: sc, carats: sz.carats, label: null, opacity: settings.minOpacity + random() * (settings.maxOpacity - settings.minOpacity), r: hullR * sz.scale, kind: single ? 'single' : undefined });
+        polys.push(transform(useHull, sc, ang, x, y));
       }
     }
     stats.gapFilled = added;
@@ -271,7 +277,8 @@ export function createPave(scene, occluderMat) {
   };
   /**
    * Build (or rebuild when the inputs changed). opts: { key, stones, meshPositions, hardEdges,
-   * smoothPositions, hullEdges } with the geometry as raw position arrays. All the stones are
+   * smoothPositions, hullEdges, single: { meshPositions, hardEdges, smoothPositions } } with the
+   * geometry as raw position arrays; stones with kind 'single' use the single-cut geometry. All the stones are
    * merged into one occluder mesh and a few line objects (one per opacity bucket), so the page
    * stays a handful of draw calls however many stones it holds.
    */
@@ -292,9 +299,10 @@ export function createPave(scene, occluderMat) {
         lbl.position.set(st.x, st.y, 0.1);
         group.add(lbl);
       } else {
-        appendTransformed(meshPos, o.meshPositions, st);
-        appendTransformed(dst, o.hardEdges, st);
-        if (o.smoothPositions && o.smoothPositions.length) appendTransformed(dst, o.smoothPositions, st);
+        const src = st.kind === 'single' && o.single ? o.single : o;
+        appendTransformed(meshPos, src.meshPositions, st);
+        appendTransformed(dst, src.hardEdges, st);
+        if (src.smoothPositions && src.smoothPositions.length) appendTransformed(dst, src.smoothPositions, st);
       }
     }
     if (meshPos.length) {

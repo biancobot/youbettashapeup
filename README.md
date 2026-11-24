@@ -68,7 +68,8 @@ brilliant (fan, ring-and-chevron, dense crushed-ice and square-culet pavilions);
 radiant; emerald; asscher; shield brilliant (French tip and uncorrected point, designed from the
 pear's pattern since no lab template exists); step-cut shields in three proportions (a kite shield, a
 hexagonal shield and a wide shield, all six-sided, measured from photographs and face-up silhouettes); trillion (triangular brilliant from a
-reference drawing, bowed or straight sides); the heart also comes with the hand-drawn
+reference drawing, bowed or straight sides); round single cut (eight cut) and the antique old mine
+cut (cushion, small table, high crown, deep pavilion, large culet); the heart also comes with the hand-drawn
 reference profile. The heart is the one non-convex stone: it is built as the union of
 two convex halves split on the mirror plane, with the cleft facets applied to one half each.
 `node tools/gallery.mjs && python3 tools/gallery.py` renders every template's front, back and
@@ -115,7 +116,10 @@ circle packing: sizes from the largest chosen carat weight down to the smallest,
 circumscribed circle touching its neighbours, sized by the trade weight estimators, random orientations and opacities, with outline
 stones labelled 0.25 to 5 ct at the trade size chart's dimensions for shapes the estimators cover) or, for the marquise, a hexafoil
 tiling of one-size marquises at one opacity. Without a page,
-Export PNG writes the preview at 1x to 8x.
+Export PNG writes the preview at 1x to 8x. The whole setup (design, form, views, page, grid,
+background, rotation) is kept in the browser's local storage as you work and restored on the next
+load; Save/Load setup writes and reads it as a .json file, Reset to defaults clears it (or open the
+page with `?fresh=1`).
 
 ## Exact CAD output
 
