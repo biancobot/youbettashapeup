@@ -114,8 +114,9 @@ reframe, and Export PNG then writes the page at the chosen DPI. A background opt
 free area, right up to the views' outlines, with a cobblestone pavé of the current stone (a tangent
 circle packing: sizes from the largest chosen carat weight down to the smallest, each stone's
 circumscribed circle touching its neighbours, sized by the trade weight estimators, random orientations and opacities, with outline
-stones labelled 0.25 to 5 ct at the trade size chart's dimensions for shapes the estimators cover) or, for the marquise, a hexafoil
-tiling of one-size marquises at one opacity. Without a page,
+stones labelled 0.25 to 5 ct at the trade size chart's dimensions for shapes the estimators cover) or, for the marquise, a hexafoil:
+the flower of life with a marquise in every lens and the construction circles drawn, at one size
+and opacity. Without a page,
 Export PNG writes the preview at 1x to 8x. The whole setup (design, form, views, page, grid,
 background, rotation) is kept in the browser's local storage as you work and restored on the next
 load; Save/Load setup writes and reads it as a .json file, Reset to defaults clears it (or open the

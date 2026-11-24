@@ -225,7 +225,7 @@ export function cobblestoneStones(hull, area, obstacles, sizes, settings, random
  * exact vesica of the classic figure, longer ones leave slivers between petals.
  * Returns stones like packStones, all at one scale and opacity, centred on the area.
  */
-export function hexafoilStones(hull, area, obstacles, scale, opacity, random) {
+export function hexafoilStones(hull, area, obstacles, scale, opacity, random, withCircles = true) {
   const ys = hull.map((p) => p[1]), L = (Math.max(...ys) - Math.min(...ys)) * scale;   // petal length along the stone's y axis
   const R = L / Math.sqrt(3);
   const a = [R, 0], b = [R / 2, (R * Math.sqrt(3)) / 2];
@@ -233,9 +233,11 @@ export function hexafoilStones(hull, area, obstacles, scale, opacity, random) {
   const excl = obstacles;   // view outlines (convex polygons)
   const cx0 = (area.minX + area.maxX) / 2, cy0 = (area.minY + area.maxY) / 2;
   const n = Math.ceil(Math.max(area.maxX - area.minX, area.maxY - area.minY) / R) + 2;
-  const out = [];
+  const out = [], circles = [];
   for (let i = -n; i <= n; i++) for (let j = -n; j <= n; j++) {
     const px = cx0 + i * a[0] + j * b[0], py = cy0 + i * a[1] + j * b[1];
+    // the construction circle at this lattice point, drawn when it lies on the page and clear of the views
+    if (withCircles && px - R >= area.minX && px + R <= area.maxX && py - R >= area.minY && py + R <= area.maxY && !excl.some((e) => sdPolygon(e, px, py) < R)) circles.push({ x: px, y: py, r: R });
     for (const d of dirs) {
       const x = px + d[0] / 2, y = py + d[1] / 2;
       const ang = Math.atan2(d[1], d[0]);   // the stone's length (its y axis) ends up perpendicular to the edge
@@ -245,6 +247,7 @@ export function hexafoilStones(hull, area, obstacles, scale, opacity, random) {
       out.push({ x, y, angle: ang, scale, carats: null, label: null, opacity });
     }
   }
+  out.circles = circles; out.R = R;
   return out;
 }
 
@@ -309,6 +312,14 @@ export function createPave(scene, occluderMat) {
       const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(meshPos, 3));
       const mesh = new THREE.Mesh(g, occluderMat); mesh.renderOrder = 0; group.add(mesh);
     }
+    // construction circles of a hexafoil: thin polylines behind the stones (their own line object)
+    if (o.circles && o.circles.length) {
+      const arr = [], N = 96;
+      for (const c of o.circles) for (let k = 0; k < N; k++) { const a0 = (k * 2 * Math.PI) / N, a1 = ((k + 1) * 2 * Math.PI) / N; arr.push(c.x + c.r * Math.cos(a0), c.y + c.r * Math.sin(a0), -0.2, c.x + c.r * Math.cos(a1), c.y + c.r * Math.sin(a1), -0.2); }
+      const mat = new LineMaterial({ color: 0x000000, linewidth: Math.max(0.5, lineWidth * 0.6), worldUnits: false, transparent: true, opacity: o.circleOpacity ?? lo, depthTest: false, depthWrite: false });
+      mat.resolution.set(resolution[0], resolution[1]); mats.push(mat);
+      const ls = new LineSegments2(new LineSegmentsGeometry().setPositions(new Float32Array(arr)), mat); ls.renderOrder = 0; group.add(ls);
+    }
     lines.forEach((arr, b) => {
       if (!arr.length) return;
       const op = hi > lo ? lo + ((b + 0.5) / BUCKETS) * (hi - lo) : lo;
@@ -319,7 +330,7 @@ export function createPave(scene, occluderMat) {
     count = stones.length;
   }
   function setResolution(w, h) { resolution = [w, h]; for (const m of mats) m.resolution.set(w, h); }
-  function setLineWidth(lw) { lineWidth = lw; for (const m of mats) m.linewidth = lw; }
+  function setLineWidth(lw) { const k = lw / (lineWidth || 1); lineWidth = lw; for (const m of mats) m.linewidth = m.linewidth * k; }
   return { group, build, clear, setResolution, setLineWidth, get count() { return count; }, set visible(v) { group.visible = v; }, get visible() { return group.visible; } };
 }
 

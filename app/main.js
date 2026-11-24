@@ -38,7 +38,7 @@ const state = {
     // Page: a sheet of paper centred on the origin; the stone's width occupies `stoneWidth` inches of it
     page: { enabled: params.get('page') === '1', width: 8.5, height: 8.5, stoneWidth: 2, dpi: 300, fit: 0.8 },
     // Background: cobblestone pavé of the current stone in random sizes and orientations, or a hexafoil of marquises
-    pave: { enabled: false, pattern: 'cobblestone', minOpacity: 0.15, maxOpacity: 0.6, maxCarats: 5, minCarats: 0.02, singleBelow: 0.2, mmPerInch: 25.4, margin: 0.03, seedCount: 6, samples: 40, patience: 80, maxCircles: 3000, seed: 1, labels: true, hexCarats: 1, hexOpacity: 0.3 },
+    pave: { enabled: false, pattern: 'cobblestone', minOpacity: 0.15, maxOpacity: 0.6, maxCarats: 5, minCarats: 0.02, singleBelow: 0.2, mmPerInch: 25.4, margin: 0.03, seedCount: 6, samples: 40, patience: 80, maxCircles: 3000, seed: 1, labels: true, hexCarats: 3, hexOpacity: 0.35, hexCircles: true },
     nextId: 1,
   },
 };
@@ -305,8 +305,10 @@ function updatePave() {
   const pts = []; for (let i = 0; i < geo.vertices.length; i += 3) pts.push([geo.vertices[i], geo.vertices[i + 1]]);
   const hull = convexHull(pts);
   const hullEdges = []; for (let i = 0; i < hull.length; i++) { const a = hull[i], b = hull[(i + 1) % hull.length]; hullEdges.push(a[0], a[1], 0, b[0], b[1], 0); }
-  let stones, check = null;
-  if (pattern === 'hexafoil') stones = hexafoilStones(hull, area, obstacles, (sizer.widthMm(pv.hexCarats) * worldPerMm) / 2, pv.hexOpacity, rng(pv.seed));
+  let stones, check = null, circles = null;
+  // the hexafoil is offered only on a marquise page
+  const hexOpt = document.querySelector('#pavepattern option[value="hexafoil"]'); if (hexOpt) hexOpt.disabled = family !== 'marquise';
+  if (pattern === 'hexafoil') { stones = hexafoilStones(hull, area, obstacles, (sizer.widthMm(pv.hexCarats) * worldPerMm) / 2, pv.hexOpacity, rng(pv.seed), pv.hexCircles); circles = stones.circles; }
   else {
     // circle radii from carat weights: the circumscribed circle of the stone at that weight
     const hullR = Math.max(...hull.map(([x, y]) => Math.hypot(x, y)));
@@ -328,11 +330,11 @@ function updatePave() {
     const sg = designMesh(singleCut({ girdleFacets: 64 }));
     updatePave.single = { girdleLines: state.girdleLines, meshPositions: sg.positions, hardEdges: sg.hardEdges, smoothPositions: new Float32Array(smoothEdgesFor(new THREE.Quaternion(), sg)) };
   }
-  pave.build({ key, stones, meshPositions: geo.positions, hardEdges: geo.hardEdges, smoothPositions: new Float32Array(smoothEdgesFor(new THREE.Quaternion())), hullEdges: new Float32Array(hullEdges), single: updatePave.single });
+  pave.build({ key, stones, circles, circleOpacity: pv.hexOpacity, meshPositions: geo.positions, hardEdges: geo.hardEdges, smoothPositions: new Float32Array(smoothEdgesFor(new THREE.Quaternion())), hullEdges: new Float32Array(hullEdges), single: updatePave.single });
   pave.lastKey = key;
   const singles = stones.filter((q) => q.kind === 'single').length;
   const packNote = check ? `${singles ? ` ${singles} stones under ${pv.singleBelow} ct are single cuts.` : ''} Packing: ${check.count} circles, ${check.tangent2} touching two or more boundaries, ${check.overlaps} overlaps, ${check.intrusions} intrusions${check.gapFilled ? `, plus ${check.gapFilled} smaller stones fitted into the circles' corners` : ''} (${check.ms} ms).` : '';
-  paveInfo = { count: stones.length, check, note: pattern === 'hexafoil' ? `Hexafoil: ${stones.length} marquises of ${pv.hexCarats} ct (${sizer.widthMm(pv.hexCarats).toFixed(2)} mm wide)` : (est ? `${stones.length} stones, ${est.label} estimator (factor ${est.factor.toFixed(5)}): 1 ct is ${est.widthMm(1).toFixed(2)} mm wide, 5 ct ${est.widthMm(5).toFixed(2)} mm; the labelled outlines use the ${CHART_SOURCE} dimensions${chartSize(family, 1, st.ratio) ? ` (1 ct ${chartSize(family, 1, st.ratio).length.toFixed(1)} x ${chartSize(family, 1, st.ratio).width.toFixed(1)} mm)` : ''}.` : `${stones.length} stones; no weight estimator covers this shape, so sizes use the round factor and no carat labels are drawn.`) + packNote };
+  paveInfo = { count: stones.length, check, note: pattern === 'hexafoil' ? `Hexafoil: ${stones.length} marquises of ${pv.hexCarats} ct (${(sizer.widthMm(pv.hexCarats) * st.ratio).toFixed(1)} x ${sizer.widthMm(pv.hexCarats).toFixed(1)} mm) on circles of radius ${((stones.R / worldPerMm) || 0).toFixed(1)} mm${circles ? `, ${circles.length} circles drawn` : ''}.` : (est ? `${stones.length} stones, ${est.label} estimator (factor ${est.factor.toFixed(5)}): 1 ct is ${est.widthMm(1).toFixed(2)} mm wide, 5 ct ${est.widthMm(5).toFixed(2)} mm; the labelled outlines use the ${CHART_SOURCE} dimensions${chartSize(family, 1, st.ratio) ? ` (1 ct ${chartSize(family, 1, st.ratio).length.toFixed(1)} x ${chartSize(family, 1, st.ratio).width.toFixed(1)} mm)` : ''}.` : `${stones.length} stones; no weight estimator covers this shape, so sizes use the round factor and no carat labels are drawn.`) + packNote };
   renderPaveInfo();
 }
 function renderPaveInfo() { const el = document.getElementById('paveinfo'); if (el) el.textContent = paveInfo.note; }
@@ -837,7 +839,7 @@ if (pageChk) {
 {
   const pv = state.sheet.pave, $ = (id) => document.getElementById(id);
   const bind = (id, key, parse = parseFloat, after = () => layout(true)) => { const el = $(id); if (!el) return; if (el.type === 'checkbox') el.checked = pv[key]; else el.value = pv[key]; el.addEventListener(el.type === 'range' ? 'change' : 'change', () => { pv[key] = el.type === 'checkbox' ? el.checked : parse(el.value); after(); }); };
-  bind('pave', 'enabled'); bind('pavepattern', 'pattern', String); bind('pavemin', 'minOpacity'); bind('pavemax', 'maxOpacity'); bind('pavemaxct', 'maxCarats'); bind('paveminct', 'minCarats'); bind('pavesingle', 'singleBelow'); bind('pavescale', 'mmPerInch'); bind('pavemargin', 'margin'); bind('paveseeds', 'seedCount', parseInt); bind('pavelabels', 'labels'); bind('pavehexct', 'hexCarats'); bind('pavehexop', 'hexOpacity');
+  bind('pave', 'enabled'); bind('pavepattern', 'pattern', String); bind('pavemin', 'minOpacity'); bind('pavemax', 'maxOpacity'); bind('pavemaxct', 'maxCarats'); bind('paveminct', 'minCarats'); bind('pavesingle', 'singleBelow'); bind('pavescale', 'mmPerInch'); bind('pavemargin', 'margin'); bind('paveseeds', 'seedCount', parseInt); bind('pavelabels', 'labels'); bind('pavehexct', 'hexCarats'); bind('pavehexop', 'hexOpacity'); bind('pavehexcircles', 'hexCircles');
   for (const id of ['pavemin', 'pavemax', 'pavehexop']) { const el = $(id), v = $(id + 'v'); if (el && v) { v.textContent = `${Math.round(el.value * 100)}%`; el.addEventListener('input', () => { v.textContent = `${Math.round(el.value * 100)}%`; }); } }
   const reseed = $('pavereseed'); if (reseed) reseed.addEventListener('click', () => { pv.seed = (pv.seed + 1) % 100000; layout(true); });
 }
@@ -920,7 +922,7 @@ function syncInputs() {
   const sizes = { 'letter': [8.5, 11], 'letterL': [11, 8.5], 'square85': [8.5, 8.5], 'a4': [8.27, 11.69], 'a4L': [11.69, 8.27] };
   set('pagesize', Object.keys(sizes).find((k) => sizes[k][0] === pg.width && sizes[k][1] === pg.height) || 'custom');
   const pv = sh.pave;
-  for (const [id, key] of [['pave', 'enabled'], ['pavepattern', 'pattern'], ['pavemin', 'minOpacity'], ['pavemax', 'maxOpacity'], ['pavemaxct', 'maxCarats'], ['paveminct', 'minCarats'], ['pavesingle', 'singleBelow'], ['pavescale', 'mmPerInch'], ['pavemargin', 'margin'], ['paveseeds', 'seedCount'], ['pavelabels', 'labels'], ['pavehexct', 'hexCarats'], ['pavehexop', 'hexOpacity']]) set(id, pv[key]);
+  for (const [id, key] of [['pave', 'enabled'], ['pavepattern', 'pattern'], ['pavemin', 'minOpacity'], ['pavemax', 'maxOpacity'], ['pavemaxct', 'maxCarats'], ['paveminct', 'minCarats'], ['pavesingle', 'singleBelow'], ['pavescale', 'mmPerInch'], ['pavemargin', 'margin'], ['paveseeds', 'seedCount'], ['pavelabels', 'labels'], ['pavehexct', 'hexCarats'], ['pavehexop', 'hexOpacity'], ['pavehexcircles', 'hexCircles']]) set(id, pv[key]);
   for (const id of ['pavemin', 'pavemax', 'pavehexop']) if ($(id + 'v')) $(id + 'v').textContent = `${Math.round($(id).value * 100)}%`;
 }
 function applySetup(s) {
