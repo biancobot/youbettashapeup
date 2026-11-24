@@ -17,11 +17,11 @@
 // L:W - r (y) including the bows. Least-squares fit of the plot outline: r = 0.60, sides bowed by
 // 0.07, ends by 0.03 (rms 0.010 of the half-width; a plain rectangle plus circle fits best at
 // r = 0.80 with rms 0.018 and leaves flats on which the girdle polygon bulges).
-import { newTier } from '../design.js?v=71';
+import { newTier } from '../design.js?v=72';
 import {
   rad, deg, marquiseSupport, outlineFromSupport, girdleVertices, vertexNear, lift,
   planeThrough, zPlane, yPlane, xPlane, classTier, girdleFromSupport, girdleEqualLength, plane3, intersect3,
-} from '../shapebuild.js?v=71';
+} from '../shapebuild.js?v=72';
 
 /**
  * Support function of a cushion outline: a rectangle with half-sides w and l whose sides bow out
@@ -60,12 +60,14 @@ const CONTACTS = { corner: [0.756, 1.024 / PLOT_L], ue: [0.556, 1.167 / PLOT_L],
  * crown: table, 8 bezels (2 ends, 2 sides, 4 corners), 8 stars, 16 upper girdle facets;
  * pavilion: 8 mains, 16 lower girdle facets, a small rectangular culet (keel) along the length.
  * Lengths along y are given as fractions of the half-length so the pattern follows the L:W.
+ * `contacts` ({ corner, ue, us }: the corner bezel and main contact and the two upper/lower girdle
+ * junctions, normalised plan positions) default to the plot's; the old mine cut passes its own.
  */
 export function cushionBrilliant({
   ratio = 1.25, corner = 0.6, bowSides = 0.07, bowEnds = 0.03, crownAngle = 35, girdle = 0.05, pavilionDepth = 0.435,
   tableWidth = 0.584, tableLength = 0.690, tableCorner = [0.452, 0.610], starHeight = 0.73,
   culet = [0.032, 0.149], ridgeEnd = 0.489, ridgeSide = 0.415,
-  gear = 96, girdleFacets = 128,
+  gear = 96, girdleFacets = 128, contacts = CONTACTS,
 } = {}) {
   const W = 2, l = ratio, g = girdle * W, Pd = pavilionDepth * W;
   // The plot (L:W 1.25) is two-fold symmetric: ends and sides differ. As the ratio approaches 1
@@ -80,8 +82,8 @@ export function cushionBrilliant({
   const tw = mix((tableWidth + tableLength) / 2, tableWidth), tl = mix((tableWidth + tableLength) / 2, tableLength);
   const bowX = mix((bowSides + bowEnds) / 2, bowSides), bowY = mix((bowSides + bowEnds) / 2, bowEnds);
   const tc = mixPt(sym(tableCorner), tableCorner);
-  const [ueS, usS] = symPair(CONTACTS.ue, CONTACTS.us);
-  const cN = mixPt(sym(CONTACTS.corner), CONTACTS.corner), ueN = mixPt(ueS, CONTACTS.ue), usN = mixPt(usS, CONTACTS.us);
+  const [ueS, usS] = symPair(contacts.ue, contacts.us);
+  const cN = mixPt(sym(contacts.corner), contacts.corner), ueN = mixPt(ueS, contacts.ue), usN = mixPt(usS, contacts.us);
   const azOfN = ([x, y]) => deg(Math.atan2(y * l, x));   // normalised point (x in half-widths, y as a fraction of the half-length) -> radial azimuth
   const re = mix((ridgeEnd + ridgeSide) / 2, ridgeEnd), rs = mix((ridgeEnd + ridgeSide) / 2, ridgeSide);
   const H = (1 - tw) * Math.tan(rad(crownAngle));   // side bezels at crownAngle set the crown height
