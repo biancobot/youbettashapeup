@@ -866,6 +866,19 @@ document.getElementById('clearviews').addEventListener('click', clearViews);
 const scaleSel = document.getElementById('scale');
 scaleSel.addEventListener('change', () => { state.exportScale = parseFloat(scaleSel.value); });
 document.getElementById('export').addEventListener('click', () => exportPNG(state.exportScale));
+// the preview's kebab menu: export, fit views to the page, fit the preview
+{
+  const btn = document.getElementById('stagemenubtn'), list = document.getElementById('stagemenulist');
+  if (btn && list) {
+    const open = (v) => { list.hidden = !v; btn.setAttribute('aria-expanded', String(v)); };
+    btn.addEventListener('click', (e) => { e.stopPropagation(); open(list.hidden); });
+    list.addEventListener('click', () => open(false));
+    document.addEventListener('click', (e) => { if (!list.hidden && !list.contains(e.target) && e.target !== btn) open(false); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') open(false); });
+    document.getElementById('menufitviews').addEventListener('click', () => fitViewsToPage());
+    document.getElementById('menufitpreview').addEventListener('click', () => fitView());
+  }
+}
 
 function updateProps() {
   const dl = document.getElementById('props');

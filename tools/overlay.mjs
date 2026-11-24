@@ -25,7 +25,7 @@ const page = await browser.newPage({ viewport: { width: 1400, height: 900 }, dev
 const errs = []; page.on('pageerror', (e) => errs.push(String(e))); page.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
 await page.goto(`http://127.0.0.1:${server.address().port}/?lw=1.5&meet=0&fresh=1`);
 await page.waitForFunction(() => window.__viewer && window.__frames > 3);
-await page.addStyleTag({ content: '#export { display: none !important; }' });   // the export icon overlaps the canvas
+await page.addStyleTag({ content: '#stagemenu { display: none !important; }' });   // the export icon overlaps the canvas
 await page.selectOption('#template', tpl);
 if (ratio && await page.locator('#tpl-params input[data-param="ratio"]').count()) await page.fill('#tpl-params input[data-param="ratio"]', ratio);
 if (gf) await page.fill('#tpl-gf', gf);

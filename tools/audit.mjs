@@ -43,6 +43,15 @@ for (const key of keys) {
   }
   if (minTop < gTop - 0.5 * girdleT) problems.push(`girdle cut to ${(100 * (minTop - gBot) / girdleT).toFixed(0)}% of its thickness by a crown facet`);
   if (maxBot > gBot + 0.5 * girdleT) problems.push(`girdle cut to ${(100 * (gTop - maxBot) / girdleT).toFixed(0)}% of its thickness by a pavilion facet`);
+  // hills: a girdle facet reaching far above the girdle top or below its bottom means the crown or
+  // pavilion facets beside it touch the girdle only at points and leave a wedge of girdle between them
+  // (a design may declare zones where a thick girdle is intended, e.g. the heart's cleft: `girdleThickAt: [{ az, span }]`)
+  const allowed = d.girdleThickAt || [];
+  const inAllowed = (f) => { const c = f.idx.map((i) => m.verts[i]); const az = Math.atan2(c.reduce((s, v) => s + v[1], 0), c.reduce((s, v) => s + v[0], 0)) * 180 / Math.PI; return allowed.some((a) => Math.abs(((az - a.az + 540) % 360) - 180) <= a.span); };
+  let maxTop = -Infinity, minBot = Infinity;
+  for (const f of m.faces) if (isG(f) && !inAllowed(f)) { const zs = f.idx.map((i) => m.verts[i][2]); maxTop = Math.max(maxTop, Math.max(...zs)); minBot = Math.min(minBot, Math.min(...zs)); }
+  const thickest = (maxTop - minBot) / girdleT;
+  if (thickest > 1.6) problems.push(`girdle bulges to ${(100 * thickest).toFixed(0)}% of its thickness (${maxTop > gTop + 0.3 * girdleT ? 'above, between crown facets' : 'below, between pavilion facets'}): facets touching it at single points with a wedge of girdle between them`);
   // 2. slivers
   for (const f of m.faces) {
     if (isG(f)) continue;
@@ -55,7 +64,7 @@ for (const key of keys) {
   // 3. every tier has faces
   for (const t of d.tiers) if (!t.hidden && !m.faces.some((f) => f.tag === t.id)) problems.push(`${t.name}: no faces`);
   const uniq = [...new Set(problems)];
-  console.log(`${uniq.length ? 'FAIL' : 'ok  '} ${key} (${m.faceCount} facets, girdle ${(100 * girdleT / 2).toFixed(1)}%, thinnest ${(100 * (minTop - gBot) / girdleT).toFixed(0)}%)`);
+  console.log(`${uniq.length ? 'FAIL' : 'ok  '} ${key} (${m.faceCount} facets, girdle ${(100 * girdleT / 2).toFixed(1)}%, thinnest ${(100 * (minTop - gBot) / girdleT).toFixed(0)}%, thickest ${(100 * thickest).toFixed(0)}%)`);
   for (const p of uniq.slice(0, 12)) console.log('      ' + p);
   if (uniq.length > 12) console.log(`      ... ${uniq.length - 12} more`);
   if (uniq.length) failed++;
