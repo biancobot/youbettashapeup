@@ -14,7 +14,7 @@ companion produces STEP solids and exact vector SVG views with OpenCascade.
 npm start
 ```
 
-Then open `http://localhost:8000/`. The page header shows its build number (currently 42); if it
+Then open `http://localhost:8000/`. The page header shows its build number (currently 43); if it
 shows an older one after a `git pull`, hard-reload (Ctrl+Shift+R). Pass another port as `node tools/serve.mjs 8123` if 8000
 is taken. The site is static ES modules, so it must be served over HTTP (not `file://`).
 `diag.html` runs a step-by-step load check if the page does not come up.
@@ -133,6 +133,7 @@ index.html, diag.html        UI shell, load diagnostics
 app/main.js                  renderer, rotation, views, sheets, page, meet-point picking, export
 app/pave.js                  pavé and hexafoil backgrounds (packing, tiling, rendering)
 app/gemcad/weights.js        diamond weight estimator factors and carat-to-millimetre sizes
+tools/sizes.mjs              writes designs/size-chart.md: estimator sizes per shape beside Stuller's trade chart
 app/editor.js                tiers table, symmetry, preforms, .asc import/export
 app/gemcad/design.js         design model, facet planes, index conventions, .asc parser/writer
 app/gemcad/polytope.js       half-space clipping core

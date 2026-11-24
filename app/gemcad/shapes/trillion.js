@@ -57,7 +57,7 @@ export function trillionOutline(bow = 0.05, segments = 3) {
  * apothem and of the pavilion depth.
  */
 export function trillionStart({
-  crownHeight = 0.13, girdle = 0.03, pavilionDepth = 0.42, table = 0.56, bow = 0.04, segments = 3,
+  crownHeight = 0.09, girdle = 0.03, pavilionDepth = 0.28, table = 0.56, bow = 0.04, segments = 3,
   starPos = 0.8, starHeight = 0.5, breakPos = 0.43, breakDepth = 0.65, gear = 96,
 } = {}) {
   const W = 2, H = crownHeight * W, g = girdle * W, Pd = pavilionDepth * W;
@@ -112,9 +112,9 @@ const params = (o) => [
   { key: 'bow', label: 'Side bow', default: o.bow, step: 0.01, min: 0, max: 0.15, title: 'Sagitta of each side, fraction of its chord (0 = straight sides)' },
   { key: 'segments', label: 'Girdle facets / side', default: o.segments, step: 1, min: 1, max: 12 },
   { key: 'table', label: 'Table', default: 0.56, step: 0.01, min: 0.3, max: 0.8, title: 'Table corner radius, fraction of the corner radius' },
-  { key: 'crownHeight', label: 'Crown height', default: 0.13, step: 0.005, title: 'Fraction of the width' },
+  { key: 'crownHeight', label: 'Crown height', default: 0.09, step: 0.005, title: 'Fraction of the width' },
   { key: 'girdle', label: 'Girdle', default: 0.03, step: 0.005 },
-  { key: 'pavilionDepth', label: 'Pavilion depth', default: 0.42, step: 0.005, title: 'Fraction of the width' },
+  { key: 'pavilionDepth', label: 'Pavilion depth', default: 0.28, step: 0.005, title: 'Fraction of the width' },
   { key: 'starPos', label: 'Crown hub pos.', default: 0.8, step: 0.01, min: 0.3, max: 0.98, title: 'Crown hub on the side bisector, fraction of the apothem (centroid to the girdle middle)' },
   { key: 'starHeight', label: 'Crown hub height', default: 0.5, step: 0.05, min: 0.05, max: 0.95, title: 'Fraction of the crown height' },
   { key: 'breakPos', label: 'Pavilion hub pos.', default: 0.43, step: 0.01, min: 0.1, max: 0.95, title: 'Pavilion hub on the side bisector, fraction of the apothem' },
