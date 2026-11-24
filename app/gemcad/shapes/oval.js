@@ -3,11 +3,11 @@
 // FDR749558450) or 4 mains (FDR733542179). Built the way ../fancy.js builds the marquise: a facet
 // that reaches the girdle touches the girdle polygon at a vertex chosen by radial azimuth, and its
 // azimuth is the outline normal there; the other facets are planes through three meet points.
-import { newTier } from '../design.js?v=67';
+import { newTier } from '../design.js?v=68';
 import {
   ellipseOutline, girdleVertices, vertexNear, lift, planeThrough, planeAz, mainThrough,
   mirrorX, mirrorY, zPlane, yPlane, xPlane, azPlane, perpPlane, classTier, girdleFromSupport, girdleEqualLength, plane3, intersect3, chordRun,
-} from '../shapebuild.js?v=67';
+} from '../shapebuild.js?v=68';
 
 /*
  * Positions measured on the IGI plots (units: the half-width; y along the length; radial azimuth
@@ -166,7 +166,7 @@ export function ovalStart({
  */
 export function ovalHeadStart({
   ratio = PLOT.ratio, crownHeight = 0.16, girdle = 0.033, pavilionDepth = 0.43, table = 0.58, shoulderAz = 53,
-  starHeight = 0.5, lowerDepth = 0.55, gear = 96, girdleFacets = 128, maxDip = 0.2,
+  starHeight = 0.5, lowerDepth = 0.9, gear = 96, girdleFacets = 128, maxDip = 0.2,
 } = {}) {
   const W = 2, l = ratio, H = crownHeight * W, g = girdle * W, Pd = pavilionDepth * W;
   const outline = ellipseOutline(l);
@@ -247,7 +247,7 @@ export const templates = {
     { key: 'starHeight', label: 'Star tips', default: 0.5, step: 0.05, min: 0.2, max: 0.95, title: 'Fraction of the crown height (above about 0.6 the head stars thin to slivers against the table edge)' },
     { key: 'girdle', label: 'Girdle', default: 0.033, step: 0.005 },
     { key: 'pavilionDepth', label: 'Pavilion depth', default: 0.43, step: 0.005 },
-    { key: 'lowerDepth', label: 'Lower junctions', default: 0.55, step: 0.05, min: 0.2, max: 0.9, title: 'Lower girdle junctions on the main ridges, fraction of the pavilion depth' },
+    { key: 'lowerDepth', label: 'Lower junctions', default: 0.9, step: 0.05, min: 0.2, max: 0.95, title: 'Lower girdle junctions on the main ridges, fraction of the pavilion depth (0.9: long lower girdle facets reaching nearly to the culet, as on the diagram)' },
     { key: 'maxDip', label: 'Max girdle dig', default: 0.2, step: 0.05, min: 0.05, max: 0.5, title: 'How far an upper or lower girdle facet may dig into the girdle, fraction of its thickness; a facet that would dig more is split at the deepest point' },
   ], make: (o = {}) => ovalHeadStart(o) },
   oval4: { name: 'Oval brilliant, 4-main pavilion (starting point)', note: 'Same crown; the pavilion variant with four mains at the diagonals (IGI FDR733542179), under the crown\'s upper-girdle junctions, with the lower junctions under the bezels.', params: [...params, { key: 'alignMains', label: 'Mains under junctions', default: 1, step: 1, min: 0, max: 1, title: '1: the four mains under the crown\'s upper-girdle junctions and the lower junctions under the bezel contacts; 0: the plot\'s own positions (68.6 / 45.4 / 24.1)' }], make: (o = {}) => ovalStart({ pavilionMains: 4, ...o, alignMains: o.alignMains === undefined ? true : !!o.alignMains }) },

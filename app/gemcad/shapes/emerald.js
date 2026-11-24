@@ -31,8 +31,8 @@
 //     74.5 px, 73.5 px, 19.5 px = (0.485, 0.479, 0.127); 111.5 px, 110 px, 9.75 px = (0.726, 0.717, 0.064);
 //     keel from the end: 148.5 px = 0.967 from the end, i.e. its ends at y = +/-0.616; the plot draws
 //     the keel as a 6 px (0.04) wide strip (a long faceted culet); this design keeps a sharp keel line.
-import { newTier } from '../design.js?v=67';
-import { rad, deg, girdleFromPolygon, planeThrough, zPlane, classTier } from '../shapebuild.js?v=67';
+import { newTier } from '../design.js?v=68';
+import { rad, deg, girdleFromPolygon, planeThrough, zPlane, classTier } from '../shapebuild.js?v=68';
 
 /** Measured step octagons: side inset x, end inset y (from the girdle lines) and corner cut c, in half-widths. */
 const CROWN_STEPS = [
