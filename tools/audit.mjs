@@ -1,8 +1,10 @@
 // Meet-point audit for every template: node tools/audit.mjs [templateKey ...]
 // For each design it checks, after building the stone:
 //   girdle: every crown or pavilion facet that reaches the girdle meets it at vertices shared with
-//     a neighbouring facet (bezel tips and junctions are meet points), and the scalloped girdle
-//     keeps at least half its thickness everywhere (no facet cuts through it);
+//     a neighbouring facet (bezel tips and junctions are meet points; a single-vertex tangency is
+//     allowed), no facet cuts more than half way through it, every girdle facet survives, the
+//     valleys stay at least 1.5% of the width (GIA "thin") and a third of the hills, and the
+//     girdle does not bulge past 160% outside zones the design declares (the heart's cleft);
 //   slivers: no facet thinner than 1% of the half-width (area / longest edge);
 //   symmetry classes: every tier produced faces.
 // Exit code 1 if any template fails.
@@ -48,6 +50,16 @@ for (const key of keys) {
       if (!others.length) problems.push(`${t.name}: girdle vertex (${m.verts[i].map((v) => v.toFixed(3)).join(', ')}) shared with no other crown/pavilion facet`);
     }
   }
+  // every girdle facet must exist and keep at least half the nominal thickness between the crown and pavilion facets
+  const gTier = d.tiers.find((t) => Math.abs(t.angle) === 90);
+  const gCount = m.faces.filter(isG).length;
+  if (gTier && gCount < gTier.indices.length) problems.push(`${gTier.indices.length - gCount} of the ${gTier.indices.length} girdle facets are cut away entirely`);
+  let thinnestRemaining = Infinity, thinnestAz = 0;
+  for (const f of m.faces) if (isG(f) && !inAllowed(f)) { const zs = f.idx.map((i) => m.verts[i][2]); const t = Math.max(...zs) - Math.min(...zs); if (t < thinnestRemaining) { thinnestRemaining = t; const c = f.idx.map((i) => m.verts[i]); thinnestAz = Math.atan2(c.reduce((s, v) => s + v[1], 0), c.reduce((s, v) => s + v[0], 0)) * 180 / Math.PI; } }
+  // the valleys (where an upper and a lower girdle facet both cut in) must stay at least "thin" on
+  // GIA's girdle scale (1.5% of the width) and no thinner than a third of the hills
+  const width = m.bbox[1][0] - m.bbox[0][0];
+  if (thinnestRemaining < 0.015 * width || thinnestRemaining < girdleT / 3) problems.push(`girdle valley only ${(100 * thinnestRemaining / width).toFixed(2)}% of the width (${(100 * thinnestRemaining / girdleT).toFixed(0)}% of the hills) at azimuth ${thinnestAz.toFixed(0)}: GIA "thin" starts at 1.5%, and the valleys should keep a third of the hill thickness`);
   if (minTop < gTop - 0.5 * girdleT) problems.push(`girdle cut to ${(100 * (minTop - gBot) / girdleT).toFixed(0)}% of its thickness by a crown facet`);
   if (maxBot > gBot + 0.5 * girdleT) problems.push(`girdle cut to ${(100 * (gTop - maxBot) / girdleT).toFixed(0)}% of its thickness by a pavilion facet`);
   // hills: a girdle facet reaching far above the girdle top or below its bottom means the crown or
@@ -68,7 +80,7 @@ for (const key of keys) {
   // 3. every tier has faces
   for (const t of d.tiers) if (!t.hidden && !m.faces.some((f) => f.tag === t.id)) problems.push(`${t.name}: no faces`);
   const uniq = [...new Set(problems)];
-  console.log(`${uniq.length ? 'FAIL' : 'ok  '} ${key} (${m.faceCount} facets, girdle ${(100 * girdleT / 2).toFixed(1)}%, thinnest ${(100 * (minTop - gBot) / girdleT).toFixed(0)}%, thickest ${(100 * thickest).toFixed(0)}%)`);
+  console.log(`${uniq.length ? 'FAIL' : 'ok  '} ${key} (${m.faceCount} facets, girdle ${(100 * girdleT / 2).toFixed(1)}%, thinnest ${(100 * thinnestRemaining / girdleT).toFixed(0)}%, thickest ${(100 * thickest).toFixed(0)}%)`);
   for (const p of uniq.slice(0, 12)) console.log('      ' + p);
   if (uniq.length > 12) console.log(`      ... ${uniq.length - 12} more`);
   if (uniq.length) failed++;

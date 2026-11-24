@@ -73,7 +73,7 @@ cut (cushion, small table, high crown, deep pavilion, large culet); the heart al
 reference profile. The heart is the one non-convex stone: it is built as the union of
 two convex halves split on the mirror plane, with the cleft facets applied to one half each.
 `node tools/gallery.mjs && python3 tools/gallery.py` renders every template's front, back and
-iso views into one sheet. `node tools/audit.mjs` is the meet-point audit every template must
+iso views into one sheet. `node tools/audit.mjs` is the meet-point and girdle audit every template must
 pass: facets that reach the girdle meet their neighbours at shared girdle vertices (bezel tips and
 upper-girdle junctions are points on the girdle), no facet cuts the girdle below half its
 thickness, no slivers, every tier produces faces.

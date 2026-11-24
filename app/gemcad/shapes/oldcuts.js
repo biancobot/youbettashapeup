@@ -22,7 +22,7 @@ import {
 import { cushionOutline } from './cushion.js';
 
 /** Single cut starting point. table: fraction of the diameter; culet: fraction of the diameter (0 = point). */
-export function singleCut({ table = 0.58, crownAngle = 36, pavilionAngle = 41, girdle = 0.03, culet = 0, gear = 96, girdleFacets = 64 } = {}) {
+export function singleCut({ table = 0.55, crownAngle = 36, pavilionAngle = 41, girdle = 0.03, culet = 0, gear = 96, girdleFacets = 64 } = {}) {
   const R = 1, W = 2, g = girdle * W, zb = -g;
   const H = (R - table * R) * Math.tan(rad(crownAngle));
   // girdle: a bruted round girdle (a regular polygon of apothem R with a vertex at azimuth 0 and
@@ -65,8 +65,8 @@ export function singleCut({ table = 0.58, crownAngle = 36, pavilionAngle = 41, g
  * to the girdle, and from the girdle towards the culet).
  */
 export function oldMine({
-  ratio = 1.05, corner = 0.6, bow = 0.03, table = 0.46, crownAngle = 42, pavilionAngle = 44, girdle = 0.045, culet = 0.13,
-  starLength = 0.45, lowerLength = 0.55, gear = 96, girdleFacets = 64,
+  ratio = 1.05, corner = 0.6, bow = 0.03, table = 0.46, crownAngle = 42, pavilionAngle = 44, girdle = 0.06, culet = 0.13,
+  starLength = 0.45, lowerLength = 0.55, cornerSplit = 18, gear = 96, girdleFacets = 64,
 } = {}) {
   const W = 2, l = ratio, r = Math.min(corner, Math.min(1, l) - bow - 1e-3), g = girdle * W, zb = -g;
   // the sides bow out slightly (antique stones are never dead straight), which also lets the upper
@@ -82,7 +82,11 @@ export function oldMine({
   // contacts: side (az 0), end (az 90), corner (middle of the corner arc); junctions where the flats meet the arcs
   const cx = 1 - r - bow, cy = l - r - bow;   // centre of the corner arc (the outline is a bowed rectangle swept by a circle of radius r)
   const cornerPt = [cx + r * Math.SQRT1_2, cy + r * Math.SQRT1_2];
-  const azC = azOf(cornerPt), azJ1 = azOf([1 - bow / 2, cy]), azJ2 = azOf([cx, l - bow / 2]);   // where the bowed sides meet the corner arcs
+  // the upper and lower girdle facet junctions sit ON the corner arcs, cornerSplit degrees round
+  // from each end, so no facet spans more than 45 - cornerSplit degrees of arc as a chord (a chord
+  // across a whole quarter arc would cut the girdle away at the corners)
+  const sp = rad(cornerSplit);
+  const azC = azOf(cornerPt), azJ1 = azOf([cx + r * Math.cos(sp), cy + r * Math.sin(sp)]), azJ2 = azOf([cx + r * Math.sin(sp), cy + r * Math.cos(sp)]);
   const Gs = G(0), Ge = G(90), Gc = G(azC), Gj1 = G(azJ1), Gj2 = G(azJ2);
   const Rc = Math.hypot(cornerPt[0], cornerPt[1]);   // corner contact distance from the centre
   // ---- crown: bezels tangent at the contacts. The side bezels have the given angle; the end and
@@ -134,7 +138,7 @@ export function oldMine({
     notes: [
       'Ideal dimensions: none published. GIA grades old mine cuts for polish and symmetry but assigns no cut grade, and no lab publishes proportion ranges; antique stones vary widely because each was cut by hand to its rough. Typical of surviving stones (GIA and auction-house descriptions): cushion outline with L:W 1.00-1.15, table 38-50%, crown height 15-20%, crown angle 40-45, pavilion depth 42-50%, pavilion angle 42-46, culet 8-15% of the width (large and open, visible face up), girdle thick and often uneven, short lower girdle facets (about 50-60%).',
       `This design: L:W ${ratio}, corner radius ${pct(corner)} of the half-width, sides bowed ${pct(bow)}, table ${pct(table)}, crown angle ${crownAngle} (side bezels; end bezels ${ang(bezE)}, corner bezels ${ang(bezC)}), crown height ${pct(H / W)}, girdle ${pct(girdle)}, pavilion angle ${pavilionAngle} (side mains; end ${ang(mE)}, corner ${ang(mC)}), pavilion depth ${pct(Pd / W)}, culet ${pct(culet)} of the width flat to flat (${pct(Math.hypot(culetCorner[0], culetCorner[1]))} of the half-width to its corners), star length ${pct(starLength)}, lower girdle length ${pct(lowerLength)}, total depth ${pct(total)}.`,
-      'Pattern: 58 facets as on a round brilliant: 8 bezels (4 on the straight sides tangent to the girdle, 4 on the rounded corners), 8 stars, 16 upper girdle facets meeting in pairs where the straight sides meet the corner arcs, 8 pavilion mains, 16 lower girdle facets, the table and a flat culet.',
+      `Pattern: 58 facets as on a round brilliant: 8 bezels (4 on the sides tangent to the girdle, 4 on the rounded corners), 8 stars, 16 upper girdle facets meeting in pairs at junctions ${cornerSplit} degrees round each corner arc, 8 pavilion mains, 16 lower girdle facets, the table and a flat culet.`,
     ],
     tiers,
   };
@@ -145,7 +149,7 @@ export const templates = {
     name: 'Single cut (eight cut), round (starting point)',
     note: '17 facets on a round girdle: octagonal table, 8 crown facets and 8 pavilion facets meeting at a point. The L:W field is ignored (round).',
     params: [
-      { key: 'table', label: 'Table', default: 0.58, step: 0.01, min: 0.4, max: 0.75, title: 'Flat-to-flat width of the octagonal table, fraction of the diameter' },
+      { key: 'table', label: 'Table', default: 0.55, step: 0.01, min: 0.4, max: 0.75, title: 'Flat-to-flat width of the octagonal table, fraction of the diameter' },
       { key: 'crownAngle', label: 'Crown angle', default: 36, step: 0.5 },
       { key: 'pavilionAngle', label: 'Pavilion angle', default: 41, step: 0.5 },
       { key: 'girdle', label: 'Girdle', default: 0.03, step: 0.005 },
@@ -164,9 +168,10 @@ export const templates = {
       { key: 'crownAngle', label: 'Crown angle', default: 42, step: 0.5 },
       { key: 'pavilionAngle', label: 'Pavilion angle', default: 44, step: 0.5 },
       { key: 'culet', label: 'Culet', default: 0.13, step: 0.01, min: 0.02, max: 0.3, title: 'Culet width, fraction of the width' },
-      { key: 'girdle', label: 'Girdle', default: 0.045, step: 0.005 },
+      { key: 'girdle', label: 'Girdle', default: 0.06, step: 0.005 },
       { key: 'starLength', label: 'Star length', default: 0.45, step: 0.05, min: 0.2, max: 0.8 },
       { key: 'lowerLength', label: 'Lower girdle', default: 0.55, step: 0.05, min: 0.3, max: 0.9 },
+      { key: 'cornerSplit', label: 'Corner junction', default: 18, step: 1, min: 5, max: 40, title: 'Where the upper and lower girdle facets meet on each corner arc, degrees round from the arc ends' },
     ],
     make: (o = {}) => oldMine(o),
   },

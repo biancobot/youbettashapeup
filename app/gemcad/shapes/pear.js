@@ -98,7 +98,7 @@ export function pearOutline(ratio) {
  * facets, the two wing bezels and two half-bezels reaching the table apex).
  */
 export function pearStart({
-  ratio = 1.45, crownAngle = 35, bellyAngle = 33.5, wingAngle = 32, pointAngle = 23, crownHeight = 0.15, girdle = 0.035, pavilionDepth = 0.435,
+  ratio = 1.45, crownAngle = 35, bellyAngle = 33.5, wingAngle = 32, pointAngle = 23, crownHeight = 0.15, girdle = 0.04, pavilionDepth = 0.435,
   culetPos = 0.376, starHeight = 0.65, lowerDepth = 0, gear = 96, girdleFacets = 128,
   frenchTip = true, tipHubHeight = 0.85, tipTable = 0.23, tipGirdle = 0.12,
 } = {}) {
@@ -223,7 +223,7 @@ const base = [
   { key: 'wingAngle', label: 'Wing bezels', default: 32, step: 0.5 },
   { key: 'pointAngle', label: 'Point bezel', default: 23, step: 0.5, title: 'Point bezel angle (uncorrected point)' },
   { key: 'crownHeight', label: 'Crown height', default: 0.15, step: 0.005, title: 'Fraction of the width' },
-  { key: 'girdle', label: 'Girdle', default: 0.035, step: 0.005 },
+  { key: 'girdle', label: 'Girdle', default: 0.04, step: 0.005 },
   { key: 'pavilionDepth', label: 'Pavilion depth', default: 0.435, step: 0.005 },
 ];
 const french = [

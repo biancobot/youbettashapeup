@@ -55,7 +55,7 @@ const PLOT = {
  * half-width and half-length). Star apexes sit on the bezel ridges at `starHeight` of the crown.
  */
 export function ovalStart({
-  ratio = PLOT.ratio, crownHeight = 0.16, girdle = 0.035, pavilionDepth = 0.43,
+  ratio = PLOT.ratio, crownHeight = 0.16, girdle = 0.04, pavilionDepth = 0.43,
   tableCornerHead = PLOT.crown.T1, tableCornerSide = PLOT.crown.T2,
   starHeight = 0.65, lowerDepth = 0, gear = 96, girdleFacets = 128, pavilionMains = 8,
 } = {}) {
@@ -150,7 +150,7 @@ const params = [
   { key: 'tableCornerSide', label: 'Side table corner', default: PLOT.crown.T2, list: true, title: 'x in half-widths, y as a fraction of the half-length' },
   { key: 'tableCornerHead', label: 'Head table corner', default: PLOT.crown.T1, list: true, title: 'x in half-widths, y as a fraction of the half-length' },
   { key: 'starHeight', label: 'Star tips', default: 0.65, step: 0.05, min: 0.2, max: 0.95, title: 'Fraction of the crown height' },
-  { key: 'girdle', label: 'Girdle', default: 0.035, step: 0.005 },
+  { key: 'girdle', label: 'Girdle', default: 0.04, step: 0.005 },
   { key: 'pavilionDepth', label: 'Pavilion depth', default: 0.43, step: 0.005 },
 ];
 
