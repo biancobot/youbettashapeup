@@ -42,6 +42,7 @@ for (const key of keys) {
     const level = t.angle >= 0 ? gTop : gBot;
     const onG = f.idx.filter((i) => Math.abs(m.verts[i][2] - level) < 1e-4 && vf.get(i).some((fi) => isG(m.faces[fi])));
     if (!onG.length) continue;
+    if (onG.length === 1) continue;   // a single girdle vertex at full height: the facet touches the girdle at a point (a tangency), which needs no second facet
     for (const i of onG) {
       const others = vf.get(i).filter((fi) => m.faces[fi] !== f && !isG(m.faces[fi]));
       if (!others.length) problems.push(`${t.name}: girdle vertex (${m.verts[i].map((v) => v.toFixed(3)).join(', ')}) shared with no other crown/pavilion facet`);

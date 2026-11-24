@@ -22,18 +22,20 @@ import {
 import { cushionOutline } from './cushion.js';
 
 /** Single cut starting point. table: fraction of the diameter; culet: fraction of the diameter (0 = point). */
-export function singleCut({ table = 0.58, crownAngle = 36, pavilionAngle = 41, girdle = 0.03, culet = 0, gear = 96, girdleFacets = 8 } = {}) {
+export function singleCut({ table = 0.58, crownAngle = 36, pavilionAngle = 41, girdle = 0.03, culet = 0, gear = 96, girdleFacets = 64 } = {}) {
   const R = 1, W = 2, g = girdle * W, zb = -g;
   const H = (R - table * R) * Math.tan(rad(crownAngle));
-  // girdle: by default an octagon whose facets lie under the crown facets, so every facet corner is
-  // a meet point; a round (64-facet) girdle leaves the crown facets touching it along their centres
-  const gi = [...Array(girdleFacets)].map((_, k) => Math.round(((k * gear) / girdleFacets) * 1e6) / 1e6);
+  // girdle: a bruted round girdle (a regular polygon of apothem R with a vertex at azimuth 0 and
+  // every 45 degrees); each crown and pavilion facet touches it at the vertex under the facet's
+  // centre, a point contact, and the girdle is thicker at the facet corners, as on a real single cut
+  const gi = [...Array(girdleFacets)].map((_, k) => Math.round(((k * gear) / girdleFacets + gear / girdleFacets / 2) * 1e6) / 1e6);
+  const Rv = R / Math.cos(Math.PI / girdleFacets);   // radius of the girdle vertices
   const tiers = [newTier({ name: 'G', angle: 90, distance: R, indices: gi }), newTier({ name: 'T', angle: 0, distance: H, indices: [] })];
   const addClass = (name, plane) => { tiers.push(classTier(name, plane, gear, 8, true)); return plane; };
-  // crown facets tangent to the girdle at azimuth 0 (and every 45 degrees)
-  addClass('A', planeThrough(crownAngle, 0, [R, 0, 0]));
+  // crown facets through the girdle vertex at azimuth 0 (and every 45 degrees)
+  addClass('A', planeThrough(crownAngle, 0, [Rv, 0, 0]));
   // pavilion facets under them; with a culet the flat culet facet closes the pavilion
-  const main = addClass('P', planeThrough(-pavilionAngle, 0, [R, 0, zb]));
+  const main = addClass('P', planeThrough(-pavilionAngle, 0, [Rv, 0, zb]));
   let Pd = R * Math.tan(rad(pavilionAngle));
   if (culet > 0) {
     const c = culet * R;   // culet half-width (flat to flat)
@@ -49,7 +51,7 @@ export function singleCut({ table = 0.58, crownAngle = 36, pavilionAngle = 41, g
     notes: [
       'Ideal dimensions: none published. GIA does not grade the cut of single cuts, which are used for melee (usually under 0.05 ct) where the few large facets read brighter than a full brilliant would at that size. Trade practice: table 55-60%, crown angle 34-40, pavilion angle 41-43, girdle thin to medium, culet pointed or very small; the crown and pavilion facets are aligned.',
       `This design: table ${pct(table)} (flat to flat of the octagon), crown angle ${crownAngle}, crown height ${pct(H / W)}, girdle ${pct(girdle)} at the facet centres (thicker at the facet corners, where the flat crown facets leave the round girdle), pavilion angle ${pavilionAngle}, pavilion depth ${pct(Pd / W)}, ${culet ? `culet ${pct(culet)} of the diameter` : 'pointed culet'}, total depth ${pct(total)}.`,
-      `Pattern: 8 crown facets (trapezoids from the octagonal table to the girdle, tangent to it at their centres), 8 pavilion facets under them${culet ? ', a flat culet' : ' meeting at a point'}, and the table: ${culet ? 18 : 17} facets plus the girdle. With ${girdleFacets} girdle facets${girdleFacets === 8 ? ' the girdle is an octagon under the facets and every corner is a meet point; a bruted round girdle (64 facets) is thicker at the facet corners' : ' the girdle is round: the crown facets touch it along their centres and it thickens at their corners'}.`,
+      `Pattern: 8 crown facets (trapezoids from the octagonal table to the girdle, each touching the round girdle at one point under its centre), 8 pavilion facets under them${culet ? ', a flat culet' : ' meeting at a point'}, and the table: ${culet ? 18 : 17} facets plus the girdle (${girdleFacets} facets). The girdle is thinnest under the facet centres and thicker at the facet corners, as on a bruted single cut.`,
     ],
     tiers,
   };
@@ -141,7 +143,7 @@ export function oldMine({
 export const templates = {
   singleCut: {
     name: 'Single cut (eight cut), round (starting point)',
-    note: '17 facets: octagonal table, 8 crown facets and 8 pavilion facets meeting at a point. The L:W field is ignored (round).',
+    note: '17 facets on a round girdle: octagonal table, 8 crown facets and 8 pavilion facets meeting at a point. The L:W field is ignored (round).',
     params: [
       { key: 'table', label: 'Table', default: 0.58, step: 0.01, min: 0.4, max: 0.75, title: 'Flat-to-flat width of the octagonal table, fraction of the diameter' },
       { key: 'crownAngle', label: 'Crown angle', default: 36, step: 0.5 },
