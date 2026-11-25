@@ -56,6 +56,20 @@
     .addtier { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 12px; }
     .notes ul { margin: 4px 0 6px; padding-left: 18px; font-size: 12px; } .notes li { margin-bottom: 4px; }
     textarea { width: 100%; font: inherit; font-size: 12px; border: 1px solid var(--border); border-radius: 6px; padding: 6px; }
+    /* the controls used most, in Japanese Laurel green so they stand out in the panel */
+    :root { --key: #0A6906; --key-dark: #075104; --key-light: #cfe6ce; }
+    input.key, select.key, button.key, textarea.key { background: var(--key); color: #fff; border-color: var(--key); caret-color: #fff; }
+    button.key:hover, select.key:hover { background: var(--key-dark); border-color: var(--key-dark); }
+    input.key::placeholder, textarea.key::placeholder { color: var(--key-light); opacity: 1; }
+    select.key option { background: #fff; color: var(--text); }
+    input.key:focus-visible, select.key:focus-visible, button.key:focus-visible, textarea.key:focus-visible { outline: 2px solid var(--key-dark); outline-offset: 2px; }
+    input[type=text].key { font: inherit; padding: 6px 8px; border: 1px solid var(--key); border-radius: 6px; box-sizing: border-box; }
+    input[type=range].key { accent-color: var(--key); background: transparent; }
+    /* the checkbox drawn by hand, so it is green before it is ticked too: an outline, then filled with a white tick */
+    input[type=checkbox].key { appearance: none; -webkit-appearance: none; width: 20px; height: 20px; margin: 0; cursor: pointer;
+      border: 2px solid var(--key); border-radius: 4px; background: #fff; display: inline-grid; place-content: center; }
+    input[type=checkbox].key:checked { background: var(--key) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 8.5l3 3 6-7' fill='none' stroke='%23fff' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 14px no-repeat; }
+    input[type=checkbox].key:hover { border-color: var(--key-dark); }
     details summary { cursor: pointer; color: var(--muted); font-size: 12px; margin-bottom: 6px; }
     .gaps { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 12px; }
     .gaps label { display: flex; flex-direction: column; gap: 2px; color: var(--muted); }
@@ -81,7 +95,7 @@
   <div id="app">
     <aside id="panel">
       <div>
-        <h1>Gem Facet Designer <span class="build" title="Build number; if it does not match the README, hard-reload or git pull">build 90</span></h1>
+        <h1>Gem Facet Designer <span class="build" title="Build number; if it does not match the README, hard-reload or git pull">build 91</span></h1>
         <div class="hint">GemCad-style facet design: every facet is a plane by angle, index and distance; the stone is their intersection. Drag to rotate, shift-drag to roll, scroll to zoom, right-drag to pan, 0 or Home to reset the zoom and pan, click a vertex to pick a meet point.</div>
       </div>
 
@@ -156,7 +170,7 @@
         <div class="views" id="views"></div>
         <button id="fit" title="Back to the original zoom and centre (also the 0 or Home key)">Reset view</button>
         <div class="row"><label for="spin">Spin about table axis</label>
-          <span><input type="range" id="spin" min="0" max="360" step="0.5" value="0"> <input type="number" id="spinnum" step="0.5" value="0" style="width:64px"></span></div>
+          <span><input type="range" id="spin" class="key" min="0" max="360" step="0.5" value="0"> <input type="number" id="spinnum" class="key" step="0.5" value="0" style="width:64px"></span></div>
         <div class="row"><span class="hint">Quick turns</span>
           <span><button data-spin="-22.5">-22.5&deg;</button> <button data-spin="22.5">+22.5&deg;</button> <button data-spin="45">+45&deg;</button></span></div>
         <div class="hint">22.5&deg; on a round brilliant centres a bezel in the side views and shows the upper and lower bezels edge-on.</div>
@@ -164,7 +178,7 @@
 
       <div class="group">
         <h2>Projection</h2>
-        <select id="proj"><option value="orthographic">Orthographic (as on lab diagrams)</option><option value="perspective">Perspective</option></select>
+        <select id="proj" class="key"><option value="orthographic">Orthographic (as on lab diagrams)</option><option value="perspective">Perspective</option></select>
         <div class="row"><label for="fov">Field of view</label>
           <span><input type="range" id="fov" min="10" max="70" step="1" value="30"> <span id="fovv">30&deg;</span></span></div>
       </div>
@@ -190,7 +204,7 @@
           <label>Stone width (in) <input type="number" id="pagestone" step="0.1" min="0.05" title="The drawing scale: how wide the stone is drawn on the page. Every view is the same stone, so this enlarges or shrinks all the projected views together"></label>
           <label>Export DPI <input type="number" id="pagedpi" step="50" min="36"></label>
         </div>
-        <div class="row"><label for="pagefit">Fit all views to <input type="number" id="pagefit" step="5" min="5" max="100" style="width:56px"> % of the page</label><button id="pagefitbtn" title="Set the stone width so the whole arrangement of views spans this share of the free space (its height, or width if that binds) and centre it there; the free space is the page less the title and description where they are in the way">Fit views</button></div>
+        <div class="row"><label for="pagefit">Fit all views to <input type="number" id="pagefit" class="key" step="5" min="5" max="100" style="width:56px"> % of the page</label><button id="pagefitbtn" class="key" title="Set the stone width so the whole arrangement of views spans this share of the free space (its height, or width if that binds) and centre it there; the free space is the page less the title and description where they are in the way">Fit views</button></div>
         <div class="row"><span class="hint">Wheel zooms about the cursor; right- or middle-button drag (or ctrl-drag) pans.</span><button id="fitview" title="Zoom to fit the page (or the sheet) again">Fit</button></div>
         <div class="hint">With a page set, the preview frames the page and its outline is always drawn. <b>Stone width</b> is the drawing scale, so it enlarges or shrinks all the projected views together; <b>Fit views</b> sets it so the arrangement spans the chosen share of the page and centres it. The view list's &#8660; and &#8661; buttons centre a view on the page horizontally or vertically (a 3D view moves alone; any other view moves the whole arrangement), alt-drag on the base moves the arrangement, and Export PNG writes the page at the chosen DPI (8.5 × 8.5 at 300 DPI is 2550 × 2550 pixels).</div>
         <div class="row"><label for="grid">Grid (a table with a cell per view)</label><input type="checkbox" id="grid"></div>
@@ -202,7 +216,7 @@
       <div class="group">
         <h2>Text</h2>
         <div class="row"><label for="tton">Title</label><input type="checkbox" id="tton"></div>
-        <input type="text" id="tttext" placeholder="Title (the shape's caption until you type)" style="width:100%">
+        <input type="text" id="tttext" class="key" placeholder="Title (the shape's caption until you type)" style="width:100%">
         <div class="gaps">
           <label>Font <select id="ttfont"><option value="Georgia, serif">Georgia</option><option value="'Times New Roman', Times, serif">Times</option><option value="Garamond, 'EB Garamond', serif">Garamond</option><option value="'Palatino Linotype', Palatino, serif">Palatino</option><option value="Helvetica, Arial, sans-serif">Helvetica / Arial</option><option value="'Gill Sans', 'Trebuchet MS', sans-serif">Gill Sans</option><option value="Futura, 'Century Gothic', sans-serif">Futura</option><option value="'Courier New', Courier, monospace">Courier</option></select></label>
           <label>Size (pt) <input type="number" id="ttsize" step="1" min="4" max="200"></label>
@@ -213,7 +227,7 @@
           <span><button id="ttcx" title="Centre the title horizontally on the page">&#8660;</button> <button id="ttcy" title="Centre the title vertically on the page">&#8661;</button> <button id="ttreset" title="Put the title back at its default place">&#8634;</button></span></div>
         <div class="row"><label for="tdon">Description</label><input type="checkbox" id="tdon"></div>
         <div class="row"><label for="tdsource">Description text from</label><select id="tdsource"><option value="caption">The caption (one sentence)</option><option value="notes">The shape notes (a fact or two)</option></select></div>
-        <textarea id="tdtext" rows="3" placeholder="Description (the shape's caption until you type)"></textarea>
+        <textarea id="tdtext" class="key" rows="3" placeholder="Description (the shape's caption until you type)"></textarea>
         <div class="gaps">
           <label>Font <select id="tdfont"><option value="Georgia, serif">Georgia</option><option value="'Times New Roman', Times, serif">Times</option><option value="Garamond, 'EB Garamond', serif">Garamond</option><option value="'Palatino Linotype', Palatino, serif">Palatino</option><option value="Helvetica, Arial, sans-serif">Helvetica / Arial</option><option value="'Gill Sans', 'Trebuchet MS', sans-serif">Gill Sans</option><option value="Futura, 'Century Gothic', sans-serif">Futura</option><option value="'Courier New', Courier, monospace">Courier</option></select></label>
           <label>Size (pt) <input type="number" id="tdsize" step="1" min="4" max="200"></label>
@@ -236,7 +250,7 @@
 
       <div class="group">
         <h2>Background</h2>
-        <div class="row"><label for="pave">Pavé of the current stone</label><input type="checkbox" id="pave"></div>
+        <div class="row"><label for="pave">Pavé of the current stone</label><input type="checkbox" id="pave" class="key"></div>
         <div class="row"><label for="pavepattern">Pattern</label>
           <select id="pavepattern"><option value="cobblestone">Cobblestone (random sizes)</option><option value="hexafoil">Hexafoil (marquise only, one size)</option></select></div>
         <div class="row"><label for="pavemin">Min opacity <span id="paveminv"></span></label><input type="range" id="pavemin" min="0.05" max="1" step="0.05"></div>
@@ -262,8 +276,8 @@
       <div class="group">
         <h2>Setup</h2>
         <div class="hint">Everything here (the design, the proportions form, views, page, grid, background and rotation) is kept in this browser as you work and comes back after a reload. Save it to a file to keep a named configuration or move it to another browser.</div>
-        <div class="row"><button id="setupsave">Save setup (.json)</button><span><input type="file" id="setupfile" accept=".json" style="width:150px"></span></div>
-        <div class="row"><span class="hint" id="setupstatus"></span><button id="setupreset" title="Forget the saved setup and start from the defaults">Reset to defaults</button></div>
+        <div class="row"><button id="setupsave" class="key">Save setup (.json)</button><span><input type="file" id="setupfile" accept=".json" style="width:150px"></span></div>
+        <div class="row"><span class="hint" id="setupstatus"></span><button id="setupreset" class="key" title="Forget the saved setup and start from the defaults">Reset to defaults</button></div>
       </div>
 
       <div class="group">
@@ -305,6 +319,6 @@
       const el = document.getElementById('info'); if (el) { el.style.color = '#b00020'; el.textContent = 'Load error: ' + (e.reason && e.reason.message || e.reason); }
     });
   </script>
-  <script type="module" src="./app/main.js?v=90"></script>
+  <script type="module" src="./app/main.js?v=91"></script>
 </body>
 </html>
