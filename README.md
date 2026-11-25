@@ -141,6 +141,7 @@ app/main.js                  renderer, rotation, views, sheets, page, meet-point
 app/pave.js                  pavé and hexafoil backgrounds (packing, tiling, rendering)
 app/gemcad/weights.js        diamond weight estimator factors and carat-to-millimetre sizes
 tools/sizes.mjs              writes designs/size-chart.md: estimator sizes per shape beside Stuller's trade chart
+tools/captions.mjs           writes designs/captions.md: the publishable title and description of every design
 app/editor.js                tiers table, symmetry, preforms, .asc import/export
 app/gemcad/design.js         design model, facet planes, index conventions, .asc parser/writer
 app/gemcad/polytope.js       half-space clipping core
