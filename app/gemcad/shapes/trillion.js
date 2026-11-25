@@ -19,8 +19,8 @@
 // Crown 18 facets + table, pavilion 15, girdle 9: 43 facets.
 // The drawing gives no heights: crown height, girdle, pavilion depth and the heights of the two
 // hubs are this design's parameters.
-import { newTier } from '../design.js?v=96';
-import { deg, girdleFromPolygon, plane3, classTier } from '../shapebuild.js?v=96';
+import { newTier } from '../design.js?v=97';
+import { deg, girdleFromPolygon, plane3, classTier } from '../shapebuild.js?v=97';
 
 const R = 2 / Math.sqrt(3);   // corner radius of an equilateral triangle of width 2
 

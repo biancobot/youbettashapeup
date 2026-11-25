@@ -10,6 +10,14 @@ The modern proportions were set out in 1919 by Marcel Tolkowsky, a 21-year-old A
 
 Legend has it that Louis XV asked for a diamond cut to the shape of the smile of his mistress, the Marquise de Pompadour, in the 1740s; whatever the truth, the name stuck, and the French court's taste for the shape is why it is also called the navette, the little boat. Of all the shapes it has the largest face for its weight, because so much of the stone sits in the long, shallow center.
 
+## Marquise Brilliant, Six Pavilion Mains
+
+This version has no pavilion mains at the points: the six mains sit under the bezels along the belly, and at each end two lower girdle facets meet along the keel line, the ridge that runs down the length of the stone to the culet.
+
+## Marquise Brilliant, Four Pavilion Mains
+
+Here only four pavilion mains, one under each wing bezel, meet at the culet in a cross: one arm is the keel line running to the points, the other the belly line running to the sides. Fewer, larger mains tend to return broader flashes of light than the six- and eight-main layouts.
+
 ## Pear Brilliant
 
 The pear is the oldest of the fancy brilliants: Lodewyk van Berquem of Bruges is credited with cutting the first pendeloque, a faceted teardrop, in the 1450s, soon after the invention of the scaif, the diamond-charged polishing wheel that made symmetrical facets possible. The largest polished diamond in the world, the 530-carat Great Star of Africa cut from the Cullinan in 1908, is a pear.

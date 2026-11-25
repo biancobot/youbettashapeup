@@ -95,7 +95,7 @@
   <div id="app">
     <aside id="panel">
       <div>
-        <h1>Gem Facet Designer <span class="build" title="Build number; if it does not match the README, hard-reload or git pull">build 96</span></h1>
+        <h1>Gem Facet Designer <span class="build" title="Build number; if it does not match the README, hard-reload or git pull">build 97</span></h1>
         <div class="hint">GemCad-style facet design: every facet is a plane by angle, index and distance; the stone is their intersection. Drag to rotate, shift-drag to roll, scroll to zoom, right-drag to pan, 0 or Home to reset the zoom and pan, click a vertex to pick a meet point.</div>
       </div>
 
@@ -178,14 +178,14 @@
 
       <div class="group">
         <h2>Projection</h2>
-        <select id="proj" class="key"><option value="orthographic">Orthographic (as on lab diagrams)</option><option value="perspective">Perspective</option></select>
+        <select id="proj"><option value="orthographic">Orthographic (as on lab diagrams)</option><option value="perspective">Perspective</option></select>
         <div class="row"><label for="fov">Field of view</label>
           <span><input type="range" id="fov" min="10" max="70" step="1" value="30"> <span id="fovv">30&deg;</span></span></div>
       </div>
 
       <div class="group">
         <h2>Drawing sheet</h2>
-        <select id="standard"><option value="third">Third-angle projection</option><option value="first">First-angle projection</option></select>
+        <select id="standard" class="key"><option value="third">Third-angle projection</option><option value="first">First-angle projection</option></select>
         <div class="gaps">
           <label>Gap left <input type="number" id="gap-left" step="0.05" min="0"></label>
           <label>Gap right <input type="number" id="gap-right" step="0.05" min="0"></label>
@@ -319,6 +319,6 @@
       const el = document.getElementById('info'); if (el) { el.style.color = '#b00020'; el.textContent = 'Load error: ' + (e.reason && e.reason.message || e.reason); }
     });
   </script>
-  <script type="module" src="./app/main.js?v=96"></script>
+  <script type="module" src="./app/main.js?v=97"></script>
 </body>
 </html>
