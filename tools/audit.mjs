@@ -7,7 +7,8 @@
 //     girdle does not bulge past 160% outside zones the design declares (the heart's cleft; a
 //     zone excuses bulges and junctions above the girdle there, never cuts into it);
 //   slivers: no facet thinner than 1% of the half-width (area / longest edge);
-//   symmetry classes: every tier produced faces.
+//   symmetry classes: every tier produced faces;
+//   register (a note, not a failure): crown and pavilion girdle points directly above and below each other.
 // Exit code 1 if any template fails.
 import { templates } from '../app/gemcad/templates.js';
 import { designMesh } from '../app/gemcad/mesh.js';
@@ -96,12 +97,31 @@ for (const spec of keys) {
   }
   // 3. the table has the declared number of sides (a design that declares `tableSides`: a corner clipped by a facet that should stop short of it shows up as an extra side)
   if (d.tableSides) { const tf = m.faces.find((f) => tier(f)?.name === 'T'); if (tf && tf.idx.length !== d.tableSides) problems.push(`table has ${tf.idx.length} sides instead of ${d.tableSides}: a facet clips a table corner`); }
+  // 5. crown / pavilion register (reported, not failed): every girdle point where crown facets meet
+  // (bezel tips, upper girdle junctions) should have a pavilion point (main, lower girdle junction)
+  // directly below it, and the reverse; points out of register read as misalignment when grading the cut
+  const warnings = [];
+  {
+    const zs = gFaces.flatMap((f) => f.idx.map((i) => m.verts[i][2])), top = Math.max(...zs), bot = Math.min(...zs);
+    const pts = { 1: [], [-1]: [] };
+    for (const [i, fis] of vf) {
+      if (!fis.some((fi) => isG(m.faces[fi])) || fis.some((fi) => isG(m.faces[fi]) && inAllowed(m.faces[fi]))) continue;
+      for (const side of [1, -1]) {
+        const n = fis.filter((fi) => { const t = tier(m.faces[fi]); return t && Math.abs(t.angle) !== 90 && Math.sign(t.angle) === side; }).length;
+        if (n >= 2 && Math.abs(m.verts[i][2] - (side > 0 ? top : bot)) < 0.3 * (top - bot)) pts[side].push(m.verts[i]);
+      }
+    }
+    const lone = (list, other) => list.filter((v) => v[0] >= -1e-6 && !other.some((o) => Math.hypot(o[0] - v[0], o[1] - v[1]) < 2e-3)).map((v) => (Math.atan2(v[1], v[0]) * 180 / Math.PI).toFixed(1));
+    const c = lone(pts[1], pts[-1]), p = lone(pts[-1], pts[1]);
+    if (c.length || p.length) warnings.push(`out of register across the girdle (right half, azimuths):${c.length ? ` crown points with no pavilion point below at ${c.join(', ')}` : ''}${c.length && p.length ? ';' : ''}${p.length ? ` pavilion points with no crown point above at ${p.join(', ')}` : ''}`);
+  }
   // 4. every tier has faces
   for (const t of d.tiers) if (!t.hidden && !m.faces.some((f) => f.tag === t.id)) problems.push(`${t.name}: no faces`);
   const uniq = [...new Set(problems)];
   console.log(`${uniq.length ? 'FAIL' : 'ok  '} ${key} (${m.faceCount} facets, girdle ${(100 * girdleT / 2).toFixed(1)}%, thinnest ${(100 * thinnestRemaining / girdleT).toFixed(0)}%, thickest ${(100 * thickest).toFixed(0)}%)`);
   for (const p of uniq.slice(0, 12)) console.log('      ' + p);
   if (uniq.length > 12) console.log(`      ... ${uniq.length - 12} more`);
+  for (const w of warnings) console.log('      note: ' + w);
   if (uniq.length) failed++;
 }
 process.exit(failed ? 1 : 0);

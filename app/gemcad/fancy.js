@@ -1,10 +1,10 @@
 // Marquise brilliant starting design. Other fancy shapes live in ./shapes/.
-import { newTier } from './design.js?v=92';
+import { newTier } from './design.js?v=93';
 import {
   rad, deg, marquiseSupport, marquiseOutline, girdleVertices, vertexNear, vertexNearY, lift,
   planeThrough, mirrorX, mirrorY, zPlane, yPlane, xPlane, azPlane, perpPlane, classTier,
   girdleFromSupport, girdleEqualLength, plane3, intersect3,
-} from './shapebuild.js?v=92';
+} from './shapebuild.js?v=93';
 export { marquiseSupport, marquiseOutline, girdleVertices };
 
 /**
@@ -45,13 +45,17 @@ export function marquiseStart({
   const wingPlane = planeThrough(wingAngle, outline.normalAz(Uv.az), U);
   const pt = planeThrough(pointAngle, 90, P);
   let wing, hub = null, sideHubPt = null;
+  // the crown's girdle contacts, top-right quadrant, that the pavilion lines up under: the point junction
+  // (or the French tip's girdle point), the junction or bezel between the mains, and the side contact
+  const under = {};
   // French tip at the point: hub on the ridge of the two wing bezels at tipHubHeight of the crown (kept
   // inside the outline); T is the table corner on the axis, S the wing bezel's table corner
   const frenchTip = (T, S) => {
     let V = intersect3(wing, mirrorX(wing), zPlane(tipHubHeight * H));
     if (V[1] > 0.97 * l) V = intersect3(wing, mirrorX(wing), yPlane(0.97 * l));
     hub = V;
-    const G = lift(vertexNearY(verts, (1 - tipGirdle) * l, 1), 0);
+    const Gv = vertexNearY(verts, (1 - tipGirdle) * l, 1), G = lift(Gv, 0);
+    under.tip = Gv;
     addClass('C half-bezel', plane3(V, T, S, true));
     addClass('B tip', plane3(V, G, U, true));
     addClass('tip', plane3(P, V, G, true));
@@ -68,13 +72,15 @@ export function marquiseStart({
     // crown height (0.65 puts the tips where the IGI plot has them: side kites 0.74 of the half-width wide)
     const Wws = intersect3(wing, side, zPlane(starHeight * H));
     addClass('C wing-side', plane3(S, M, Wws, true));
-    const Jws = lift(vertexNear(verts, 33.7), 0);
+    const Jwsv = vertexNear(verts, 33.7), Jws = lift(Jwsv, 0);
+    under.between = Uv; under.side = Jwsv;
     addClass('B wing', plane3(Wws, U, Jws, true));
     addClass('B side', plane3(Wws, Jws, Sd, true));
     if (!frenchTips) {
       const Wpw = intersect3(pt, wing, zPlane(starHeight * H));
       addClass('C point-wing', plane3(T, S, Wpw, true));
-      const Jpw = lift(vertexNear(verts, 76.7), 0);
+      const Jpwv = vertexNear(verts, 76.7), Jpw = lift(Jpwv, 0);
+      under.tip = Jpwv;
       addClass('B point', plane3(Wpw, P, Jpw, true));
       addClass('B wing-point', plane3(Wpw, Jpw, U, true));
     } else frenchTip(T, S);
@@ -98,7 +104,8 @@ export function marquiseStart({
     // ridge vertex between the wing and the half-side bezel at the plot's azimuth; the wing-side star
     // runs from it to the two table corners, the side star from the hub to the table edge R-R'
     const Y = intersect3(wing, half, azPlane(54.2));
-    const G3 = lift(vertexNear(verts, 51.0), 0);
+    const G3v = vertexNear(verts, 51.0), G3 = lift(G3v, 0);
+    under.between = G3v; under.side = Hv;
     addClass('C wing-side', plane3(Q, R, Y, true));
     addClass('C side', plane3(R, [R[0], -R[1], R[2]], M, true));
     addClass('B wing', plane3(Y, U, G3, true));
@@ -108,16 +115,23 @@ export function marquiseStart({
       // point/wing ridge vertex at the plot's height along the axis (0.77 of the half-length from the
       // centre); the ridge runs nearly along its own azimuth, so a y position is the stable choice
       const V1 = intersect3(pt, wing, yPlane(0.77 * l));
-      const G1 = lift(vertexNear(verts, 78.3), 0);
+      const G1v = vertexNear(verts, 78.3), G1 = lift(G1v, 0);
+      under.tip = G1v;
       addClass('C point-wing', plane3(T, Q, V1, true));
       addClass('B point', plane3(V1, P, G1, true));
       addClass('B wing-point', plane3(V1, G1, U, true));
     } else frenchTip(T, Q);
   }
 
-  // ---- pavilion: mains tangent to the girdle at the plot contacts, through the culet
+  // ---- pavilion: mains tangent to the girdle, through the culet, with every pavilion girdle point
+  // directly below a crown one (a cut-grade requirement: offset junctions read as misalignment). The
+  // IGI plots put the mains at 76 and 32.6 degrees and the lower junction at 56.2; they are moved onto
+  // the nearest crown contacts: the point main under the point junction (or the French tip's girdle
+  // point), the lower junction under the wing bezel (side-hub crown: under the wing-side junction,
+  // midway between the mains), the side main under the wing-side junction (side-hub crown: under the
+  // half-side bezel)
   const culet = [0, 0, -g - Pd];
-  const Av = vertexNear(verts, 76), Cv = vertexNear(verts, 32.6), Bv = vertexNear(verts, 56.2);
+  const Av = under.tip, Bv = under.between, Cv = under.side;
   const A = lift(Av, -g), C = lift(Cv, -g), B = lift(Bv, -g), Pg = lift(Pv, -g), Sg = lift(Sv, -g);
   const mainThrough = (v, p) => {
     const az = outline.normalAz(v.az), u = [Math.cos(rad(az)), Math.sin(rad(az))];
