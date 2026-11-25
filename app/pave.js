@@ -9,7 +9,7 @@ import * as THREE from '../vendor/three/three.module.js';
 import { LineSegments2 } from '../vendor/three/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from '../vendor/three/lines/LineSegmentsGeometry.js';
 import { LineMaterial } from '../vendor/three/lines/LineMaterial.js';
-import { CHART_CARATS } from './gemcad/weights.js?v=85';
+import { CHART_CARATS } from './gemcad/weights.js?v=86';
 
 /** Deterministic random numbers so a layout is stable until reseeded. */
 function rng(seed) {

@@ -16,7 +16,7 @@ A rounded head tapering to a single point, the pear brings softness and drama to
 
 ## Heart Brilliant, French Tip / Heart Brilliant, Straighter Wings, French Tip / Heart Brilliant, Straighter Wings, Pointed Tip / Heart Brilliant, Pointed Tip
 
-The most romantic of all the cuts and the hardest to cut well, the heart is a declaration in a single stone: two matching lobes, a crisp cleft and a clean point, full of light and impossible to mistake for anything else.
+The heart is the hardest of all the cuts to get right, two matching lobes, a crisp cleft and a clean point brought into perfect symmetry before a single facet is polished, and when it is right it is full of light and impossible to mistake for anything else.
 
 ## Oval Brilliant, Eight Mains / Oval Brilliant, Mains at the Ends / Oval Brilliant, Four Mains
 

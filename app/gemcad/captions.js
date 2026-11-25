@@ -7,7 +7,7 @@ const D = {
   round: 'The round brilliant is the shape every other is measured against: fifty-seven facets worked out to return more light to the eye than any other cut, with the fire and flash that have made it the first choice for an engagement ring for a hundred years.',
   marquise: 'Long, slender and pointed at both ends, the marquise looks larger than any other cut of the same weight and has a silhouette that is unmistakable from across a room.',
   pear: 'A rounded head tapering to a single point, the pear brings softness and drama together in one teardrop, lit from end to end by its brilliant facets and looking larger face up than a round of the same weight.',
-  heart: 'The most romantic of all the cuts and the hardest to cut well, the heart is a declaration in a single stone: two matching lobes, a crisp cleft and a clean point, full of light and impossible to mistake for anything else.',
+  heart: 'The heart is the hardest of all the cuts to get right, two matching lobes, a crisp cleft and a clean point brought into perfect symmetry before a single facet is polished, and when it is right it is full of light and impossible to mistake for anything else.',
   oval: 'The oval has all the brilliance of a round with a longer, more graceful line, spreading its weight across a larger face so that it looks bigger than its carats.',
   cushion: 'With its soft corners and pillow-shaped outline, the cushion glows rather than glitters, throwing broad warm flashes with a feel of candlelight and antique jewellery about it.',
   cushionModified: 'A square cushion whose pavilion has been cut into a shimmer of small facets, so the stone sparkles the way light plays on crushed ice while keeping the cushion\u2019s gentle, pillow-shaped charm.',
