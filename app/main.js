@@ -2,17 +2,17 @@ import * as THREE from '../vendor/three/three.module.js';
 import { LineSegments2 } from '../vendor/three/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from '../vendor/three/lines/LineSegmentsGeometry.js';
 import { LineMaterial } from '../vendor/three/lines/LineMaterial.js';
-import { designMesh, stoneStats } from './gemcad/mesh.js?v=89';
-import { createEditor } from './editor.js?v=89';
-import { createUnderlay } from './underlay.js?v=89';
-import { templates, plots } from './gemcad/templates.js?v=89';
+import { designMesh, stoneStats } from './gemcad/mesh.js?v=90';
+import { createEditor } from './editor.js?v=90';
+import { createUnderlay } from './underlay.js?v=90';
+import { templates, plots } from './gemcad/templates.js?v=90';
 window.__templates = { templates, plots };
-import { VIEWS, getView } from './views.js?v=89';
-import { captionFor } from './gemcad/captions.js?v=89';
-import { notesFor } from './gemcad/shapenotes.js?v=89';
-import { createPave, cobblestoneStonesGen, checkPacking, paveSizes, hexafoilStones, convexHull, rng } from './pave.js?v=89';
-import { weightEstimator, weightFamily, chartSize, CHART_SOURCE } from './gemcad/weights.js?v=89';
-import { singleCut } from './gemcad/shapes/oldcuts.js?v=89';
+import { VIEWS, getView } from './views.js?v=90';
+import { captionFor } from './gemcad/captions.js?v=90';
+import { notesFor } from './gemcad/shapenotes.js?v=90';
+import { createPave, cobblestoneStonesGen, checkPacking, paveSizes, hexafoilStones, convexHull, rng } from './pave.js?v=90';
+import { weightEstimator, weightFamily, chartSize, CHART_SOURCE } from './gemcad/weights.js?v=90';
+import { singleCut } from './gemcad/shapes/oldcuts.js?v=90';
 
 // ----------------------------------------------------------------------------- state
 const params = new URLSearchParams(location.search);
@@ -741,18 +741,71 @@ canvas.addEventListener('wheel', (e) => {
 /** Fit the sheet (or the page) in the preview again. */
 function fitView() { state.zoom = 1; state.pan = [0, 0]; resize(); }
 /**
- * Scale all the views together so the whole arrangement spans `fraction` of the page (of its
- * height or width, whichever binds) and centre it: sets the page's stone width and the origin.
+ * Change the drawing scale (the stone's width on the page, inches). The text blocks are sized in
+ * points, so they keep their size on the page; their positions are scaled too, so they also keep
+ * their place on the page instead of drifting as the page grows or shrinks in world units.
  */
-function fitViewsToPage(fraction = state.sheet.page.fit) {
-  const pg = state.sheet.page; if (!instances.size) return;
+function setStoneWidth(w) {
+  const pg = state.sheet.page, f = pg.stoneWidth / w;
+  for (const id of TEXT_IDS) { const b = state.sheet.text[id]; if (b.pos) b.pos = [b.pos[0] * f, b.pos[1] * f]; }
+  pg.stoneWidth = w;
+  const el = document.getElementById('pagestone'); if (el) el.value = +w.toFixed(3);
+}
+/** The views' arrangement bounding box, world units: [minX, minY, maxX, maxY]. */
+function arrangementBox() {
   const bb = [Infinity, Infinity, -Infinity, -Infinity];
   for (const inst of instances.values()) { bb[0] = Math.min(bb[0], inst.pos[0] + inst.bbox.minX); bb[1] = Math.min(bb[1], inst.pos[1] + inst.bbox.minY); bb[2] = Math.max(bb[2], inst.pos[0] + inst.bbox.maxX); bb[3] = Math.max(bb[3], inst.pos[1] + inst.bbox.maxY); }
+  return bb;
+}
+/**
+ * The page's free rectangles, inches about the page centre: the largest rectangles inside the page
+ * that stay clear of the text blocks (each padded by `pad`). Text off the page is ignored. With no
+ * text this is the page itself.
+ */
+function freeRects(pad = 0.2) {
+  const pg = state.sheet.page, r = pageRect(), k = r.k, W = pg.width / 2, H = pg.height / 2;
+  const obs = [];
+  for (const id of TEXT_IDS) {
+    const t = state.sheet.text[id].rect; if (!t) continue;
+    const o = [t.minX / k - pad, t.minY / k - pad, t.maxX / k + pad, t.maxY / k + pad];
+    if (o[2] <= -W || o[0] >= W || o[3] <= -H || o[1] >= H) continue;   // off the page: not in the way
+    obs.push(o);
+  }
+  const xs = [-W, W, ...obs.flatMap((o) => [o[0], o[2]])].filter((x) => x >= -W && x <= W).sort((a, b) => a - b);
+  const ys = [-H, H, ...obs.flatMap((o) => [o[1], o[3]])].filter((y) => y >= -H && y <= H).sort((a, b) => a - b);
+  const out = [];
+  for (let i = 0; i < xs.length; i++) for (let j = i + 1; j < xs.length; j++) for (let m = 0; m < ys.length; m++) for (let n = m + 1; n < ys.length; n++) {
+    const q = [xs[i], ys[m], xs[j], ys[n]];
+    if (q[2] - q[0] < 1e-6 || q[3] - q[1] < 1e-6) continue;
+    if (obs.some((o) => o[0] < q[2] - 1e-9 && o[2] > q[0] + 1e-9 && o[1] < q[3] - 1e-9 && o[3] > q[1] + 1e-9)) continue;
+    out.push(q);
+  }
+  return out;
+}
+/**
+ * Scale all the views together so the whole arrangement spans `fraction` of the free space (of its
+ * height or width, whichever binds) and centre it there. The free space is the page less the title
+ * and description where they are in the way: of the rectangles clear of the text, the one that lets
+ * the views be largest is used, so text above or below the views pushes them into the rest of the
+ * page while text off to the side, beside a full-height column, leaves them as large as before.
+ */
+function fitViewsToPage(fraction = state.sheet.page.fit) {
+  if (!instances.size) return;
+  layout(false);   // current text rectangles
+  const bb = arrangementBox();
   const wStone = (bb[2] - bb[0]) / 2, hStone = (bb[3] - bb[1]) / 2;   // arrangement size in stone widths
-  pg.stoneWidth = Math.min((fraction * pg.height) / hStone, (fraction * pg.width) / wStone);
-  // centre: the arrangement's extent in world units does not change with the stone width, so shift the origin by its centre
-  state.sheet.origin[0] -= (bb[0] + bb[2]) / 2; state.sheet.origin[1] -= (bb[1] + bb[3]) / 2;
-  const el = document.getElementById('pagestone'); if (el) el.value = pg.stoneWidth.toFixed(3);
+  let best = null;
+  for (const q of freeRects()) {
+    const sw = Math.min((fraction * (q[3] - q[1])) / hStone, (fraction * (q[2] - q[0])) / wStone);
+    // the largest views win; on a tie, the rectangle nearer the page's centre
+    const d = Math.hypot((q[0] + q[2]) / 2, (q[1] + q[3]) / 2);
+    if (!best || sw > best.sw * (1 + 1e-6) || (sw > best.sw * (1 - 1e-6) && d < best.d)) best = { sw, q, d };
+  }
+  if (!best) return;
+  setStoneWidth(best.sw);
+  // centre in the rectangle: the arrangement's extent in world units does not change with the stone width, the page's does
+  const k = 2 / best.sw, cx = ((best.q[0] + best.q[2]) / 2) * k, cy = ((best.q[1] + best.q[3]) / 2) * k;
+  state.sheet.origin[0] += cx - (bb[0] + bb[2]) / 2; state.sheet.origin[1] += cy - (bb[1] + bb[3]) / 2;
   layout(true);
 }
 
@@ -888,22 +941,8 @@ function infoPage() {
   Object.assign(sh.text.description, { enabled: true, pos: null, locked: false, align: 'center', width: 0.8 });
   applyCaption(); syncInputs(); renderViewList();
   layout(true);
-  // the free region under the description, in inches from the page top, and the arrangement's size in stone widths
-  const r = pageRect(), k = r.k, inch = (w) => w / k;
-  const t = sh.text.title.rect, d = sh.text.description.rect;
-  const textBottom = d ? inch(r.maxY - d.minY) : (t ? inch(r.maxY - t.minY) : 0.6);
-  const top = textBottom + 0.35, bottom = 0.4, side = 0.4;
-  const regionH = sh.page.height - top - bottom, regionW = sh.page.width - 2 * side;
-  const bb = [Infinity, Infinity, -Infinity, -Infinity];
-  for (const inst of instances.values()) { bb[0] = Math.min(bb[0], inst.pos[0] + inst.bbox.minX); bb[1] = Math.min(bb[1], inst.pos[1] + inst.bbox.minY); bb[2] = Math.max(bb[2], inst.pos[0] + inst.bbox.maxX); bb[3] = Math.max(bb[3], inst.pos[1] + inst.bbox.maxY); }
-  const wStone = (bb[2] - bb[0]) / 2, hStone = (bb[3] - bb[1]) / 2;
-  sh.page.stoneWidth = Math.min((0.92 * regionH) / hStone, (0.92 * regionW) / wStone);
-  const el = document.getElementById('pagestone'); if (el) el.value = sh.page.stoneWidth.toFixed(3);
-  // centre the arrangement in the region (its world extent does not change with the stone width; the page's does)
-  const k2 = 2 / sh.page.stoneWidth, pageTop = (sh.page.height / 2) * k2, centreY = pageTop - (top + regionH / 2) * k2;
-  sh.origin[0] -= (bb[0] + bb[2]) / 2; sh.origin[1] += centreY - (bb[1] + bb[3]) / 2;
-  sh.text.title.pos = null; sh.text.description.pos = null;   // the text keeps its place in inches: redo it at the new scale
-  layout(true); fitView();
+  fitViewsToPage(sh.page.fit);
+  fitView();
 }
 /** Put a 3D view back to the isometric tilt of its parent, at its laid-out place and natural size. */
 function resetView3d(id) {
@@ -1075,7 +1114,7 @@ if (pageChk) {
   pageFitBtn.addEventListener('click', () => fitViewsToPage(pg.fit));
   pageSize.addEventListener('change', () => { const sz = PAGE_SIZES[pageSize.value]; if (sz) { pg.width = sz[0]; pg.height = sz[1]; refresh(); layout(true); } });
   const num = (el, key, min) => el.addEventListener('change', () => { const v = parseFloat(el.value); if (v >= min) { pg[key] = v; pageSize.value = 'custom'; layout(true); } });
-  num(pageW, 'width', 0.5); num(pageH, 'height', 0.5); num(pageStone, 'stoneWidth', 0.05); num(pageDpi, 'dpi', 36);
+  num(pageW, 'width', 0.5); num(pageH, 'height', 0.5); pageStone.addEventListener('change', () => { const v = parseFloat(pageStone.value); if (v >= 0.05) { setStoneWidth(v); layout(true); } }); num(pageDpi, 'dpi', 36);
 }
 // text block controls: text and style changes redraw at once; the pavé repacks when the change is committed
 {
@@ -1296,7 +1335,7 @@ requestAnimationFrame(frame);
 
 // Exposed for the screenshot tool and for scripting.
 window.__viewer = {
-  state, setDesign, snapTo, exportPNG, resize, addView, removeView, clearViews, resetView3d, snapCentre, snapCentreText, resetTextPos, hitText, applyCaption, selectView, hitInstance, infoPage, fitView, fitViewsToPage, editor, getSetup, applySetup, paveInfo: () => paveInfo, paveStones: () => pave.lastStones, pageRect, instances, camera: () => camera, gridCells: () => gridLines.userData.cells,
+  state, setDesign, snapTo, exportPNG, resize, addView, removeView, clearViews, resetView3d, snapCentre, snapCentreText, resetTextPos, hitText, applyCaption, selectView, hitInstance, infoPage, freeRects, fitView, fitViewsToPage, editor, getSetup, applySetup, paveInfo: () => paveInfo, paveStones: () => pave.lastStones, pageRect, instances, camera: () => camera, gridCells: () => gridLines.userData.cells,
   loadShape(id) { const { templates } = window.__templates; if (templates[id]) editor.design = templates[id].make(); },
   setLineWidth(v) { state.lineWidth = v; lineMat.linewidth = v; hiddenMat.linewidth = v; pave.setLineWidth(v); },
   setGirdleLines(v) { state.girdleLines = v; layout(true); },

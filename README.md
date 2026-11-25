@@ -14,7 +14,7 @@ companion produces STEP solids and exact vector SVG views with OpenCascade.
 npm start
 ```
 
-Then open `http://localhost:8000/`. The preview pane has a menu (the three dots at its top right) with Export PNG, Fit views to page and Fit preview. The page header shows its build number (currently 89); if it
+Then open `http://localhost:8000/`. The preview pane has a menu (the three dots at its top right) with Export PNG, Fit views to page and Fit preview. The page header shows its build number (currently 90); if it
 shows an older one after a `git pull`, hard-reload (Ctrl+Shift+R). Pass another port as `node tools/serve.mjs 8123` if 8000
 is taken. The site is static ES modules, so it must be served over HTTP (not `file://`).
 `diag.html` runs a step-by-step load check if the page does not come up.
@@ -108,7 +108,7 @@ show its hidden lines in light grey. A grid option draws a table with a cell per
 and rows found from the views' extents), with adjustable line opacity and border. A page
 (8.5 × 8.5 by default, or Letter, A4 or custom inches, with the stone's width on the page in
 inches as the drawing scale, and a Fit button that scales all the views together to a share of
-the page) frames the sheet with its outline always drawn; views can be centred on it horizontally or vertically, the arrangement can be
+the page, or of the space the title and description leave free when they are in the way, and centres them there) frames the sheet with its outline always drawn; views can be centred on it horizontally or vertically, the arrangement can be
 alt-dragged across it, the preview pans (right-drag) and zooms about the cursor with a Fit button to
 reframe, and Export PNG then writes the page at the chosen DPI. A background option fills the
 free area, right up to the views' outlines, with a cobblestone pavé of the current stone (a tangent
