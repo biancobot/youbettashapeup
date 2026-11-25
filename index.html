@@ -80,7 +80,7 @@
   <div id="app">
     <aside id="panel">
       <div>
-        <h1>Gem Facet Designer <span class="build" title="Build number; if it does not match the README, hard-reload or git pull">build 73</span></h1>
+        <h1>Gem Facet Designer <span class="build" title="Build number; if it does not match the README, hard-reload or git pull">build 74</span></h1>
         <div class="hint">GemCad-style facet design: every facet is a plane by angle, index and distance; the stone is their intersection. Drag to rotate, shift-drag to roll, scroll to zoom, right-drag to pan, 0 or Home to reset the zoom and pan, click a vertex to pick a meet point.</div>
       </div>
 
@@ -199,6 +199,31 @@
       </div>
 
       <div class="group">
+        <h2>Text</h2>
+        <div class="row"><label for="tton">Title</label><input type="checkbox" id="tton"></div>
+        <input type="text" id="tttext" placeholder="Title text" style="width:100%">
+        <div class="gaps">
+          <label>Font <select id="ttfont"><option value="Georgia, serif">Georgia</option><option value="'Times New Roman', Times, serif">Times</option><option value="Garamond, 'EB Garamond', serif">Garamond</option><option value="'Palatino Linotype', Palatino, serif">Palatino</option><option value="Helvetica, Arial, sans-serif">Helvetica / Arial</option><option value="'Gill Sans', 'Trebuchet MS', sans-serif">Gill Sans</option><option value="Futura, 'Century Gothic', sans-serif">Futura</option><option value="'Courier New', Courier, monospace">Courier</option></select></label>
+          <label>Size (pt) <input type="number" id="ttsize" step="1" min="4" max="200"></label>
+          <label>Align <select id="ttalign"><option value="left">Left</option><option value="center">Centre</option><option value="right">Right</option></select></label>
+          <label>Width (% of page) <input type="number" id="ttwidth" step="5" min="10" max="100" title="How wide the text may run before it wraps"></label>
+        </div>
+        <div class="row"><span><label><input type="checkbox" id="ttbold"> bold</label> <label><input type="checkbox" id="ttitalic"> italic</label> <label><input type="checkbox" id="ttlock"> lock</label></span>
+          <span><button id="ttcx" title="Centre the title horizontally on the page">&#8660;</button> <button id="ttcy" title="Centre the title vertically on the page">&#8661;</button> <button id="ttreset" title="Put the title back at its default place">&#8634;</button></span></div>
+        <div class="row"><label for="tdon">Description</label><input type="checkbox" id="tdon"></div>
+        <textarea id="tdtext" rows="3" placeholder="Description text"></textarea>
+        <div class="gaps">
+          <label>Font <select id="tdfont"><option value="Georgia, serif">Georgia</option><option value="'Times New Roman', Times, serif">Times</option><option value="Garamond, 'EB Garamond', serif">Garamond</option><option value="'Palatino Linotype', Palatino, serif">Palatino</option><option value="Helvetica, Arial, sans-serif">Helvetica / Arial</option><option value="'Gill Sans', 'Trebuchet MS', sans-serif">Gill Sans</option><option value="Futura, 'Century Gothic', sans-serif">Futura</option><option value="'Courier New', Courier, monospace">Courier</option></select></label>
+          <label>Size (pt) <input type="number" id="tdsize" step="1" min="4" max="200"></label>
+          <label>Align <select id="tdalign"><option value="left">Left</option><option value="center">Centre</option><option value="right">Right</option></select></label>
+          <label>Width (% of page) <input type="number" id="tdwidth" step="5" min="10" max="100" title="How wide the text may run before it wraps"></label>
+        </div>
+        <div class="row"><span><label><input type="checkbox" id="tdbold"> bold</label> <label><input type="checkbox" id="tditalic"> italic</label> <label><input type="checkbox" id="tdlock"> lock</label></span>
+          <span><button id="tdcx" title="Centre the description horizontally on the page">&#8660;</button> <button id="tdcy" title="Centre the description vertically on the page">&#8661;</button> <button id="tdreset" title="Put the description back at its default place">&#8634;</button></span></div>
+        <div class="hint">A title and a description drawn on the sheet and exported with it: drag either to move it, &#8660; and &#8661; centre it on the page, &#8634; puts it back (the title near the top, the description under it), <b>lock</b> stops drags moving it. Sizes are in points at the page scale, as they print. With the background on, the pavé stones fill the space right up to the text blocks.</div>
+      </div>
+
+      <div class="group">
         <h2>Lines</h2>
         <div class="row"><label for="lw">Edge thickness</label>
           <span><input type="range" id="lw" min="0.5" max="8" step="0.25" value="1.5"> <span id="lwv">1.5 px</span></span></div>
@@ -276,6 +301,6 @@
       const el = document.getElementById('info'); if (el) { el.style.color = '#b00020'; el.textContent = 'Load error: ' + (e.reason && e.reason.message || e.reason); }
     });
   </script>
-  <script type="module" src="./app/main.js?v=73"></script>
+  <script type="module" src="./app/main.js?v=74"></script>
 </body>
 </html>

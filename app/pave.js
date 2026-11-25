@@ -9,7 +9,7 @@ import * as THREE from '../vendor/three/three.module.js';
 import { LineSegments2 } from '../vendor/three/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from '../vendor/three/lines/LineSegmentsGeometry.js';
 import { LineMaterial } from '../vendor/three/lines/LineMaterial.js';
-import { CHART_CARATS } from './gemcad/weights.js?v=73';
+import { CHART_CARATS } from './gemcad/weights.js?v=74';
 
 /** Deterministic random numbers so a layout is stable until reseeded. */
 function rng(seed) {
@@ -183,13 +183,13 @@ export function* cobblestoneStonesGen(hull, area, obstacles, sizes, settings, ra
   const seeds = [];
   for (const sz of sizes) if (sz.label) {
     const sc = sz.labelScale || sz.scale, r = Array.isArray(sc) ? Math.max(...hull.map(([x, y]) => Math.hypot(sc[0] * x, sc[1] * y))) : hullR * sc;
-    seeds.push({ r, carats: sz.carats, scale: sc });
+    seeds.push({ r, carats: sz.carats, scale: sc, mm: sz.mm });
   }
   seeds.sort((a, b) => b.r - a.r);
   const { circles, stats } = yield* packTangentGen(area, obstacles, settings, random, seeds);
   const stones = circles.map((c) => {
     const opacity = settings.minOpacity + random() * (settings.maxOpacity - settings.minOpacity);
-    if (c.seed) return { x: c.x, y: c.y, angle: random() * Math.PI * 2, scale: c.seed.scale, carats: c.seed.carats, label: c.seed.carats, opacity, r: c.r };
+    if (c.seed) return { x: c.x, y: c.y, angle: random() * Math.PI * 2, scale: c.seed.scale, carats: c.seed.carats, label: c.seed.carats, mm: c.seed.mm, opacity, r: c.r };
     if (c.r < rSingle) return { x: c.x, y: c.y, angle: random() * Math.PI * 2, scale: c.r, carats: null, label: null, opacity, r: c.r, kind: 'single' };
     return { x: c.x, y: c.y, angle: random() * Math.PI * 2, scale: c.r / hullR, carats: null, label: null, opacity, r: c.r };
   });
@@ -263,11 +263,12 @@ export function hexafoilStones(hull, area, obstacles, scale, opacity, random, wi
 }
 
 /** Text as a transparent plane: the carat weight centred in an outline stone. */
-function makeLabel(text, worldHeight, opacity) {   // worldHeight: text height in world units
+function makeLabel(text, worldHeight, opacity, sub = null) {   // worldHeight: label height in world units; sub: a smaller second line (the size in mm)
   const c = document.createElement('canvas'); c.width = 256; c.height = 128;
   const ctx = c.getContext('2d'); ctx.clearRect(0, 0, 256, 128);
-  ctx.fillStyle = '#000'; ctx.font = '600 72px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(text, 128, 64);
+  ctx.fillStyle = '#000'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  if (sub) { ctx.font = '600 58px system-ui, sans-serif'; ctx.fillText(text, 128, 40); ctx.font = '500 34px system-ui, sans-serif'; ctx.fillText(sub, 128, 92); }
+  else { ctx.font = '600 72px system-ui, sans-serif'; ctx.fillText(text, 128, 64); }
   const tex = new THREE.CanvasTexture(c); tex.minFilter = THREE.LinearFilter;
   const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity, depthTest: false });
   const m = new THREE.Mesh(new THREE.PlaneGeometry(worldHeight * 2, worldHeight), mat);
@@ -309,7 +310,7 @@ export function createPave(scene, occluderMat) {
       const dst = lines[bucketOf(st.opacity)];
       if (st.label) {
         appendTransformed(dst, o.hullEdges, st);
-        const lbl = makeLabel(`${st.label} ct`, 0.42 * Math.min(...(Array.isArray(st.scale) ? st.scale : [st.scale])), st.opacity);   // text height: 0.21 of the stone's width
+        const lbl = makeLabel(`${st.label} ct`, 0.42 * Math.min(...(Array.isArray(st.scale) ? st.scale : [st.scale])), st.opacity, st.mm || null);   // label height: 0.21 of the stone's width; the size in mm under the weight
         lbl.position.set(st.x, st.y, 0.1);
         group.add(lbl);
       } else {
@@ -357,6 +358,9 @@ export function paveSizes(estimator, maxCarats, worldPerMm, labels, chartDims = 
   const all = [...new Set([...chart, ...filler])].sort((a, b) => b - a);
   return all.map((carats) => {
     const d = chart.includes(carats) ? chartDims(carats) : null;
-    return { carats, scale: (estimator.widthMm(carats) * worldPerMm) / 2, label: labels && chart.includes(carats), labelScale: d ? [(d.width * worldPerMm) / stoneW, (d.length * worldPerMm) / stoneL] : null };
+    // the size text under the weight: the chart's length x width (one figure when they are the same, the diameter), or the estimator's width
+    const f = (v) => (Math.round(v * 10) / 10).toString();
+    const mm = d ? (Math.abs(d.length - d.width) < 0.05 ? `${f(d.width)} mm` : `${f(d.length)} × ${f(d.width)} mm`) : `${f(estimator.widthMm(carats))} mm`;
+    return { carats, scale: (estimator.widthMm(carats) * worldPerMm) / 2, label: labels && chart.includes(carats), labelScale: d ? [(d.width * worldPerMm) / stoneW, (d.length * worldPerMm) / stoneL] : null, mm };
   });
 }

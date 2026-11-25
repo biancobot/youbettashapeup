@@ -28,10 +28,10 @@
 //     culet at the centre.
 // L:W changes are an affine stretch of the plot's pattern along the length (see radiantStart), so
 // the pattern closes at any ratio; the corner cut along the sides scales with the length.
-import { newTier } from '../design.js?v=73';
+import { newTier } from '../design.js?v=74';
 import {
   girdleFromPolygon, planeThrough, mirrorY, zPlane, yPlane, xPlane, classTier, plane3, intersect3,
-} from '../shapebuild.js?v=73';
+} from '../shapebuild.js?v=74';
 
 const PLOT_L = 1.434;   // half-length of the plot the positions were measured on
 

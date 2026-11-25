@@ -2,15 +2,15 @@ import * as THREE from '../vendor/three/three.module.js';
 import { LineSegments2 } from '../vendor/three/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from '../vendor/three/lines/LineSegmentsGeometry.js';
 import { LineMaterial } from '../vendor/three/lines/LineMaterial.js';
-import { designMesh, stoneStats } from './gemcad/mesh.js?v=73';
-import { createEditor } from './editor.js?v=73';
-import { createUnderlay } from './underlay.js?v=73';
-import { templates, plots } from './gemcad/templates.js?v=73';
+import { designMesh, stoneStats } from './gemcad/mesh.js?v=74';
+import { createEditor } from './editor.js?v=74';
+import { createUnderlay } from './underlay.js?v=74';
+import { templates, plots } from './gemcad/templates.js?v=74';
 window.__templates = { templates, plots };
-import { VIEWS, getView } from './views.js?v=73';
-import { createPave, cobblestoneStonesGen, checkPacking, paveSizes, hexafoilStones, convexHull, rng } from './pave.js?v=73';
-import { weightEstimator, weightFamily, chartSize, CHART_SOURCE } from './gemcad/weights.js?v=73';
-import { singleCut } from './gemcad/shapes/oldcuts.js?v=73';
+import { VIEWS, getView } from './views.js?v=74';
+import { createPave, cobblestoneStonesGen, checkPacking, paveSizes, hexafoilStones, convexHull, rng } from './pave.js?v=74';
+import { weightEstimator, weightFamily, chartSize, CHART_SOURCE } from './gemcad/weights.js?v=74';
+import { singleCut } from './gemcad/shapes/oldcuts.js?v=74';
 
 // ----------------------------------------------------------------------------- state
 const params = new URLSearchParams(location.search);
@@ -38,6 +38,7 @@ const state = {
     // Page: a sheet of paper centred on the origin; the stone's width occupies `stoneWidth` inches of it
     page: { enabled: params.get('page') === '1', width: 8.5, height: 8.5, stoneWidth: 2, dpi: 300, fit: 0.8 },
     // Background: cobblestone pavé of the current stone in random sizes and orientations, or a hexafoil of marquises
+    text: { title: { enabled: false, text: 'Title', font: 'Georgia, serif', size: 28, bold: true, italic: false, align: 'center', width: 0.8, pos: null, locked: false }, description: { enabled: false, text: '', font: 'Georgia, serif', size: 12, bold: false, italic: false, align: 'center', width: 0.6, pos: null, locked: false } },
     pave: { enabled: false, pattern: 'cobblestone', minOpacity: 0.15, maxOpacity: 0.6, maxCarats: 5, minCarats: 0.02, singleBelow: 0.2, mmPerInch: 25.4, margin: 0.03, seedCount: 6, samples: 40, patience: 80, maxCircles: 3000, seed: 1, labels: true, hexCarats: 3, hexOpacity: 0.35, hexCircles: true },
     nextId: 1,
   },
@@ -270,6 +271,91 @@ function updatePage() {
   pageLines.geometry.dispose();
   pageLines.geometry = new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
 }
+// ----------------------------------------------------------------------------- text blocks
+// A title and a description drawn on the sheet as text rendered to a canvas texture on a plane,
+// so they export with the page and the pavé flows round them. Sizes are in points at the page
+// scale (1 pt = 1/72 in); the canvas is rendered at TEXT_PX_PER_INCH so a 300 DPI export is crisp.
+const TEXT_PX_PER_INCH = 300;
+const TEXT_IDS = ['title', 'description'];
+const textBlocks = new Map();   // id -> { mesh, canvas, texture, key, w, h }
+/** Break text into lines that fit maxWidth (canvas px), on words, honouring newlines. */
+function wrapText(ctx, text, maxWidth) {
+  const lines = [];
+  for (const para of String(text).split(/\r?\n/)) {
+    const words = para.split(/\s+/).filter(Boolean);
+    if (!words.length) { lines.push(''); continue; }
+    let line = words[0];
+    for (const w of words.slice(1)) { const t = line + ' ' + w; if (ctx.measureText(t).width <= maxWidth) line = t; else { lines.push(line); line = w; } }
+    lines.push(line);
+  }
+  return lines;
+}
+/** Render a block's text to its canvas; returns the block's size in world units. */
+function renderTextBlock(tb, b, k, wrapWorld) {
+  const px = (b.size / 72) * TEXT_PX_PER_INCH, pxPerWorld = TEXT_PX_PER_INCH / k;
+  const font = `${b.italic ? 'italic ' : ''}${b.bold ? 'bold ' : ''}${px}px ${b.font}`;
+  const ctx = tb.canvas.getContext('2d');
+  ctx.font = font;
+  const maxW = Math.max(px, b.width * wrapWorld * pxPerWorld);
+  const lines = wrapText(ctx, b.text, maxW);
+  const lineH = px * 1.25, pad = px * 0.25;
+  const textW = Math.max(1, ...lines.map((l) => ctx.measureText(l).width));
+  const cw = Math.ceil(Math.min(maxW, textW) + 2 * pad), ch = Math.ceil(lines.length * lineH + 2 * pad);
+  tb.canvas.width = cw; tb.canvas.height = ch;
+  ctx.clearRect(0, 0, cw, ch);
+  ctx.font = font; ctx.fillStyle = '#000'; ctx.textBaseline = 'alphabetic'; ctx.textAlign = b.align;
+  const x = b.align === 'left' ? pad : b.align === 'right' ? cw - pad : cw / 2;
+  lines.forEach((l, i) => ctx.fillText(l, x, pad + (i + 1) * lineH - px * 0.3));
+  tb.texture.needsUpdate = true;
+  tb.w = cw / pxPerWorld; tb.h = ch / pxPerWorld;
+}
+/** Where a block goes when it has no position yet: the title near the top of the page, the description under it. */
+function defaultTextPos(id, h) {
+  const r = pageRect(), k = r.k;
+  const top = state.sheet.page.enabled ? r.maxY : (isFinite(overall.maxY) ? overall.maxY + 0.5 * k : 0.5 * k);
+  if (id === 'title' || !state.sheet.text.title.rect) return [0, top - 0.6 * k - h / 2];
+  return [0, state.sheet.text.title.rect.minY - 0.15 * k - h / 2];
+}
+function updateText() {
+  const r = pageRect(), k = r.k;
+  const wrapWorld = state.sheet.page.enabled ? r.maxX - r.minX : Math.max(2, isFinite(overall.maxX) ? overall.maxX - overall.minX : 2);
+  for (const id of TEXT_IDS) {
+    const b = state.sheet.text[id];
+    let tb = textBlocks.get(id);
+    if (!b.enabled || !String(b.text).trim()) { if (tb) tb.mesh.visible = false; b.rect = null; continue; }
+    if (!tb) {
+      const canvas = document.createElement('canvas'), texture = new THREE.CanvasTexture(canvas);
+      texture.colorSpace = THREE.SRGBColorSpace; texture.anisotropy = 4;
+      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthTest: false, depthWrite: false }));
+      mesh.renderOrder = 20; scene.add(mesh);
+      tb = { mesh, canvas, texture, key: null, w: 1, h: 1 }; textBlocks.set(id, tb);
+    }
+    const key = JSON.stringify([b.text, b.font, b.size, b.bold, b.italic, b.align, b.width, k, wrapWorld]);
+    if (tb.key !== key) { renderTextBlock(tb, b, k, wrapWorld); tb.key = key; }
+    if (!b.pos) b.pos = defaultTextPos(id, tb.h);
+    tb.mesh.position.set(b.pos[0], b.pos[1], 4); tb.mesh.scale.set(tb.w, tb.h, 1); tb.mesh.visible = true;
+    b.rect = { minX: b.pos[0] - tb.w / 2, maxX: b.pos[0] + tb.w / 2, minY: b.pos[1] - tb.h / 2, maxY: b.pos[1] + tb.h / 2 };
+  }
+}
+/** The text block under a screen point, if any. */
+function hitText(clientX, clientY) {
+  if (camera !== orthoCamera) return null;
+  const rect = canvas.getBoundingClientRect();
+  const nx = ((clientX - rect.left) / rect.width) * 2 - 1, ny = 1 - ((clientY - rect.top) / rect.height) * 2;
+  const wx = camera.position.x + (nx * (camera.right - camera.left)) / 2, wy = camera.position.y + (ny * (camera.top - camera.bottom)) / 2;
+  for (const id of TEXT_IDS) { const b = state.sheet.text[id]; if (b.rect && wx >= b.rect.minX && wx <= b.rect.maxX && wy >= b.rect.minY && wy <= b.rect.maxY) return b; }
+  return null;
+}
+/** Centre a text block on the page: axis 'x' horizontally, 'y' vertically. */
+function snapCentreText(id, axis) {
+  const b = state.sheet.text[id]; if (!b.pos) return;
+  const r = pageRect();
+  if (axis === 'x') b.pos[0] = (r.minX + r.maxX) / 2; else b.pos[1] = (r.minY + r.maxY) / 2;
+  layout(true);
+}
+/** Put a text block back at its default place. */
+function resetTextPos(id) { state.sheet.text[id].pos = null; layout(true); }
+
 // ----------------------------------------------------------------------------- pavé background
 let paveInfo = { count: 0, note: '' };
 function paveArea() {
@@ -285,6 +371,7 @@ function paveObstacles() {
     for (let i = 0; i < a.length; i += 3) { v.set(a[i], a[i + 1], a[i + 2]).applyQuaternion(inst.q); pts.push([inst.pos[0] + v.x * sc, inst.pos[1] + v.y * sc]); }
     out.push(convexHull(pts));
   }
+  for (const id of TEXT_IDS) { const b = state.sheet.text[id]; if (b.rect) { const t = b.rect; out.push([[t.minX, t.minY], [t.maxX, t.minY], [t.maxX, t.maxY], [t.minX, t.maxY]]); } }   // counter-clockwise, as the hulls
   return out;
 }
 function updatePave() {
@@ -433,6 +520,7 @@ function layout(force) {
   }
   updateGrid();
   updatePage();
+  updateText();
   if (force) updatePave();
   updateCamera(stage.clientWidth, stage.clientHeight);
   const b = instances.get('base');
@@ -502,7 +590,8 @@ function hitView3d(clientX, clientY) {
 }
 canvas.addEventListener('pointerdown', (e) => {
   const pan = e.button === 1 || e.button === 2 || e.ctrlKey || e.metaKey;   // middle or right button, or ctrl/cmd-drag: pan the sheet
-  drag = { x: e.clientX, y: e.clientY, roll: e.shiftKey, move: e.altKey, pan, moved: false, view3d: pan ? null : hitView3d(e.clientX, e.clientY) };
+  const text = pan ? null : hitText(e.clientX, e.clientY);
+  drag = { x: e.clientX, y: e.clientY, roll: e.shiftKey, move: e.altKey, pan, moved: false, text, view3d: pan || text ? null : hitView3d(e.clientX, e.clientY) };
   canvas.setPointerCapture(e.pointerId);
   if (pan) e.preventDefault();
 });
@@ -518,6 +607,10 @@ canvas.addEventListener('pointermove', (e) => {
     const wpp = worldPerPixel();
     state.pan[0] -= dx * wpp; state.pan[1] += dy * wpp;
     drag.x = e.clientX; drag.y = e.clientY; resize(); return;
+  }
+  if (drag.text) {   // a drag over a text block moves it (no modifier needed); a locked block stays put
+    if (!drag.text.locked) { const wpp = worldPerPixel(); drag.text.pos[0] += dx * wpp; drag.text.pos[1] -= dy * wpp; layout(false); }
+    drag.x = e.clientX; drag.y = e.clientY; return;
   }
   // locks: a locked 3D view ignores the drag; a locked base ignores drags everywhere else (the projected views follow it)
   if (drag.view3d ? drag.view3d.locked : state.sheet.base.locked) { drag.x = e.clientX; drag.y = e.clientY; return; }
@@ -868,6 +961,24 @@ if (pageChk) {
   const num = (el, key, min) => el.addEventListener('change', () => { const v = parseFloat(el.value); if (v >= min) { pg[key] = v; pageSize.value = 'custom'; layout(true); } });
   num(pageW, 'width', 0.5); num(pageH, 'height', 0.5); num(pageStone, 'stoneWidth', 0.05); num(pageDpi, 'dpi', 36);
 }
+// text block controls: text and style changes redraw at once; the pavé repacks when the change is committed
+{
+  const $ = (id) => document.getElementById(id);
+  for (const id of TEXT_IDS) {
+    const b = state.sheet.text[id], p = id === 'title' ? 'tt' : 'td';
+    const on = (sfx, ev, fn) => { const el = $(p + sfx); if (el) el.addEventListener(ev, () => fn(el)); };
+    on('on', 'change', (el) => { b.enabled = el.checked; layout(true); });
+    on('text', 'input', (el) => { b.text = el.value; layout(false); }); on('text', 'change', () => layout(true));
+    on('font', 'change', (el) => { b.font = el.value; layout(true); });
+    on('size', 'input', (el) => { b.size = Math.max(4, parseFloat(el.value) || 12); layout(false); }); on('size', 'change', () => layout(true));
+    on('bold', 'change', (el) => { b.bold = el.checked; layout(true); });
+    on('italic', 'change', (el) => { b.italic = el.checked; layout(true); });
+    on('align', 'change', (el) => { b.align = el.value; layout(true); });
+    on('width', 'change', (el) => { b.width = Math.min(1, Math.max(0.1, (parseFloat(el.value) || 60) / 100)); layout(true); });
+    on('lock', 'change', (el) => { b.locked = el.checked; });
+    on('cx', 'click', () => snapCentreText(id, 'x')); on('cy', 'click', () => snapCentreText(id, 'y')); on('reset', 'click', () => resetTextPos(id));
+  }
+}
 // pavé background controls
 {
   const pv = state.sheet.pave, $ = (id) => document.getElementById(id);
@@ -967,6 +1078,7 @@ function syncInputs() {
   const pg = sh.page; set('page', pg.enabled); set('pagew', pg.width); set('pageh', pg.height); set('pagestone', pg.stoneWidth); set('pagedpi', pg.dpi); set('pagefit', Math.round(pg.fit * 100));
   const sizes = { 'letter': [8.5, 11], 'letterL': [11, 8.5], 'square85': [8.5, 8.5], 'a4': [8.27, 11.69], 'a4L': [11.69, 8.27] };
   set('pagesize', Object.keys(sizes).find((k) => sizes[k][0] === pg.width && sizes[k][1] === pg.height) || 'custom');
+  for (const id of TEXT_IDS) { const b = sh.text[id], p = id === 'title' ? 'tt' : 'td'; set(p + 'on', b.enabled); set(p + 'text', b.text); set(p + 'font', b.font); set(p + 'size', b.size); set(p + 'bold', b.bold); set(p + 'italic', b.italic); set(p + 'align', b.align); set(p + 'width', Math.round(b.width * 100)); set(p + 'lock', b.locked); }
   const pv = sh.pave;
   for (const [id, key] of [['pave', 'enabled'], ['pavepattern', 'pattern'], ['pavemin', 'minOpacity'], ['pavemax', 'maxOpacity'], ['pavemaxct', 'maxCarats'], ['paveminct', 'minCarats'], ['pavesingle', 'singleBelow'], ['pavescale', 'mmPerInch'], ['pavemargin', 'margin'], ['paveseeds', 'seedCount'], ['pavelabels', 'labels'], ['pavehexct', 'hexCarats'], ['pavehexop', 'hexOpacity'], ['pavehexcircles', 'hexCircles']]) set(id, pv[key]);
   for (const id of ['pavemin', 'pavemax', 'pavehexop']) if ($(id + 'v')) $(id + 'v').textContent = `${Math.round($(id).value * 100)}%`;
@@ -980,9 +1092,13 @@ function applySetup(s) {
   Object.assign(state, { viewId: s.viewId || 'front', spin: s.spin || 0, zoom: s.zoom || 1, pan: s.pan || [0, 0], lineWidth: s.lineWidth || 1.5, girdleLines: s.girdleLines !== false, projection: s.projection || 'orthographic', fov: s.fov || 30, exportScale: s.exportScale || 2, showMeet: !!s.showMeet });
   lineMat.linewidth = state.lineWidth; hiddenMat.linewidth = state.lineWidth; pave.setLineWidth(state.lineWidth);
   if (s.baseQ) baseQ.fromArray(s.baseQ);
-  const sh = s.sheet;
-  state.sheet = { ...state.sheet, ...sh, gaps: { ...state.sheet.gaps, ...(sh.gaps || {}) }, base: { ...state.sheet.base, ...(sh.base || {}) }, page: { ...state.sheet.page, ...(sh.page || {}) }, pave: { ...state.sheet.pave, ...(sh.pave || {}) },
-    views: (sh.views || []).map((v) => ({ ...v, rot: v.rot ? new THREE.Quaternion().fromArray(v.rot) : null })) };
+  // merge the saved sheet into the live settings objects, keeping their identities: the controls'
+  // handlers hold references to them (replacing them left the pavé controls writing to a stale copy)
+  const sh = s.sheet, cur = state.sheet;
+  for (const k of ['gaps', 'base', 'page', 'pave']) Object.assign(cur[k], sh[k] || {});
+  for (const id of TEXT_IDS) Object.assign(cur.text[id], (sh.text || {})[id] || {}, { rect: null });
+  for (const k of Object.keys(sh)) if (!['gaps', 'base', 'page', 'pave', 'text', 'views'].includes(k)) cur[k] = sh[k];
+  cur.views = (sh.views || []).map((v) => ({ ...v, rot: v.rot ? new THREE.Quaternion().fromArray(v.rot) : null }));
   syncInputs();
   editor.design = s.design;   // rebuilds the stone and lays the sheet out
   renderViewList(); markView(); layout(true); resize();
@@ -1058,7 +1174,7 @@ requestAnimationFrame(frame);
 
 // Exposed for the screenshot tool and for scripting.
 window.__viewer = {
-  state, setDesign, snapTo, exportPNG, resize, addView, removeView, clearViews, resetView3d, snapCentre, fitView, fitViewsToPage, editor, getSetup, applySetup, paveInfo: () => paveInfo, paveStones: () => pave.lastStones, pageRect, instances, camera: () => camera, gridCells: () => gridLines.userData.cells,
+  state, setDesign, snapTo, exportPNG, resize, addView, removeView, clearViews, resetView3d, snapCentre, snapCentreText, resetTextPos, hitText, fitView, fitViewsToPage, editor, getSetup, applySetup, paveInfo: () => paveInfo, paveStones: () => pave.lastStones, pageRect, instances, camera: () => camera, gridCells: () => gridLines.userData.cells,
   loadShape(id) { const { templates } = window.__templates; if (templates[id]) editor.design = templates[id].make(); },
   setLineWidth(v) { state.lineWidth = v; lineMat.linewidth = v; hiddenMat.linewidth = v; pave.setLineWidth(v); },
   setGirdleLines(v) { state.girdleLines = v; layout(true); },
