@@ -16,7 +16,7 @@ The pear is the oldest of the fancy brilliants: Lodewyk van Berquem of Bruges is
 
 ## Heart Brilliant
 
-A heart-shaped diamond is recorded as early as 1562, when Mary, Queen of Scots, sent one in a ring to Elizabeth I of England as a token of goodwill between the two queens. The shape is a pear with a cleft cut into its head, and because the two lobes must match to a fraction of a millimetre it is usually cut only from a crystal that is already close to the outline.
+A heart-shaped diamond is recorded as early as 1562, when Mary, Queen of Scots, sent one in a ring to Elizabeth I of England as a token of goodwill between the two queens. The shape is in effect a pear with a cleft cut into its head, often from the flat, triangular twinned crystals called macles; the cleft is cut after the main faceting, frequently by a different hand, and the symmetry of the two lobes stands or falls on that one cut landing exactly on the stone's axis.
 
 ## Oval Brilliant
 
