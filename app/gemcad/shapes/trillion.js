@@ -19,8 +19,8 @@
 // Crown 18 facets + table, pavilion 15, girdle 9: 43 facets.
 // The drawing gives no heights: crown height, girdle, pavilion depth and the heights of the two
 // hubs are this design's parameters.
-import { newTier } from '../design.js?v=121';
-import { rad, deg, girdleFromPolygon, plane3, planeAz, planeThrough, intersect3, zPlane, azPlane, classTier } from '../shapebuild.js?v=121';
+import { newTier } from '../design.js?v=122';
+import { rad, deg, girdleFromPolygon, plane3, planeAz, planeThrough, intersect3, zPlane, azPlane, classTier } from '../shapebuild.js?v=122';
 
 const R = 2 / Math.sqrt(3);   // corner radius of an equilateral triangle of width 2
 
@@ -190,6 +190,7 @@ export function trillionBrilliant({
 export function triangleBrilliant({
   bow = 0.12, crownHeight = 0.115, girdle = 0.03, pavilionDepth = 0.39, table = 0.51, tableSide = 0.51,
   starHeight = 0.5, lowerDepth = 0.85, segments = 16, gear = 96, pointDown = true, crownLines = true,
+  crownCurve = { table: 0.50, tableSide: 0.355, star: [0.66, 13.5] }, cornerSteep = 1, onLines = true,
 } = {}) {
   const W = 2, H = crownHeight * W, g = girdle * W, Pd = pavilionDepth * W, fold = 3;
   // point down (as usually drawn): the outline turned half a turn, corners at 270, 30 and 150 degrees
@@ -204,7 +205,22 @@ export function triangleBrilliant({
   const azM = deg(Math.atan2(M[1], M[0])), azC = deg(Math.atan2(C[1], C[0]));
   // ---- crown
   let cornerB, sideB, A, Tc, Ts, linesNote = '';
-  if (crownLines) {
+  if (crownCurve) {
+    // the reference drawing's crown: the lines from each corner to the opposite side are not straight but
+    // bend slightly at each point they pass (star tip, table point, table point, star tip), five segments
+    // from the corner to the upper girdle junction. The points are placed where the drawing has them, as
+    // fractions of the corner radius: crownCurve = { table, tableSide, star: [radius, degrees off the
+    // corner's axis towards the side's middle] }
+    const Rc = Math.hypot(C[0], C[1]), uC = [C[0] / Rc, C[1] / Rc], uM = [Math.cos(rad(azM)), Math.sin(rad(azM))];
+    const sa = rad(azC + Math.sign(((azM - azC + 540) % 360) - 180) * crownCurve.star[1]);
+    Tc = [crownCurve.table * Rc * uC[0], crownCurve.table * Rc * uC[1], H];
+    cornerB = addClass('A corner', planeAz(at(C, 0), Tc, azC, true));
+    const Ap = [crownCurve.star[0] * Rc * Math.cos(sa), crownCurve.star[0] * Rc * Math.sin(sa)];
+    A = [Ap[0], Ap[1], (cornerB.d - cornerB.n[0] * Ap[0] - cornerB.n[1] * Ap[1]) / cornerB.n[2]];
+    sideB = addClass('A side', planeAz(at(M, 0), A, azM, true));
+    Ts = intersect3(sideB, zPlane(H), azPlane(azM));
+    linesNote = ` Crown points placed as on the reference drawing (the lines from each corner bend slightly at the star tips and table points): table points ${(crownCurve.table * 100).toFixed(0)}% of the corner radius towards the corners, star tips ${(crownCurve.star[0] * 100).toFixed(0)}% at ${crownCurve.star[1]} degrees off the corners' axes; the table points towards the side middles follow from the side bezels at ${(100 * Math.hypot(Ts[0], Ts[1]) / Rc).toFixed(1)}% (drawing ${(crownCurve.tableSide * 100).toFixed(1)}%).`;
+  } else if (crownLines) {
     // laid out with straight lines, as on the reference drawing: from each corner to the two upper girdle
     // junctions on the opposite side. Where they cross: the star tips and the table's points. For the
     // side from C (corner 0) to C1, with C2 the corner opposite it: the star tip beside the junction J
@@ -242,9 +258,38 @@ export function triangleBrilliant({
   // ---- pavilion: mains through the culet, touching the girdle at the corner and at the side's middle
   const zc = -g - Pd;
   const main = (p, az) => { const run = Math.hypot(p[0], p[1]); return planeThrough(-deg(Math.atan2(Pd, run)), az, at(p, -g)); };
-  const cornerM = addClass('P corner', main(C, azC));
-  const sideM = addClass('P side', main(M, azM));
-  const K = intersect3(cornerM, sideM, zPlane(-g - lowerDepth * Pd));
+  // cornerSteep > 1: the corner mains cut steeper than the line from the culet to the corner. Each still
+  // touches the girdle only at its sharp corner, but no longer reaches the culet: the three side mains meet
+  // there, and each corner main ends on a short ridge where the two side mains beside it meet. A steeper
+  // corner main takes a larger share of the pavilion, turning the ridges between corner and side mains
+  // towards the straight lines from the lower girdle junctions to the culet.
+  const cornerM = addClass('P corner', planeThrough(-deg(Math.atan(cornerSteep * Pd / Math.hypot(C[0], C[1]))), azC, at(C, -g)));
+  // onLines: the side mains cut a little steeper than the line from the culet to the side's middle, just
+  // enough that the corners where corner and side mains meet the lower girdle facets lie on the straight
+  // lines from the lower girdle junctions to the culet (lowerDepth of the way along the ridge between them,
+  // from the girdle to the ridge's inner end). Each side main still touches the girdle only at the side's
+  // middle but no longer reaches the culet: the three corner mains meet there, and each side main ends on a
+  // short ridge where the two corner mains beside it meet. The corner and side mains come out nearly
+  // equally wide (as plain mains through the culet the corner mains are needles: the corners are far
+  // from the culet, so the corner mains are much the shallower).
+  const C1 = side[segments], azC1 = deg(Math.atan2(C1[1], C1[0]));
+  const cornerM1 = planeThrough(-deg(Math.atan(cornerSteep * Pd / Math.hypot(C1[0], C1[1]))), azC1, at(C1, -g));
+  const sideAt = (f) => planeThrough(-deg(Math.atan(f * Pd / Math.hypot(M[0], M[1]))), azM, at(M, -g));
+  const cornerAt = (sm) => {
+    const inner = Math.abs(sm.n[2]) && sm !== null ? intersect3(sm, cornerM, cornerM1) : [0, 0, -g - Pd];
+    const top = intersect3(cornerM, sm, zPlane(-g));
+    return top.map((v, i) => v + lowerDepth * (inner[i] - v));
+  };
+  const offLine = (Kp) => (J[0] * Kp[1] - J[1] * Kp[0]) / Math.hypot(J[0], J[1]);
+  let sideSteep = 1;
+  if (onLines) {
+    // the corner's signed distance from the line changes sign between 1 (plain mains) and 1.6: bisect
+    let lo = 1, hi = 1.6; const s0 = Math.sign(offLine(cornerAt(sideAt(1 + 1e-6))));
+    for (let it = 0; it < 50; it++) { const mid = (lo + hi) / 2; if (Math.sign(offLine(cornerAt(sideAt(mid)))) === s0) lo = mid; else hi = mid; }
+    sideSteep = (lo + hi) / 2;
+  }
+  const sideM = addClass('P side', sideSteep === 1 ? main(M, azM) : sideAt(sideSteep));
+  const K = sideSteep === 1 ? intersect3(cornerM, sideM, zPlane(-g - lowerDepth * Pd)) : cornerAt(sideM);
   addClass('L corner', plane3(at(C, -g), at(J, -g), K, false));
   addClass('L side', plane3(at(J, -g), at(M, -g), K, false));
 
@@ -256,7 +301,7 @@ export function triangleBrilliant({
     footnotes: ['Starting point: the round brilliant\'s pattern folded three ways on a curved triangle, with typical angles.'],
     notes: [
       'Ideal dimensions: none published. GIA assigns no cut grade to triangular diamonds and IGI\'s fancy-shape guidelines do not cover them; trade practice favours curved sides for brilliant-cut triangles (straight sides suit step and mixed cuts) and a shallow pavilion, since the corners sit far from the culet.',
-      `This design: sides bowed ${pct(bow)} of their length, crown height ${pct(crownHeight)}, corner bezels ${ang(cornerB)} and side bezels ${ang(sideB)} (each through its girdle contact and its table corner), stars ${pct(starHeight)} of the crown height at the tip, pavilion depth ${pct(pavilionDepth)}, corner mains ${ang(cornerM)} and side mains ${ang(sideM)}, lower girdle junctions at ${pct(lowerDepth)} of the pavilion depth, girdle ${pct(girdle)}.${linesNote}`,
+      `This design: sides bowed ${pct(bow)} of their length, crown height ${pct(crownHeight)}, corner bezels ${ang(cornerB)} and side bezels ${ang(sideB)} (each through its girdle contact and its table corner)${crownCurve || crownLines ? '' : `, stars ${pct(starHeight)} of the crown height at the tip`}, pavilion depth ${pct(pavilionDepth)}, corner mains ${ang(cornerM)} and side mains ${ang(sideM)}, lower girdle junctions at ${pct(lowerDepth)} of the pavilion depth, girdle ${pct(girdle)}.${linesNote}${sideSteep !== 1 ? ` Side mains cut ${((sideSteep - 1) * 100).toFixed(1)}% steeper than the line from the culet to the side's middle, so the main corners (${pct(lowerDepth)} of the way along the ridges between corner and side mains) lie on the straight lines from the lower girdle junctions to the culet.` : ''}`,
       'Pattern: crown of table, 6 bezels (3 corners, 3 sides), 6 stars and 12 upper girdle facets; pavilion of 6 mains under the bezels and 12 lower girdle facets; the upper and lower girdle facets meet on the girdle at the same six points, halfway between the bezel contacts.',
     ],
     tiers,
