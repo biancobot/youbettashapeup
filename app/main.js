@@ -2,17 +2,17 @@ import * as THREE from '../vendor/three/three.module.js';
 import { LineSegments2 } from '../vendor/three/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from '../vendor/three/lines/LineSegmentsGeometry.js';
 import { LineMaterial } from '../vendor/three/lines/LineMaterial.js';
-import { designMesh, stoneStats } from './gemcad/mesh.js?v=101';
-import { createEditor } from './editor.js?v=101';
-import { createUnderlay } from './underlay.js?v=101';
-import { templates, plots } from './gemcad/templates.js?v=101';
+import { designMesh, stoneStats } from './gemcad/mesh.js?v=102';
+import { createEditor } from './editor.js?v=102';
+import { createUnderlay } from './underlay.js?v=102';
+import { templates, plots } from './gemcad/templates.js?v=102';
 window.__templates = { templates, plots };
-import { VIEWS, getView } from './views.js?v=101';
-import { captionFor } from './gemcad/captions.js?v=101';
-import { notesFor } from './gemcad/shapenotes.js?v=101';
-import { createPave, cobblestoneStonesGen, checkPacking, paveSizes, hexafoilStones, convexHull, rng } from './pave.js?v=101';
-import { weightEstimator, weightFamily, chartSize, CHART_SOURCE } from './gemcad/weights.js?v=101';
-import { singleCut } from './gemcad/shapes/oldcuts.js?v=101';
+import { VIEWS, getView } from './views.js?v=102';
+import { captionFor } from './gemcad/captions.js?v=102';
+import { notesFor } from './gemcad/shapenotes.js?v=102';
+import { createPave, cobblestoneStonesGen, checkPacking, paveSizes, hexafoilStones, convexHull, rng } from './pave.js?v=102';
+import { weightEstimator, weightFamily, chartSize, CHART_SOURCE } from './gemcad/weights.js?v=102';
+import { singleCut } from './gemcad/shapes/oldcuts.js?v=102';
 
 // ----------------------------------------------------------------------------- state
 const params = new URLSearchParams(location.search);
@@ -122,6 +122,7 @@ function disposeInstances() {
 }
 
 let design = null;
+let captionKey = null;   // the template the title and description were last filled for
 function setDesign(d) {
   design = d;
   disposeInstances();
@@ -133,8 +134,12 @@ function setDesign(d) {
   hardGeometry = new LineSegmentsGeometry().setPositions(geo.hardEdges);
   for (const vid of allViewIds()) makeInstance(vid);
   state.shapeId = (d.name || 'design').replace(/[^\w-]+/g, '_').toLowerCase();
-  // the shape's publishable caption, until the user writes their own (a block left empty or at the placeholder gets it anyway)
-  if (state.sheet.text.auto || TEXT_IDS.some((id) => /^(|Title|Description)$/.test(String(state.sheet.text[id].text).trim()))) applyCaption(state.sheet.text.auto);
+  // a new shape (another template loaded) always gets its own title and description, whatever was typed
+  // over the last one's; within a shape (parameter or tier edits) the caption follows only until the user
+  // writes their own (a block left empty or at the placeholder gets it anyway)
+  const key = typeof editor !== 'undefined' && editor ? editor.templateKey : '';
+  if (key !== captionKey) { captionKey = key; state.sheet.text.auto = true; applyCaption(true); }
+  else if (state.sheet.text.auto || TEXT_IDS.some((id) => /^(|Title|Description)$/.test(String(state.sheet.text[id].text).trim()))) applyCaption(state.sheet.text.auto);
   selectedVertex = null;
   updateProps();
   layout(true);
@@ -1261,6 +1266,7 @@ function applySetup(s) {
   for (const k of Object.keys(sh)) if (!['gaps', 'base', 'page', 'pave', 'text', 'views'].includes(k)) cur[k] = sh[k];
   cur.views = (sh.views || []).map((v) => ({ ...v, rot: v.rot ? new THREE.Quaternion().fromArray(v.rot) : null }));
   syncInputs();
+  captionKey = editor.templateKey;   // the saved title and description belong to this shape: keep them
   editor.design = s.design;   // rebuilds the stone and lays the sheet out
   renderViewList(); markView(); layout(true); resize();
   return true;

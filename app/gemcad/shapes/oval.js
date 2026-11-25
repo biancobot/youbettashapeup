@@ -3,11 +3,11 @@
 // FDR749558450) or 4 mains (FDR733542179). Built the way ../fancy.js builds the marquise: a facet
 // that reaches the girdle touches the girdle polygon at a vertex chosen by radial azimuth, and its
 // azimuth is the outline normal there; the other facets are planes through three meet points.
-import { newTier } from '../design.js?v=101';
+import { newTier } from '../design.js?v=102';
 import {
   ellipseOutline, girdleVertices, vertexNear, lift, planeThrough, planeAz, mainThrough,
   mirrorX, mirrorY, zPlane, yPlane, xPlane, azPlane, perpPlane, classTier, girdleFromSupport, girdleEqualLength, plane3, intersect3, chordRun,
-} from '../shapebuild.js?v=101';
+} from '../shapebuild.js?v=102';
 
 /*
  * Positions measured on the IGI plots (units: the half-width; y along the length; radial azimuth
