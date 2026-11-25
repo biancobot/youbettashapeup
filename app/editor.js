@@ -1,7 +1,7 @@
 // Design editor: tiers table, symmetry-aware index entry, cut-to-meet-point, .asc import/export.
-import { newTier, expandIndex, distanceThrough, parseAsc, toAsc, resetIds } from './gemcad/design.js?v=106';
-import { roundBrilliant } from './gemcad/generators.js?v=106';
-import { templates, preforms } from './gemcad/templates.js?v=106';
+import { newTier, expandIndex, distanceThrough, parseAsc, toAsc, resetIds } from './gemcad/design.js?v=109';
+import { roundBrilliant } from './gemcad/generators.js?v=109';
+import { templates, preforms } from './gemcad/templates.js?v=109';
 
 export function createEditor({ onChange, getSelectedVertex, saveText }) {
   let design = roundBrilliant();
@@ -126,7 +126,7 @@ export function createEditor({ onChange, getSelectedVertex, saveText }) {
     for (const p of (tpl && tpl.params) || []) {
       const lab = document.createElement('label'); lab.textContent = p.label + ' ';
       const inp = document.createElement('input'); inp.dataset.param = p.key; inp.title = p.title || p.key;
-      if (p.list) { inp.type = 'text'; inp.className = 'list'; inp.value = p.default.join(', '); }
+      if (p.list) { inp.type = 'text'; inp.className = 'list'; inp.value = p.default.map((x) => (x == null ? 'bend' : x)).join(', '); }
       else { inp.type = 'number'; inp.value = p.default; if (p.step) inp.step = p.step; if (p.min != null) inp.min = p.min; if (p.max != null) inp.max = p.max; }
       inp.addEventListener('change', () => loadTemplate());
       lab.appendChild(inp); pbox.appendChild(lab);
@@ -138,7 +138,14 @@ export function createEditor({ onChange, getSelectedVertex, saveText }) {
     const gf = parseInt(el('tpl-gf').value, 10); if (gf > 0) opts.girdleFacets = gf;
     for (const p of (tpl && tpl.params) || []) {
       const inp = pbox.querySelector(`input[data-param="${p.key}"]`); if (!inp) continue;
-      if (p.list) { const v = inp.value.split(/[\s,;]+/).filter(Boolean).map(Number); if (v.length && v.every(Number.isFinite)) opts[p.key] = v; }
+      if (p.list) {
+        // comma-separated when there are commas (an entry may then be blank or a word such as "bend": it
+        // keeps its place as null, the template's default for that entry), else space-separated numbers
+        const parts = inp.value.includes(',') ? inp.value.split(',').map((t) => t.trim()) : inp.value.split(/[\s;]+/).filter(Boolean);
+        const v = parts.map((t) => (t === '' || !/^[-+.\d]/.test(t) ? null : Number(t)));
+        if (v.length && v.length === p.default.length && v.every((x) => x === null || Number.isFinite(x)) && (v.some((x) => x !== null) || p.default.some((x) => x == null))) opts[p.key] = v;
+        else if (v.length && v.every(Number.isFinite)) opts[p.key] = v;
+      }
       else { const v = parseFloat(inp.value); if (Number.isFinite(v)) opts[p.key] = v; }
     }
     return opts;

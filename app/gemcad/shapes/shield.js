@@ -11,10 +11,10 @@
 // outline normal as azimuth, the rest pass through meet points. One mirror line: fold 1 + mirror.
 //
 // Orientation: width 2 along x, length along y, top edge at +y, point at -y (radial azimuth 270).
-import { newTier } from '../design.js?v=106';
+import { newTier } from '../design.js?v=109';
 import {
   rad, deg, norm360, polygonSupport, girdleVertices, vertexNear, vertexNearY, lift,
-  planeThrough, mirrorX, zPlane, yPlane, azPlane, perpPlane, classTier, girdleEqualLength, plane3, intersect3 } from '../shapebuild.js?v=106';
+  planeThrough, mirrorX, zPlane, yPlane, azPlane, perpPlane, classTier, girdleEqualLength, plane3, intersect3 } from '../shapebuild.js?v=109';
 
 /**
  * Shield outline, half-width 1 at the widest point, length 2 * ratio: a head arc of large radius
@@ -79,6 +79,7 @@ export function shieldStart({
   sideContact = null, wingContact = 330, starHeight = 0.6, lowerDepth = 0.6, culetPos = 0.5,
   gear = 96, girdleFacets = 128,
   frenchTip = true, tipHubHeight = 0.8, tipTable = 0.28, tipGirdle = 0.08,
+  junctions = null, ridgeJunctions = null, singleTip = false,
 } = {}) {
   const W = 2, L = ratio * W, H = crownHeight * W, g = girdle * W, Pd = pavilionDepth * W;
   const outline = shieldOutline(ratio, widest, headRadius, shoulder);
@@ -125,7 +126,13 @@ export function shieldStart({
     return sorted[((i + step * Math.round(f * count)) % n + n) % n];
   };
   const azT2 = azOf(outline.T2), azT1 = azOf(outline.T1);
-  const J1v = vertexNear(verts, azT2), J2v = vertexNear(verts, azT1), J3v = between(sideAz, wingContact, 0.5), J4v = between(wingContact, 270, 0.5);
+  // junctions: the four upper/lower girdle junctions' radial azimuths (head-shoulder, shoulder-belly,
+  // belly-wing, wing-point), else at the head/shoulder and shoulder/side tangency points and midway
+  // (an entry left null takes the default: the head-shoulder junction at the head/shoulder tangency, which
+  // keeps the head chord off the tight shoulder bend at any ratio)
+  const jAz = (i, dflt) => (junctions && junctions[i] != null ? vertexNear(verts, junctions[i]) : dflt());
+  const J1v = jAz(0, () => vertexNear(verts, azT2)), J2v = jAz(1, () => vertexNear(verts, azT1));
+  const J3v = jAz(2, () => between(sideAz, wingContact, 0.5)), J4v = jAz(3, () => between(wingContact, 270, 0.5));
   const zs = zPlane(starHeight * H);
   const Ths = intersect3(head, shoulderB, zs), Tsb = intersect3(shoulderB, belly, zs), Tbw = intersect3(belly, wing, zs);
   const chord = (name, vA, vB, apex, z, up) => addClass(name, plane3(lift(vA, z), lift(vB, z), apex, up));
@@ -150,14 +157,19 @@ export function shieldStart({
     const yMin = yP + 0.04 * L;
     if (V[1] < yMin) V = intersect3(wing, mirrorX(wing), yPlane(yMin));
     hub = V;
-    const Gv = vertexNearY(verts, yP + tipGirdle * L, 1), G = lift(Gv, 0);
+    // singleTip: the tip facet meets the girdle at the wing-point junction, over the pavilion's lower
+    // girdle junction, with one upper girdle facet from the wing contact to it (as on the pear)
+    const Gv = singleTip ? J4v : vertexNearY(verts, yP + tipGirdle * L, 1), G = lift(Gv, 0);
     addClass('C half-bezel', plane3(V, A4, T3, true));
-    // GIA's French tip has two small upper girdle facets beside each tip facet; on the shield's long
-    // lower side that run (wing contact to the tip facet's girdle point) is a quarter of the outline,
-    // so it is two chords meeting at the hub, with a junction midway by arc length
-    const J5v = between(wingContact, Gv.az, 0.5);
-    chord('B tip a', Wv, J5v, V, 0, true);
-    chord('B tip b', J5v, Gv, V, 0, true);
+    if (singleTip) chord('B tip', Wv, Gv, V, 0, true);
+    else {
+      // GIA's French tip has two small upper girdle facets beside each tip facet; on the shield's long
+      // lower side that run (wing contact to the tip facet's girdle point) is a quarter of the outline,
+      // so it is two chords meeting at the hub, with a junction midway by arc length
+      const J5v = between(wingContact, Gv.az, 0.5);
+      chord('B tip a', Wv, J5v, V, 0, true);
+      chord('B tip b', J5v, Gv, V, 0, true);
+    }
     addClass('tip', plane3(P, V, G, true));
   }
 
@@ -180,7 +192,27 @@ export function shieldStart({
   // lower girdle facets in pairs meeting at the same girdle junctions as the uppers, each pair's
   // junction on the ridge of its two mains at lowerDepth of the pavilion depth
   const jz = zPlane(-g - lowerDepth * Pd);
-  const Jhs = intersect3(mHead, mCorner, jz), Jcs = intersect3(mCorner, mSide, jz), Jsl = intersect3(mSide, mLower, jz), Jlp = intersect3(mLower, mPoint, jz);
+  // ridgeJunctions: the junctions' plan distances from the culet along the four ridges (head-shoulder,
+  // shoulder-belly, belly-wing, wing-point), which set the mains' widths; else all at lowerDepth
+  const onRidge = (a, b, r) => { let d = [a.n[1] * b.n[2] - a.n[2] * b.n[1], a.n[2] * b.n[0] - a.n[0] * b.n[2], a.n[0] * b.n[1] - a.n[1] * b.n[0]]; if (d[2] < 0) d = d.map((x) => -x); const k = r / Math.hypot(d[0], d[1]); return culet.map((c, i) => c + d[i] * k); };
+  const pairs = [[mHead, mCorner], [mCorner, mSide], [mSide, mLower], [mLower, mPoint]];
+  let [Jhs, Jcs, Jsl, Jlp] = pairs.map(([a, b], i) => (Array.isArray(ridgeJunctions) ? onRidge(a, b, ridgeJunctions[i]) : intersect3(a, b, jz)));
+  if (ridgeJunctions === 'even') {
+    // the four junctions placed (each 25-80% of the way from the culet to where its ridge reaches the
+    // girdle) to make the five mains as nearly equally wide as the ridges allow (a main's share depends
+    // on its steepness, so the far, shallow shoulder and point mains stay the narrowest), on average at
+    // lowerDepth of the pavilion depth
+    const ridge = pairs.map(([a, b]) => { let d = [a.n[1] * b.n[2] - a.n[2] * b.n[1], a.n[2] * b.n[0] - a.n[0] * b.n[2], a.n[0] * b.n[1] - a.n[1] * b.n[0]]; if (d[2] < 0) d = d.map((x) => -x); const top = (-g - culet[2]) / d[2]; return (f) => culet.map((c, i) => c + d[i] * f * top); });
+    const fs = []; for (let f = 0.25; f <= 0.8 + 0.001; f += 0.025) fs.push(f);
+    const fTarget = 1 - lowerDepth, widths = (a, b, c, k) => [2 * a[0], Math.hypot(a[0] - b[0], a[1] - b[1]), Math.hypot(b[0] - c[0], b[1] - c[1]), Math.hypot(c[0] - k[0], c[1] - k[1]), 2 * k[0]];
+    let best = null;
+    for (const f1 of fs) { const a = ridge[0](f1); for (const f2 of fs) { const b = ridge[1](f2); for (const f3 of fs) { const c = ridge[2](f3); for (const f4 of fs) { const k = ridge[3](f4);
+      const w = widths(a, b, c, k), mean = w.reduce((x, y) => x + y, 0) / w.length, fm = (f1 + f2 + f3 + f4) / 4;
+      const err = w.reduce((e, x) => e + ((x - mean) / mean) ** 2, 0) + 0.05 * [f1, f2, f3, f4].reduce((e, x) => e + (x - fm) ** 2, 0) + 2 * (fm - fTarget) ** 2;
+      if (!best || err < best.err) best = { err, J: [a, b, c, k] };
+    } } } }
+    [Jhs, Jcs, Jsl, Jlp] = best.J;
+  }
   chord('L head a', Hv, J1v, Jhs, -g, false);
   chord('L head b', J1v, Shv, Jhs, -g, false);
   chord('L shoulder a', Shv, J2v, Jcs, -g, false);
@@ -225,8 +257,19 @@ const french = [
   { key: 'tipTable', label: 'Tip table corner', default: 0.28, step: 0.01, title: 'Table apex distance from the point, fraction of the length' },
   { key: 'tipGirdle', label: 'Tip girdle point', default: 0.08, step: 0.01, title: 'Tip facet girdle point from the point, fraction of the length (short, so the tip facet digs little into the curved side)' },
 ];
+// the hand-drawn revision of the shield (bezels and mains at the head and shoulders kept; belly and
+// wing contacts lower; junctions midway between the contacts; the mains' side corners pushed out to
+// even their widths; one upper girdle facet each side of a French tip)
+const revised = { sideContact: 20, wingContact: 308.5, junctions: [null, null, 345, 295], ridgeJunctions: 'even', singleTip: true };
+const revisedParams = [
+  ...params.map((p) => (p.key === 'wingContact' ? { ...p, default: revised.wingContact } : p.key === 'lowerDepth' ? { ...p, title: 'The lower girdle junctions on the main ridges sit on average at this fraction of the pavilion depth; their spread evens out the mains\' widths' } : p)),
+  { key: 'sideContact', label: 'Belly contact', default: revised.sideContact, step: 0.5, title: 'Radial azimuth of the belly bezel and main contact (the widest point is at about 30)' },
+  { key: 'junctions', label: 'Girdle junctions', default: revised.junctions, list: true, title: 'Radial azimuths of the four upper/lower girdle junctions: head-shoulder and shoulder-belly ("bend": at the shoulder arc\'s ends, which keeps those chords off the tight bend at any ratio), belly-wing, wing-point' },
+];
 export const templates = {
   shield: { name: 'Shield brilliant, French tip (starting point)', note: 'Brilliant pattern on a shield outline (no lab template exists); French tip at the point.', params: [...params, ...french], make: (o = {}) => shieldStart({ ...o }) },
+  shieldRevised: { name: 'Shield brilliant, French tip, revised (starting point)', note: 'The hand-drawn revision: belly and wing bezels and mains lower, girdle junctions midway between the contacts, mains of even width, one upper girdle facet each side of the French tip.', params: [...revisedParams, ...french.filter((p) => p.key !== 'tipGirdle')], make: (o = {}) => shieldStart({ ...revised, ...o, singleTip: true }) },
+  shieldStdRevised: { name: 'Shield brilliant, uncorrected point, revised (starting point)', note: 'The hand-drawn revision with a shallow bezel at the point: belly and wing bezels and mains lower, girdle junctions midway between the contacts, mains of even width.', params: [...revisedParams, { key: 'pointAngle', label: 'Point bezel', default: 25, step: 0.5 }], make: (o = {}) => shieldStart({ ...revised, frenchTip: false, ...o }) },
   shieldStd: { name: 'Shield brilliant, uncorrected point (starting point)', note: 'Brilliant pattern on a shield outline with a shallow bezel at the point.', params: [...params, { key: 'pointAngle', label: 'Point bezel', default: 25, step: 0.5 }], make: (o = {}) => shieldStart({ frenchTip: false, ...o }) },
 };
 export const plots = [];

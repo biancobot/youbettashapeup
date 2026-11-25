@@ -64,11 +64,15 @@ The step cut was developed for emeralds, a brittle stone that cracks under the p
 
 ## Square Emerald Cut
 
-The square step cut with deeply clipped corners was first cut in Amsterdam in 1902 by Joseph Asscher, and is still widely known as the Asscher cut; it became a signature of art deco jewelry in the 1920s, and a reworked version with more facets was introduced by the Asscher company in 2001 as the Royal Asscher Cut. Seen face up its facets form a stair of concentric squares, an effect sometimes called the hall of mirrors or the windmill.
+The square step cut with deeply clipped corners was first cut in Amsterdam in 1902 by Joseph Asscher, and is still widely known as the Asscher cut; it became a signature of art deco jewelry in the 1920s. Seen face up its facets form a stair of concentric squares, an effect sometimes called the hall of mirrors or the windmill.
 
 ## Shield Brilliant
 
 The shield has been cut for centuries as a way of saving a crystal whose outline would not yield a round or a pear, which is why no two are quite alike and no laboratory publishes a template for it. It is most often seen as a pair of side stones flanking a larger center, pointing in toward it, though a well-cut shield holds its own as a center stone.
+
+## Shield Brilliant, French Tip
+
+The point is finished with a French tip, as on the marquise and the pear: small facets meeting at a hub in place of a single bezel.
 
 ## Kite Shield, Hexagonal Shield and Wide Shield, Step Cut
 
