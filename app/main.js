@@ -2,17 +2,17 @@ import * as THREE from '../vendor/three/three.module.js';
 import { LineSegments2 } from '../vendor/three/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from '../vendor/three/lines/LineSegmentsGeometry.js';
 import { LineMaterial } from '../vendor/three/lines/LineMaterial.js';
-import { designMesh, stoneStats } from './gemcad/mesh.js?v=93';
-import { createEditor } from './editor.js?v=93';
-import { createUnderlay } from './underlay.js?v=93';
-import { templates, plots } from './gemcad/templates.js?v=93';
+import { designMesh, stoneStats } from './gemcad/mesh.js?v=94';
+import { createEditor } from './editor.js?v=94';
+import { createUnderlay } from './underlay.js?v=94';
+import { templates, plots } from './gemcad/templates.js?v=94';
 window.__templates = { templates, plots };
-import { VIEWS, getView } from './views.js?v=93';
-import { captionFor } from './gemcad/captions.js?v=93';
-import { notesFor } from './gemcad/shapenotes.js?v=93';
-import { createPave, cobblestoneStonesGen, checkPacking, paveSizes, hexafoilStones, convexHull, rng } from './pave.js?v=93';
-import { weightEstimator, weightFamily, chartSize, CHART_SOURCE } from './gemcad/weights.js?v=93';
-import { singleCut } from './gemcad/shapes/oldcuts.js?v=93';
+import { VIEWS, getView } from './views.js?v=94';
+import { captionFor } from './gemcad/captions.js?v=94';
+import { notesFor } from './gemcad/shapenotes.js?v=94';
+import { createPave, cobblestoneStonesGen, checkPacking, paveSizes, hexafoilStones, convexHull, rng } from './pave.js?v=94';
+import { weightEstimator, weightFamily, chartSize, CHART_SOURCE } from './gemcad/weights.js?v=94';
+import { singleCut } from './gemcad/shapes/oldcuts.js?v=94';
 
 // ----------------------------------------------------------------------------- state
 const params = new URLSearchParams(location.search);

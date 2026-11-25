@@ -17,11 +17,11 @@
 // L:W - r (y) including the bows. Least-squares fit of the plot outline: r = 0.60, sides bowed by
 // 0.07, ends by 0.03 (rms 0.010 of the half-width; a plain rectangle plus circle fits best at
 // r = 0.80 with rms 0.018 and leaves flats on which the girdle polygon bulges).
-import { newTier } from '../design.js?v=93';
+import { newTier } from '../design.js?v=94';
 import {
   rad, deg, marquiseSupport, outlineFromSupport, girdleVertices, vertexNear, lift,
   planeThrough, zPlane, yPlane, xPlane, classTier, girdleFromSupport, girdleEqualLength, plane3, intersect3,
-} from '../shapebuild.js?v=93';
+} from '../shapebuild.js?v=94';
 
 /**
  * Support function of a cushion outline: a rectangle with half-sides w and l whose sides bow out

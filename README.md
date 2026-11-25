@@ -14,7 +14,7 @@ companion produces STEP solids and exact vector SVG views with OpenCascade.
 npm start
 ```
 
-Then open `http://localhost:8000/`. The preview pane has a menu (the three dots at its top right) with Export PNG, Fit views to page and Fit preview. The page header shows its build number (currently 93); if it
+Then open `http://localhost:8000/`. The preview pane has a menu (the three dots at its top right) with Export PNG, Fit views to page and Fit preview. The page header shows its build number (currently 94); if it
 shows an older one after a `git pull`, hard-reload (Ctrl+Shift+R). Pass another port as `node tools/serve.mjs 8123` if 8000
 is taken. The site is static ES modules, so it must be served over HTTP (not `file://`).
 `diag.html` runs a step-by-step load check if the page does not come up.
@@ -62,7 +62,8 @@ is taken. The site is static ES modules, so it must be served over HTTP (not `fi
 Every traditional shape ships as a starting design reproducing its IGI plotting template, one
 template per variant found on the reports (see `designs/plots/README.md` for the sources):
 round brilliant (GIA proportions); marquise (French tips with GIA-wireframe proportions,
-uncorrected points, and the side-hub crown variant); pear and heart (French tip and uncorrected
+uncorrected points, and the side-hub crown variant, each with the IGI 8-main pavilion; French tips and
+uncorrected points also with the GIA wireframe's 6-main pavilion, the mains under the belly bezels); pear and heart (French tip and uncorrected
 point); oval (8-main and 4-main pavilions, and an 8-main variant with the bezels and mains at the heads); cushion brilliant; square cushion modified
 brilliant (the crushed-ice pattern of a GIA plotting diagram, optional square culet); princess;
 radiant; emerald; asscher; shield brilliant (French tip and uncorrected point, designed from the
