@@ -2,15 +2,15 @@ import * as THREE from '../vendor/three/three.module.js';
 import { LineSegments2 } from '../vendor/three/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from '../vendor/three/lines/LineSegmentsGeometry.js';
 import { LineMaterial } from '../vendor/three/lines/LineMaterial.js';
-import { designMesh, stoneStats } from './gemcad/mesh.js?v=74';
-import { createEditor } from './editor.js?v=74';
-import { createUnderlay } from './underlay.js?v=74';
-import { templates, plots } from './gemcad/templates.js?v=74';
+import { designMesh, stoneStats } from './gemcad/mesh.js?v=75';
+import { createEditor } from './editor.js?v=75';
+import { createUnderlay } from './underlay.js?v=75';
+import { templates, plots } from './gemcad/templates.js?v=75';
 window.__templates = { templates, plots };
-import { VIEWS, getView } from './views.js?v=74';
-import { createPave, cobblestoneStonesGen, checkPacking, paveSizes, hexafoilStones, convexHull, rng } from './pave.js?v=74';
-import { weightEstimator, weightFamily, chartSize, CHART_SOURCE } from './gemcad/weights.js?v=74';
-import { singleCut } from './gemcad/shapes/oldcuts.js?v=74';
+import { VIEWS, getView } from './views.js?v=75';
+import { createPave, cobblestoneStonesGen, checkPacking, paveSizes, hexafoilStones, convexHull, rng } from './pave.js?v=75';
+import { weightEstimator, weightFamily, chartSize, CHART_SOURCE } from './gemcad/weights.js?v=75';
+import { singleCut } from './gemcad/shapes/oldcuts.js?v=75';
 
 // ----------------------------------------------------------------------------- state
 const params = new URLSearchParams(location.search);
@@ -303,11 +303,22 @@ function renderTextBlock(tb, b, k, wrapWorld) {
   const cw = Math.ceil(Math.min(maxW, textW) + 2 * pad), ch = Math.ceil(lines.length * lineH + 2 * pad);
   tb.canvas.width = cw; tb.canvas.height = ch;
   ctx.clearRect(0, 0, cw, ch);
-  ctx.font = font; ctx.fillStyle = '#000'; ctx.textBaseline = 'alphabetic'; ctx.textAlign = b.align;
-  const x = b.align === 'left' ? pad : b.align === 'right' ? cw - pad : cw / 2;
-  lines.forEach((l, i) => ctx.fillText(l, x, pad + (i + 1) * lineH - px * 0.3));
+  ctx.font = font; ctx.fillStyle = '#000'; ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
+  // draw character by character (so the glyph boxes below match what is drawn) and record each
+  // glyph's ink box, canvas px: the pavé packs up to the letters, not the block's rectangle
+  const glyphs = [];
+  lines.forEach((l, i) => {
+    const lw = ctx.measureText(l).width, base = pad + (i + 1) * lineH - px * 0.3;
+    let x = b.align === 'left' ? pad : b.align === 'right' ? cw - pad - lw : (cw - lw) / 2;
+    for (const chr of l) {
+      const m = ctx.measureText(chr);
+      if (chr.trim()) { ctx.fillText(chr, x, base); glyphs.push([x - (m.actualBoundingBoxLeft || 0), base - (m.actualBoundingBoxAscent || px * 0.7), x + (m.actualBoundingBoxRight || m.width), base + (m.actualBoundingBoxDescent || 0)]); }
+      x += m.width;
+    }
+  });
+  tb.glyphs = glyphs;
   tb.texture.needsUpdate = true;
-  tb.w = cw / pxPerWorld; tb.h = ch / pxPerWorld;
+  tb.w = cw / pxPerWorld; tb.h = ch / pxPerWorld; tb.pxPerWorld = pxPerWorld;
 }
 /** Where a block goes when it has no position yet: the title near the top of the page, the description under it. */
 function defaultTextPos(id, h) {
@@ -322,7 +333,7 @@ function updateText() {
   for (const id of TEXT_IDS) {
     const b = state.sheet.text[id];
     let tb = textBlocks.get(id);
-    if (!b.enabled || !String(b.text).trim()) { if (tb) tb.mesh.visible = false; b.rect = null; continue; }
+    if (!b.enabled || !String(b.text).trim()) { if (tb) tb.mesh.visible = false; b.rect = null; b.glyphs = null; continue; }
     if (!tb) {
       const canvas = document.createElement('canvas'), texture = new THREE.CanvasTexture(canvas);
       texture.colorSpace = THREE.SRGBColorSpace; texture.anisotropy = 4;
@@ -335,6 +346,9 @@ function updateText() {
     if (!b.pos) b.pos = defaultTextPos(id, tb.h);
     tb.mesh.position.set(b.pos[0], b.pos[1], 4); tb.mesh.scale.set(tb.w, tb.h, 1); tb.mesh.visible = true;
     b.rect = { minX: b.pos[0] - tb.w / 2, maxX: b.pos[0] + tb.w / 2, minY: b.pos[1] - tb.h / 2, maxY: b.pos[1] + tb.h / 2 };
+    // the glyph boxes in world coordinates (canvas y runs down), counter-clockwise polygons for the packer
+    const ox = b.rect.minX, oy = b.rect.maxY, k1 = 1 / tb.pxPerWorld;
+    b.glyphs = tb.glyphs.map(([x0, y0, x1, y1]) => [[ox + x0 * k1, oy - y1 * k1], [ox + x1 * k1, oy - y1 * k1], [ox + x1 * k1, oy - y0 * k1], [ox + x0 * k1, oy - y0 * k1]]);
   }
 }
 /** The text block under a screen point, if any. */
@@ -371,7 +385,7 @@ function paveObstacles() {
     for (let i = 0; i < a.length; i += 3) { v.set(a[i], a[i + 1], a[i + 2]).applyQuaternion(inst.q); pts.push([inst.pos[0] + v.x * sc, inst.pos[1] + v.y * sc]); }
     out.push(convexHull(pts));
   }
-  for (const id of TEXT_IDS) { const b = state.sheet.text[id]; if (b.rect) { const t = b.rect; out.push([[t.minX, t.minY], [t.maxX, t.minY], [t.maxX, t.maxY], [t.minX, t.maxY]]); } }   // counter-clockwise, as the hulls
+  for (const id of TEXT_IDS) { const b = state.sheet.text[id]; if (b.rect && b.glyphs) out.push(...b.glyphs); }   // one box per letter, so the stones pack up to the characters
   return out;
 }
 function updatePave() {

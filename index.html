@@ -80,7 +80,7 @@
   <div id="app">
     <aside id="panel">
       <div>
-        <h1>Gem Facet Designer <span class="build" title="Build number; if it does not match the README, hard-reload or git pull">build 74</span></h1>
+        <h1>Gem Facet Designer <span class="build" title="Build number; if it does not match the README, hard-reload or git pull">build 75</span></h1>
         <div class="hint">GemCad-style facet design: every facet is a plane by angle, index and distance; the stone is their intersection. Drag to rotate, shift-drag to roll, scroll to zoom, right-drag to pan, 0 or Home to reset the zoom and pan, click a vertex to pick a meet point.</div>
       </div>
 
@@ -220,7 +220,7 @@
         </div>
         <div class="row"><span><label><input type="checkbox" id="tdbold"> bold</label> <label><input type="checkbox" id="tditalic"> italic</label> <label><input type="checkbox" id="tdlock"> lock</label></span>
           <span><button id="tdcx" title="Centre the description horizontally on the page">&#8660;</button> <button id="tdcy" title="Centre the description vertically on the page">&#8661;</button> <button id="tdreset" title="Put the description back at its default place">&#8634;</button></span></div>
-        <div class="hint">A title and a description drawn on the sheet and exported with it: drag either to move it, &#8660; and &#8661; centre it on the page, &#8634; puts it back (the title near the top, the description under it), <b>lock</b> stops drags moving it. Sizes are in points at the page scale, as they print. With the background on, the pavé stones fill the space right up to the text blocks.</div>
+        <div class="hint">A title and a description drawn on the sheet and exported with it: drag either to move it, &#8660; and &#8661; centre it on the page, &#8634; puts it back (the title near the top, the description under it), <b>lock</b> stops drags moving it. Sizes are in points at the page scale, as they print. With the background on, the pavé stones pack right up to the letters themselves (each character is an obstacle), not just the block's rectangle.</div>
       </div>
 
       <div class="group">
@@ -301,6 +301,6 @@
       const el = document.getElementById('info'); if (el) { el.style.color = '#b00020'; el.textContent = 'Load error: ' + (e.reason && e.reason.message || e.reason); }
     });
   </script>
-  <script type="module" src="./app/main.js?v=74"></script>
+  <script type="module" src="./app/main.js?v=75"></script>
 </body>
 </html>
