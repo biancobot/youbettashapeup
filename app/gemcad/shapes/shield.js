@@ -11,10 +11,10 @@
 // outline normal as azimuth, the rest pass through meet points. One mirror line: fold 1 + mirror.
 //
 // Orientation: width 2 along x, length along y, top edge at +y, point at -y (radial azimuth 270).
-import { newTier } from '../design.js?v=116';
+import { newTier } from '../design.js?v=117';
 import {
   rad, deg, norm360, polygonSupport, girdleVertices, vertexNear, vertexNearY, lift,
-  planeThrough, mirrorX, zPlane, yPlane, azPlane, perpPlane, classTier, girdleEqualLength, plane3, intersect3 } from '../shapebuild.js?v=116';
+  planeThrough, mirrorX, zPlane, yPlane, azPlane, perpPlane, classTier, girdleEqualLength, plane3, intersect3 } from '../shapebuild.js?v=117';
 
 /**
  * Shield outline, half-width 1 at the widest point, length 2 * ratio: a head arc of large radius
@@ -320,14 +320,15 @@ const french = [
 // wing contacts lower; junctions midway between the contacts; the mains' side corners pushed out to
 // even their widths; one upper girdle facet each side of a French tip)
 const revised = { headRadius: 3.0, sideContact: 20, wingContact: 308.5, junctions: [null, null, 345, 295], ridgeJunctions: null, lowerDepth: 0.75, culetPos: 1 / 3, singleTip: true };
-// the first shield's adjustments, from three markups: every upper/lower girdle junction where the ridge
+// the first shield's adjustments, from four markups: the wing-point junctions halfway along the girdle
+// between the wing bezel contact and the point; every other upper/lower girdle junction where the ridge
 // between the mains either side of it reaches the girdle, so each girdle junction, the lower girdle
 // facets' junction on the ridge and the culet lie on one straight line (as on a round brilliant); the
 // shoulder mains widened by moving their corners up the ridges, and the corners beside the point main at
 // 75% of the pavilion depth. Junctions halfway between the bezel contacts were tried: the facets across
 // the shoulder bend then cut the girdle away, and a corner on the straight line from a halfway junction to
 // the culet is impossible (a main through the culet and that corner takes in the junction itself).
-const firstShield = { onRidges: [true, true, true, true], cornerDepths: [0.6, 0.65, 0.75, 0.75] };
+const firstShield = { onRidges: [true, true, true, false], halfway: [false, false, false, true], cornerDepths: [0.6, 0.65, 0.75, 0.75] };
 const revisedParams = [
   ...params.map((p) => (p.key === 'wingContact' ? { ...p, default: revised.wingContact } : p.key === 'headRadius' ? { ...p, default: revised.headRadius, title: 'Radius of the head arc, half-widths (large = nearly flat); below about 3 (with the culet a third of the way down) the upper and lower girdle facets across the head dig through a 4% girdle' } : p.key === 'lowerDepth' ? { ...p, default: revised.lowerDepth, title: 'The mains\' side corners (the lower girdle junctions on the main ridges), all at this fraction of the pavilion depth: deep corners make slim kites that radiate from the culet like a star' } : p.key === 'culetPos' ? { ...p, default: revised.culetPos, title: 'Fraction of the length from the top; a third of the way down puts the culet two thirds of the way from the point to the head' } : p)),
   { key: 'sideContact', label: 'Belly contact', default: revised.sideContact, step: 0.5, title: 'Radial azimuth of the belly bezel and main contact (the widest point is at about 30)' },
