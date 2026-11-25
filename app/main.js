@@ -2,21 +2,22 @@ import * as THREE from '../vendor/three/three.module.js';
 import { LineSegments2 } from '../vendor/three/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from '../vendor/three/lines/LineSegmentsGeometry.js';
 import { LineMaterial } from '../vendor/three/lines/LineMaterial.js';
-import { designMesh, stoneStats } from './gemcad/mesh.js?v=82';
-import { createEditor } from './editor.js?v=82';
-import { createUnderlay } from './underlay.js?v=82';
-import { templates, plots } from './gemcad/templates.js?v=82';
+import { designMesh, stoneStats } from './gemcad/mesh.js?v=83';
+import { createEditor } from './editor.js?v=83';
+import { createUnderlay } from './underlay.js?v=83';
+import { templates, plots } from './gemcad/templates.js?v=83';
 window.__templates = { templates, plots };
-import { VIEWS, getView } from './views.js?v=82';
-import { captionFor } from './gemcad/captions.js?v=82';
-import { createPave, cobblestoneStonesGen, checkPacking, paveSizes, hexafoilStones, convexHull, rng } from './pave.js?v=82';
-import { weightEstimator, weightFamily, chartSize, CHART_SOURCE } from './gemcad/weights.js?v=82';
-import { singleCut } from './gemcad/shapes/oldcuts.js?v=82';
+import { VIEWS, getView } from './views.js?v=83';
+import { captionFor } from './gemcad/captions.js?v=83';
+import { createPave, cobblestoneStonesGen, checkPacking, paveSizes, hexafoilStones, convexHull, rng } from './pave.js?v=83';
+import { weightEstimator, weightFamily, chartSize, CHART_SOURCE } from './gemcad/weights.js?v=83';
+import { singleCut } from './gemcad/shapes/oldcuts.js?v=83';
 
 // ----------------------------------------------------------------------------- state
 const params = new URLSearchParams(location.search);
 const state = {
   shapeId: 'design',
+  selected: 'base',   // the view the View buttons turn: 'base' or a projected view's id (the last added view, or the one clicked)
   viewId: params.get('view') || 'front',
   lineWidth: parseFloat(params.get('lw') || '1.5'),
   girdleLines: params.get('girdle') !== '0',
@@ -604,6 +605,22 @@ new ResizeObserver(resize).observe(stage);
 // ----------------------------------------------------------------------------- rotation
 let drag = null;
 /** The 3D view under a pointer position (world-space bounding boxes), or null for the base. */
+/** The view (base or projected) whose bounding box is under a screen point, the smallest when they overlap. */
+function hitInstance(clientX, clientY) {
+  if (camera !== orthoCamera) return null;
+  const rect = canvas.getBoundingClientRect();
+  const nx = ((clientX - rect.left) / rect.width) * 2 - 1, ny = 1 - ((clientY - rect.top) / rect.height) * 2;
+  const wx = camera.position.x + (nx * (camera.right - camera.left)) / 2, wy = camera.position.y + (ny * (camera.top - camera.bottom)) / 2;
+  let best = null, bestArea = Infinity;
+  for (const [id, inst] of instances) {
+    if (!inst.bbox) continue;
+    const b = inst.bbox, p = inst.pos;
+    if (wx < p[0] + b.minX || wx > p[0] + b.maxX || wy < p[1] + b.minY || wy > p[1] + b.maxY) continue;
+    const area = (b.maxX - b.minX) * (b.maxY - b.minY);
+    if (area < bestArea) { best = id; bestArea = area; }
+  }
+  return best;
+}
 function hitView3d(clientX, clientY) {
   if (camera !== orthoCamera || !state.sheet.views.some((v) => v.kind === '3d')) return null;
   const rect = canvas.getBoundingClientRect();
@@ -677,6 +694,8 @@ canvas.addEventListener('pointermove', (e) => {
 canvas.addEventListener('pointerup', (e) => {
   if (drag && drag.moved && state.sheet.pave.enabled && !drag.pan) layout(true);   // the free area changed: repack the pavé
   if (drag && !drag.moved) {
+    const hitId = hitInstance(e.clientX, e.clientY);
+    if (hitId && hitId !== state.selected) selectView(hitId);
     const v = pickVertex(e.clientX, e.clientY);
     selectedVertex = v;
     updateMeetPoints();
@@ -736,8 +755,21 @@ function fitViewsToPage(fraction = state.sheet.page.fit) {
 }
 
 let anim = null;
+/** Select a view: the View buttons then turn it; the base is the default. */
+function selectView(id) {
+  state.selected = instances.has(id) ? id : 'base';
+  for (const row of document.querySelectorAll('#viewlist .viewrow')) row.classList.toggle('selected', row.dataset.id === state.selected);
+}
 function snapTo(viewId, instant = false) {
   const v = getView(viewId);
+  const sel = state.selected !== 'base' && state.sheet.views.find((x) => x.id === state.selected);
+  if (sel) {
+    // turn the selected view to this orientation (absolute, as the base would show it): a 3D view in
+    // place; a projected view becomes a free 3D view, since a projection cannot hold an orientation of its own
+    const parent = instances.get(sel.parent); if (!parent) return;
+    sel.kind = '3d'; sel.rot = v.q.clone().multiply(parent.q.clone().invert()); sel.offset = sel.offset || [0, 0]; sel.scale = sel.scale || 1;
+    renderViewList(); layout(true); return;
+  }
   state.viewId = v.id;
   markView();
   if (instant) { baseQ.copy(v.q); anim = null; layout(false); return; }
@@ -819,6 +851,7 @@ function addView(parentId, dir, kind = 'ortho') {
   state.sheet.views.push({ id, parent: parentId, dir, gap: null, kind, rot: kind === '3d' ? ISO_TILT() : null, locked: false, hidden: false, offset: [0, 0], scale: 1 });
   renderViewList();
   layout(true);
+  selectView(id);   // the last added view is the one the View buttons turn
   return id;
 }
 /**
@@ -850,11 +883,13 @@ function removeView(id) {
   state.sheet.views = state.sheet.views.filter((v) => !drop.has(v.id));
   renderViewList();
   layout(true);
+  if (drop.has(state.selected)) selectView('base');
 }
 function clearViews() {
   state.sheet.views = [];
   renderViewList();
   layout(true);
+  selectView('base');
 }
 function viewLabel(id) {
   if (id === 'base') return `Base (${state.viewId === 'custom' ? 'custom' : getView(state.viewId).label})`;
@@ -869,7 +904,9 @@ function renderViewList() {
   list.innerHTML = '';
   for (const id of allViewIds()) {
     const row = document.createElement('div');
-    row.className = 'viewrow';
+    row.className = 'viewrow' + (id === state.selected ? ' selected' : '');
+    row.dataset.id = id; row.title = 'Click to select this view: the View buttons then turn it';
+    row.addEventListener('click', (e) => { if (/^(INPUT|BUTTON|SELECT|LABEL)$/.test(e.target.tagName)) return; selectView(id); });
     const name = document.createElement('span');
     name.className = 'viewname';
     name.textContent = viewLabel(id);
@@ -1218,7 +1255,7 @@ requestAnimationFrame(frame);
 
 // Exposed for the screenshot tool and for scripting.
 window.__viewer = {
-  state, setDesign, snapTo, exportPNG, resize, addView, removeView, clearViews, resetView3d, snapCentre, snapCentreText, resetTextPos, hitText, applyCaption, fitView, fitViewsToPage, editor, getSetup, applySetup, paveInfo: () => paveInfo, paveStones: () => pave.lastStones, pageRect, instances, camera: () => camera, gridCells: () => gridLines.userData.cells,
+  state, setDesign, snapTo, exportPNG, resize, addView, removeView, clearViews, resetView3d, snapCentre, snapCentreText, resetTextPos, hitText, applyCaption, selectView, hitInstance, fitView, fitViewsToPage, editor, getSetup, applySetup, paveInfo: () => paveInfo, paveStones: () => pave.lastStones, pageRect, instances, camera: () => camera, gridCells: () => gridLines.userData.cells,
   loadShape(id) { const { templates } = window.__templates; if (templates[id]) editor.design = templates[id].make(); },
   setLineWidth(v) { state.lineWidth = v; lineMat.linewidth = v; hiddenMat.linewidth = v; pave.setLineWidth(v); },
   setGirdleLines(v) { state.girdleLines = v; layout(true); },
