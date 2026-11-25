@@ -42,6 +42,10 @@ As on the four-main marquise, four pavilion mains, one under each shoulder bezel
 
 The cushion is the direct descendant of the old mine cut and was the dominant diamond shape for most of the nineteenth century, before the round brilliant took over. Some of the most famous diamonds in the world are cushions, among them the 45.52-carat Hope Diamond in Washington and the 140-carat Regent in the Louvre.
 
+## Cushion Brilliant, Large Culet
+
+This version keeps a culet: rather than meeting at a point, the pavilion mains stop at a small flat rectangle along the length, a reminder of the large open culets of the old mine cuts the cushion came from.
+
 ## Square Cushion Modified Brilliant
 
 The "crushed ice" cushion is a modern variant, developed as cutters looked for more sparkle from square rough: its pavilion is broken into many small facets that scatter light in a glittering, broken pattern rather than the bold flashes of a classic cushion. Grading laboratories distinguish it from the plain cushion brilliant by its facet arrangement, and the two can look quite different side by side.
