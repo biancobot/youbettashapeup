@@ -22,6 +22,10 @@ Here only four pavilion mains, one under each wing bezel, meet at the culet in a
 
 The pear is the oldest of the fancy brilliants: Lodewyk van Berquem of Bruges is credited with cutting the first pendeloque, a faceted teardrop, in the 1450s, soon after the invention of the scaif, the diamond-charged polishing wheel that made symmetrical facets possible. The largest polished diamond in the world, the 530-carat Great Star of Africa cut from the Cullinan in 1908, is a pear.
 
+## Pear Brilliant, French Tip
+
+The point is finished with a French tip, as on the marquise: small facets meeting at a hub in place of a single bezel.
+
 ## Heart Brilliant
 
 A heart-shaped diamond is recorded as early as 1562, when Mary, Queen of Scots, sent one in a ring to Elizabeth I of England as a token of goodwill between the two queens. The shape is in effect a pear with a cleft cut into its head, often from the flat, triangular twinned crystals called macles; the cleft is cut after the main faceting, frequently by a different hand, and the symmetry of the two lobes stands or falls on that one cut landing exactly on the stone's axis.
