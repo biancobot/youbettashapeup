@@ -9,7 +9,7 @@ import * as THREE from '../vendor/three/three.module.js';
 import { LineSegments2 } from '../vendor/three/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from '../vendor/three/lines/LineSegmentsGeometry.js';
 import { LineMaterial } from '../vendor/three/lines/LineMaterial.js';
-import { CHART_CARATS } from './gemcad/weights.js?v=78';
+import { CHART_CARATS } from './gemcad/weights.js?v=79';
 
 /** Deterministic random numbers so a layout is stable until reseeded. */
 function rng(seed) {
@@ -279,11 +279,11 @@ function makeLabel(text, worldHeight, opacity, sub = null) {   // worldHeight: l
 export { rng };
 export function createPave(scene, occluderMat) {
   const group = new THREE.Group(); group.position.z = -3; scene.add(group);
-  let mats = [], lastKey = null, count = 0, resolution = [1, 1], lineWidth = 1.5;
+  let mats = [], labels = [], labelOpacity = 1, lastKey = null, count = 0, resolution = [1, 1], lineWidth = 1.5;
   function clear() {
     for (const ch of [...group.children]) { group.remove(ch); ch.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material && o.material.map) o.material.map.dispose(); }); }
     for (const m of mats) m.dispose();
-    mats = []; count = 0; lastKey = null;
+    mats = []; labels = []; count = 0; lastKey = null;
   }
   /** Append the segment positions `src` (x y z triples) transformed by the stone's placement to `dst`. */
   const appendTransformed = (dst, src, st) => {
@@ -310,9 +310,10 @@ export function createPave(scene, occluderMat) {
       const dst = lines[bucketOf(st.opacity)];
       if (st.label) {
         appendTransformed(dst, o.hullEdges, st);
-        const lbl = makeLabel(`${st.label} ct`, 0.42 * Math.min(...(Array.isArray(st.scale) ? st.scale : [st.scale])), st.opacity, st.mm || null);   // label height: 0.21 of the stone's width; the size in mm under the weight
+        // label height: 0.21 of the stone's width; the size in mm under the weight; its own opacity, set apart from the stones'
+        const lbl = makeLabel(`${st.label} ct`, 0.42 * Math.min(...(Array.isArray(st.scale) ? st.scale : [st.scale])), labelOpacity, st.mm || null);
         lbl.position.set(st.x, st.y, 0.1);
-        group.add(lbl);
+        group.add(lbl); labels.push(lbl);
       } else {
         const src = st.kind === 'single' && o.single ? o.single : o;
         appendTransformed(meshPos, src.meshPositions, st);
@@ -343,7 +344,9 @@ export function createPave(scene, occluderMat) {
   }
   function setResolution(w, h) { resolution = [w, h]; for (const m of mats) m.resolution.set(w, h); }
   function setLineWidth(lw) { const k = lw / (lineWidth || 1); lineWidth = lw; for (const m of mats) m.linewidth = m.linewidth * k; }
-  return { group, build, clear, setResolution, setLineWidth, get count() { return count; }, set visible(v) { group.visible = v; }, get visible() { return group.visible; } };
+  /** Opacity of the carat and size labels (the stones keep their own). */
+  function setLabelOpacity(v) { labelOpacity = v; for (const l of labels) l.material.opacity = v; }
+  return { group, build, clear, setResolution, setLineWidth, setLabelOpacity, get count() { return count; }, set visible(v) { group.visible = v; }, get visible() { return group.visible; } };
 }
 
 /**

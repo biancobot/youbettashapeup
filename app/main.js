@@ -2,16 +2,16 @@ import * as THREE from '../vendor/three/three.module.js';
 import { LineSegments2 } from '../vendor/three/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from '../vendor/three/lines/LineSegmentsGeometry.js';
 import { LineMaterial } from '../vendor/three/lines/LineMaterial.js';
-import { designMesh, stoneStats } from './gemcad/mesh.js?v=78';
-import { createEditor } from './editor.js?v=78';
-import { createUnderlay } from './underlay.js?v=78';
-import { templates, plots } from './gemcad/templates.js?v=78';
+import { designMesh, stoneStats } from './gemcad/mesh.js?v=79';
+import { createEditor } from './editor.js?v=79';
+import { createUnderlay } from './underlay.js?v=79';
+import { templates, plots } from './gemcad/templates.js?v=79';
 window.__templates = { templates, plots };
-import { VIEWS, getView } from './views.js?v=78';
-import { captionFor } from './gemcad/captions.js?v=78';
-import { createPave, cobblestoneStonesGen, checkPacking, paveSizes, hexafoilStones, convexHull, rng } from './pave.js?v=78';
-import { weightEstimator, weightFamily, chartSize, CHART_SOURCE } from './gemcad/weights.js?v=78';
-import { singleCut } from './gemcad/shapes/oldcuts.js?v=78';
+import { VIEWS, getView } from './views.js?v=79';
+import { captionFor } from './gemcad/captions.js?v=79';
+import { createPave, cobblestoneStonesGen, checkPacking, paveSizes, hexafoilStones, convexHull, rng } from './pave.js?v=79';
+import { weightEstimator, weightFamily, chartSize, CHART_SOURCE } from './gemcad/weights.js?v=79';
+import { singleCut } from './gemcad/shapes/oldcuts.js?v=79';
 
 // ----------------------------------------------------------------------------- state
 const params = new URLSearchParams(location.search);
@@ -40,7 +40,7 @@ const state = {
     page: { enabled: params.get('page') === '1', width: 8.5, height: 8.5, stoneWidth: 2, dpi: 300, fit: 0.8 },
     // Background: cobblestone pavé of the current stone in random sizes and orientations, or a hexafoil of marquises
     text: { auto: true, title: { enabled: false, text: 'Title', font: 'Georgia, serif', size: 28, bold: true, italic: false, align: 'center', width: 0.8, pos: null, locked: false }, description: { enabled: false, text: '', font: 'Georgia, serif', size: 12, bold: false, italic: false, align: 'center', width: 0.6, pos: null, locked: false } },
-    pave: { enabled: false, pattern: 'cobblestone', minOpacity: 0.15, maxOpacity: 0.6, maxCarats: 5, minCarats: 0.02, singleBelow: 0.2, mmPerInch: 25.4, margin: 0.03, seedCount: 6, samples: 40, patience: 80, maxCircles: 3000, seed: 1, labels: true, hexCarats: 3, hexOpacity: 0.35, hexCircles: true },
+    pave: { enabled: false, pattern: 'cobblestone', minOpacity: 0.15, maxOpacity: 0.6, maxCarats: 5, minCarats: 0.02, singleBelow: 0.2, mmPerInch: 25.4, margin: 0.03, seedCount: 6, samples: 40, patience: 80, maxCircles: 3000, seed: 1, labels: true, labelOpacity: 1, hexCarats: 3, hexOpacity: 0.35, hexCircles: true },
     nextId: 1,
   },
 };
@@ -411,7 +411,7 @@ function updatePave() {
   const worldPerMm = pageRect().k / pv.mmPerInch;
   const area = paveArea(), obstacles = paveObstacles();
   const r3 = (v) => Math.round(v * 50) / 50;
-  const key = JSON.stringify([state.shapeId, geo.faceCount, state.girdleLines, pattern, pv, [area.minX, area.maxX, area.minY, area.maxY].map(r3), obstacles.map((o) => [o.length, ...o[0].map(r3), ...o[Math.floor(o.length / 2)].map(r3)]), [...instances.values()].map((i) => [i.pos.map(r3), i.scale]), st.W, st.L]);
+  const key = JSON.stringify([state.shapeId, geo.faceCount, state.girdleLines, pattern, { ...pv, labelOpacity: undefined }, [area.minX, area.maxX, area.minY, area.maxY].map(r3), obstacles.map((o) => [o.length, ...o[0].map(r3), ...o[Math.floor(o.length / 2)].map(r3)]), [...instances.values()].map((i) => [i.pos.map(r3), i.scale]), st.W, st.L]);
   // the face-up outline (convex hull of the stone's plan) and its edges
   const pts = []; for (let i = 0; i < geo.vertices.length; i += 3) pts.push([geo.vertices[i], geo.vertices[i + 1]]);
   const hull = convexHull(pts);
@@ -468,6 +468,7 @@ function updatePave() {
     const sg = designMesh(singleCut({ girdleFacets: 64 }));
     updatePave.single = { girdleLines: state.girdleLines, meshPositions: sg.positions, hardEdges: sg.hardEdges, smoothPositions: new Float32Array(smoothEdgesFor(new THREE.Quaternion(), sg)) };
   }
+  pave.setLabelOpacity(pv.labelOpacity);
   pave.build({ key, stones, circles, circleOpacity: pv.hexOpacity, meshPositions: geo.positions, hardEdges: geo.hardEdges, smoothPositions: new Float32Array(smoothEdgesFor(new THREE.Quaternion())), hullEdges: new Float32Array(hullEdges), single: updatePave.single });
   pave.lastKey = key;
   const singles = stones.filter((q) => q.kind === 'single').length;
@@ -1008,8 +1009,8 @@ if (pageChk) {
 {
   const pv = state.sheet.pave, $ = (id) => document.getElementById(id);
   const bind = (id, key, parse = parseFloat, after = () => layout(true)) => { const el = $(id); if (!el) return; if (el.type === 'checkbox') el.checked = pv[key]; else el.value = pv[key]; el.addEventListener(el.type === 'range' ? 'change' : 'change', () => { pv[key] = el.type === 'checkbox' ? el.checked : parse(el.value); after(); }); };
-  bind('pave', 'enabled'); bind('pavepattern', 'pattern', String); bind('pavemin', 'minOpacity'); bind('pavemax', 'maxOpacity'); bind('pavemaxct', 'maxCarats'); bind('paveminct', 'minCarats'); bind('pavesingle', 'singleBelow'); bind('pavescale', 'mmPerInch'); bind('pavemargin', 'margin'); bind('paveseeds', 'seedCount', parseInt); bind('pavelabels', 'labels'); bind('pavehexct', 'hexCarats'); bind('pavehexop', 'hexOpacity'); bind('pavehexcircles', 'hexCircles');
-  for (const id of ['pavemin', 'pavemax', 'pavehexop']) { const el = $(id), v = $(id + 'v'); if (el && v) { v.textContent = `${Math.round(el.value * 100)}%`; el.addEventListener('input', () => { v.textContent = `${Math.round(el.value * 100)}%`; }); } }
+  bind('pave', 'enabled'); bind('pavepattern', 'pattern', String); bind('pavemin', 'minOpacity'); bind('pavemax', 'maxOpacity'); bind('pavemaxct', 'maxCarats'); bind('paveminct', 'minCarats'); bind('pavesingle', 'singleBelow'); bind('pavescale', 'mmPerInch'); bind('pavemargin', 'margin'); bind('paveseeds', 'seedCount', parseInt); bind('pavelabels', 'labels'); bind('pavelabelop', 'labelOpacity', parseFloat, () => pave.setLabelOpacity(pv.labelOpacity)); bind('pavehexct', 'hexCarats'); bind('pavehexop', 'hexOpacity'); bind('pavehexcircles', 'hexCircles');
+  for (const id of ['pavemin', 'pavemax', 'pavehexop', 'pavelabelop']) { const el = $(id), v = $(id + 'v'); if (el && v) { v.textContent = `${Math.round(el.value * 100)}%`; el.addEventListener('input', () => { v.textContent = `${Math.round(el.value * 100)}%`; }); } }
   const reseed = $('pavereseed'); if (reseed) reseed.addEventListener('click', () => { pv.seed = (pv.seed + 1) % 100000; layout(true); });
 }
 const fitBtn = document.getElementById('fitview'); if (fitBtn) fitBtn.addEventListener('click', fitView);
@@ -1105,8 +1106,8 @@ function syncInputs() {
   set('pagesize', Object.keys(sizes).find((k) => sizes[k][0] === pg.width && sizes[k][1] === pg.height) || 'custom');
   for (const id of TEXT_IDS) { const b = sh.text[id], p = id === 'title' ? 'tt' : 'td'; set(p + 'on', b.enabled); set(p + 'text', b.text); set(p + 'font', b.font); set(p + 'size', b.size); set(p + 'bold', b.bold); set(p + 'italic', b.italic); set(p + 'align', b.align); set(p + 'width', Math.round(b.width * 100)); set(p + 'lock', b.locked); }
   const pv = sh.pave;
-  for (const [id, key] of [['pave', 'enabled'], ['pavepattern', 'pattern'], ['pavemin', 'minOpacity'], ['pavemax', 'maxOpacity'], ['pavemaxct', 'maxCarats'], ['paveminct', 'minCarats'], ['pavesingle', 'singleBelow'], ['pavescale', 'mmPerInch'], ['pavemargin', 'margin'], ['paveseeds', 'seedCount'], ['pavelabels', 'labels'], ['pavehexct', 'hexCarats'], ['pavehexop', 'hexOpacity'], ['pavehexcircles', 'hexCircles']]) set(id, pv[key]);
-  for (const id of ['pavemin', 'pavemax', 'pavehexop']) if ($(id + 'v')) $(id + 'v').textContent = `${Math.round($(id).value * 100)}%`;
+  for (const [id, key] of [['pave', 'enabled'], ['pavepattern', 'pattern'], ['pavemin', 'minOpacity'], ['pavemax', 'maxOpacity'], ['pavemaxct', 'maxCarats'], ['paveminct', 'minCarats'], ['pavesingle', 'singleBelow'], ['pavescale', 'mmPerInch'], ['pavemargin', 'margin'], ['paveseeds', 'seedCount'], ['pavelabels', 'labels'], ['pavelabelop', 'labelOpacity'], ['pavehexct', 'hexCarats'], ['pavehexop', 'hexOpacity'], ['pavehexcircles', 'hexCircles']]) set(id, pv[key]);
+  for (const id of ['pavemin', 'pavemax', 'pavehexop', 'pavelabelop']) if ($(id + 'v')) $(id + 'v').textContent = `${Math.round($(id).value * 100)}%`;
 }
 function applySetup(s) {
   if (!s || s.app !== 'gem-facet-designer' || !s.sheet || !s.design) return false;
