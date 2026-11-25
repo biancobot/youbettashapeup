@@ -1,196 +1,72 @@
 # Captions
 
-A publishable title and description for every design, in descriptive language: shapes are named by their geometry, never by registered trade names, and nothing quotes a laboratory. Fill the sheet's title and description from these with the "Use the shape's caption" button in the Text group, or copy them from here.
+A publishable title per design and one description per shape (its variants share it), written as copy on what makes the shape special: shapes are named by their geometry, never by registered trade names, and nothing quotes a laboratory. The Text group fills the sheet's title and description from these.
 
 ## Round Brilliant
 
-*Template: Round brilliant (GIA proportions)*
+The round brilliant is the shape every other is measured against. Its fifty-seven facets were worked out to send light back to the eye from every angle, and no other cut returns more of it, with the fire and the flash that have made it the first choice for an engagement ring for a hundred years. Classic, symmetrical and endlessly versatile, it belongs in every setting ever made.
 
-The standard brilliant: 57 facets on a circular outline, with eight bezels and eight stars round the table, sixteen upper girdle facets, and a pavilion of eight mains with sixteen lower girdle facets meeting at a pointed culet. Proportions are drawn at the middle of the ranges generally regarded as best for light return: a 56% table, a crown angle of 34.5 degrees and a pavilion angle of 40.8 degrees.
+## Marquise Brilliant, French Tips / Marquise Brilliant, Pointed Tips / Marquise Brilliant, Side Hubs, French Tips / Marquise Brilliant, Side Hubs, Pointed Tips
 
-## Marquise Brilliant, French Tips
+Long, slender and pointed at both ends, the marquise makes a stone look larger than its weight and a hand look longer than it is. Its two points draw the eye along the finger, its brilliant faceting fills the whole length with light, and the silhouette is unmistakable from across a room. A cut with a sense of theatre.
 
-*Template: Marquise brilliant, French tips, GIA wireframe proportions*
+## Pear Brilliant, French Tip / Pear Brilliant, Pointed Tip
 
-A brilliant on a pointed, boat-shaped outline about twice as long as wide. At each tip the usual point bezel is replaced by a French tip: a hub on the axis where the two tip facets, two small upper girdle facets, the two wing bezels and two half-bezels meet, which protects the points and tidies the facets that converge there. Proportions follow a published reference wireframe: a 52% table with the hub 23% of the way in from each point.
+The pear brings together the softness of a rounded head and the drama of a single point, a teardrop that reads as elegant whether it hangs from an ear, sits at the throat or points down a finger. Its tapered outline flatters the hand, its brilliant facets light the whole drop, and it looks larger face up than a round of the same weight.
 
-## Marquise Brilliant, Pointed Tips
+## Heart Brilliant, French Tip / Heart Brilliant, Straighter Wings, French Tip / Heart Brilliant, Straighter Wings, Pointed Tip / Heart Brilliant, Pointed Tip
 
-*Template: Marquise brilliant, uncorrected points (starting point)*
+The heart is the most romantic of all the cuts, and the hardest to cut well: two matching lobes, a crisp cleft and a clean point have to be brought into perfect symmetry before the brilliant faceting can be laid over them. Done right, it is a declaration in a single stone, full of light and impossible to mistake for anything else.
 
-A brilliant on a pointed, boat-shaped outline about twice as long as wide, with a shallow bezel at each point and a star on either side of it, the way the shape is most often plotted. Eight bezels, eight stars and sixteen upper girdle facets in the crown; eight mains and sixteen lower girdle facets in the pavilion.
+## Oval Brilliant, Eight Mains / Oval Brilliant, Mains at the Ends / Oval Brilliant, Four Mains
 
-## Marquise Brilliant, Side Hubs, French Tips
+The oval has the brilliance of a round with a longer, more graceful line. It spreads its weight across a larger face than a round of the same carat, flatters the finger it sits on, and its gentle curves make an easy, modern alternative to the classic circle without giving up any of the sparkle.
 
-*Template: Marquise brilliant, side hubs, French tips (IGI FDR762535113)*
+## Cushion Brilliant / Cushion Brilliant, Pointed Culet
 
-A marquise brilliant whose crown has no single side bezel: on each side two half-bezels, two flank facets and a star meet at a hub a little inside the girdle, so the crown reads as a finer net of facets along the sides. The tips are French tips, with the facets that converge at each point gathered at a hub on the axis.
-
-## Marquise Brilliant, Side Hubs, Pointed Tips
-
-*Template: Marquise brilliant, side hubs, uncorrected points (IGI FDR762535113)*
-
-A marquise brilliant whose crown has no single side bezel: on each side two half-bezels, two flank facets and a star meet at a hub a little inside the girdle. Each point carries a shallow bezel with a star on either side.
-
-## Pear Brilliant, French Tip
-
-*Template: Pear brilliant, French tip (starting point)*
-
-A brilliant on a teardrop outline: a rounded head and shoulders running into sides that meet at a point. The crown has bezels at the head, the shoulders, the widest part and the lower sides, stars between them and upper girdle facets in pairs; the point is a French tip, with the facets that meet there gathered at a hub on the axis. The pavilion has a main under each bezel and lower girdle facets in pairs.
-
-## Pear Brilliant, Pointed Tip
-
-*Template: Pear brilliant, uncorrected point (starting point)*
-
-A brilliant on a teardrop outline: a rounded head and shoulders running into sides that meet at a point. The crown has bezels at the head, the shoulders, the widest part and the lower sides, a shallow bezel at the point, stars between them and upper girdle facets in pairs. The pavilion has a main under each bezel and lower girdle facets in pairs.
-
-## Heart Brilliant, French Tip
-
-*Template: Heart brilliant, French tip (starting point)*
-
-A brilliant on a heart outline: two rounded lobes meeting at a cleft above, and sides curving down to a point. The crown has a cleft facet, bezels at the lobes, the sides and the lower sides, stars and upper girdle facets; the point is a French tip. In the pavilion the lobe mains meet each other on the axis beneath the cleft, side mains sit at the widest part, a pair of point mains meets on the axis below the culet, and lower girdle facets fan between them. The girdle is thickest along the inner curves of the lobes, as it must be on any heart.
-
-## Heart Brilliant, Straighter Wings, French Tip
-
-*Template: Heart brilliant, hand-drawn profile, French tip*
-
-A heart brilliant on an outline with straighter lower sides, drawn from a hand sketch rather than a laboratory template: the lobes are the same, the wings run more directly to the point. The facets are those of the heart brilliant with a French tip.
-
-## Heart Brilliant, Straighter Wings, Pointed Tip
-
-*Template: Heart brilliant, hand-drawn profile, uncorrected point*
-
-A heart brilliant on an outline with straighter lower sides, drawn from a hand sketch: the lobes are the same, the wings run more directly to the point. The point carries a shallow bezel with a star on either side.
-
-## Heart Brilliant, Pointed Tip
-
-*Template: Heart brilliant, uncorrected point (starting point)*
-
-A brilliant on a heart outline: two rounded lobes meeting at a cleft above, and sides curving down to a point that carries a shallow bezel. The crown has a cleft facet, bezels at the lobes, the sides and the lower sides, stars and upper girdle facets. In the pavilion the lobe mains meet each other on the axis beneath the cleft, side mains sit at the widest part, a pair of point mains meets on the axis below the culet, and lower girdle facets fan between them.
-
-## Oval Brilliant, Eight Mains
-
-*Template: Oval brilliant, 8-main pavilion (starting point)*
-
-A brilliant on an elliptical outline, here about 1.4 times as long as wide. The crown has eight bezel kites with their girdle contacts at the shoulders and the sides, eight stars and sixteen upper girdle facets whose pairs meet on the girdle at the ends and the sides. The pavilion has eight mains under the bezels and sixteen lower girdle facets meeting at the culet.
-
-## Oval Brilliant, Mains at the Ends
-
-*Template: Oval brilliant, 8 mains at the heads (starting point)*
-
-A brilliant on an elliptical outline with the round brilliant’s arrangement laid over it: bezel kites at the ends, the shoulders and the sides, stars between them, and upper girdle facets in pairs meeting midway between the bezels. The pavilion has a main under every bezel and two lower girdle facets between each pair of mains. At a constant crown height and culet depth the end facets come out flatter than the side facets, which is the geometry behind the shape’s familiar dark bow-tie.
-
-## Oval Brilliant, Four Mains
-
-*Template: Oval brilliant, 4-main pavilion (starting point)*
-
-A brilliant on an elliptical outline whose pavilion has only four mains, set on the diagonals under the crown’s upper girdle junctions, with four lower girdle facets meeting at each of the two junctions on the long axis. The crown is the usual eight bezels, eight stars and sixteen upper girdle facets.
-
-## Cushion Brilliant
-
-*Template: Cushion brilliant (starting point)*
-
-A brilliant on a rounded rectangle, the sides bowed out a little and the corners rounded. The crown has eight bezel kites (two at the ends, two at the sides, four at the corners), eight stars and sixteen upper girdle facets; the pavilion eight mains and sixteen lower girdle facets, meeting at a small keel-shaped culet along the length. Shown here slightly longer than wide.
-
-## Cushion Brilliant, Pointed Culet
-
-*Template: Cushion brilliant, pointed culet (starting point)*
-
-A brilliant on a rounded rectangle, the sides bowed out a little and the corners rounded. The crown has eight bezel kites, eight stars and sixteen upper girdle facets; the pavilion eight mains and sixteen lower girdle facets, all meeting at a pointed culet.
+Soft corners, a pillow-shaped outline and a glow that is warmer and more diffused than a round brilliant: the cushion is the romantic’s choice, with a feel of candlelight and old jewellery about it. Its larger facets throw broad, bright flashes, and the rounded corners make it as comfortable to wear as it is to look at.
 
 ## Square Cushion Modified Brilliant
 
-*Template: Square cushion modified brilliant*
-
-A square cushion with a modified, more densely faceted pavilion of the kind often described as crushed ice. The crown is a cushion brilliant’s: an octagonal table, bezel kites at the sides and the corners, stars and upper girdle facets. The pavilion has a kite at each side and each corner touching the girdle, lower girdle facets between them, fans of three facets from a hub on each side, and four main kites meeting at the culet, 52 facets in all. The girdle is thickest at the corners, where the corner arcs are tightest.
+A square cushion whose pavilion has been cut into a shimmer of small facets, so the stone sparkles the way light plays on crushed ice. The soft, pillow-shaped outline keeps the cushion’s gentle charm while the dense faceting fills it with a restless, glittering light that never seems to settle.
 
 ## Square Modified Brilliant
 
-*Template: Princess cut (starting point)*
-
-A square brilliant with sharp corners, cut with its sides at the girdle straight and its pavilion in chevrons: the corner facets run from each corner to the culet and the sides are filled with rows of V-shaped facets that step down to the keel. The crown has a square table with bezels on the sides and the corners and stars between them. Keeps most of the weight of an octahedral crystal, which is why it is so widely cut.
+Crisp, square and sharp-cornered, with a pavilion of chevrons that light it from corner to corner: the square modified brilliant is the clean, contemporary answer to the round. It keeps more of the rough crystal than any other brilliant, which puts more stone in the ring for the money, and its straight lines sit perfectly in a modern setting.
 
 ## Cut-Cornered Rectangular Modified Brilliant
 
-*Template: Radiant (cut-cornered rectangular modified brilliant, starting point)*
-
-A rectangular brilliant with its four corners cut off, giving an octagonal outline. The crown is step-like at its edge, with a row of facets along each side and corner under a single row of bezels and stars; the pavilion is a brilliant pavilion of mains and lower girdle facets meeting at the culet. The combination gives a step-cut outline with a brilliant’s return of light.
+The cut-cornered rectangle takes the elegant outline of a step cut and fills it with brilliant-cut fire. Its clipped corners make it hard-wearing and easy to set, its seventy facets throw light from every part of the stone, and it reads as both tailored and dazzling at once.
 
 ## Emerald Cut
 
-*Template: Emerald cut (starting point)*
-
-A step cut on a rectangle with cut corners: the crown has three rows of long, flat facets parallel to the sides running down to the girdle, the pavilion three rows running down to a keel along the length. There are no bezels or stars; the whole stone reads as a hall of mirrors of straight reflections. Shown here about 1.4 times as long as wide.
+The emerald cut does not sparkle; it gleams. Long, open step facets turn the stone into a hall of mirrors, with broad flashes of light and shadow instead of a thousand tiny glints, and the clean rectangular outline has a cool, architectural glamour that nothing else matches. It asks for a clear stone, and rewards one.
 
 ## Square Emerald Cut
 
-*Template: Asscher / square emerald cut (IGI plot pattern)*
+The square emerald cut is the step cut at its most hypnotic: deep clipped corners, a high crown and a small table, so that seen face up the facets form a stair of concentric squares turning in to the centre. It has the poise of the art deco jewellery it is so often set in, and a quiet, deliberate glamour.
 
-A step cut on a square with deeply cut corners, so the outline is nearly octagonal. The crown has three rows of flat facets stepping down to the girdle; the pavilion steps down to a small square culet, and seen face up the steps form concentric squares turning in to the centre. A high crown and a small table are characteristic.
+## Shield Brilliant, French Tip / Shield Brilliant, Pointed Tip
 
-## Shield Brilliant, French Tip
+The shield is a shape with a story: a broad, gently curved top, rounded shoulders and sides that sweep in to a point, like the crest on a coat of arms. Rare enough to be noticed, its brilliant faceting fills the whole outline with light, and the strong, tapering silhouette makes a stone that is confident rather than pretty.
 
-*Template: Shield brilliant, French tip (starting point)*
+## Kite Shield, Step Cut / Hexagonal Shield, Step Cut / Wide Shield, Step Cut
 
-A brilliant on a shield outline: a gently curved top edge, rounded shoulders, and sides curving in to a point. The crown has bezels at the head, the shoulders, the widest part and the lower sides, with stars between them and upper girdle facets in pairs; the point is a French tip. The pavilion has a main under every bezel and under the point, with lower girdle facets in pairs. No laboratory publishes a template for the shape, so the pattern follows the pear’s.
+Six straight sides, a pointed base and rows of flat step facets that catch the light in clean, bold flashes: the step-cut shield is an architectural shape, more armour than ornament. It is cut to a stone’s own outline rather than a standard template, so no two are quite alike, and it looks as modern as anything cut this year.
 
-## Shield Brilliant, Pointed Tip
+## Triangular Brilliant, Curved Sides / Triangular Brilliant, Straight Sides / Triangular Brilliant, Corner Facets
 
-*Template: Shield brilliant, uncorrected point (starting point)*
-
-A brilliant on a shield outline: a gently curved top edge, rounded shoulders, and sides curving in to a point that carries a shallow bezel. The crown has bezels at the head, the shoulders, the widest part and the lower sides, with stars between them and upper girdle facets in pairs. The pavilion has a main under every bezel and under the point, with lower girdle facets in pairs.
-
-## Kite Shield, Step Cut
-
-*Template: Shield step cut, kite shield (starting point)*
-
-A step cut on a six-sided shield outline that comes to a point at the top as well as at the bottom, like a kite. The crown and pavilion are rows of flat facets parallel to the six sides, stepping down to the girdle and to a keel. Drawn from a photograph of a cut stone.
-
-## Hexagonal Shield, Step Cut
-
-*Template: Shield step cut, hexagonal shield (starting point)*
-
-A step cut on a long, six-sided shield outline, narrower than it is long. The crown and pavilion are rows of flat facets parallel to the six sides, stepping down to the girdle and to a keel. Drawn from a photograph of a cut stone.
-
-## Wide Shield, Step Cut
-
-*Template: Shield step cut, wide shield (starting point)*
-
-A step cut on a wide, six-sided shield outline with a flat top edge and short upper sides. The crown and pavilion are rows of flat facets parallel to the six sides, stepping down to the girdle and to a keel. Drawn from a photograph of a cut stone.
-
-## Triangular Brilliant, Curved Sides
-
-*Template: Trillion (starting point)*
-
-A brilliant on an equilateral triangle whose sides bow outward. On each side of the crown six triangular facets meet at a hub near the girdle: one over each girdle facet, two running to the corners of the triangular table, and a star on the table edge. The pavilion has, per side, a facet over each girdle facet meeting at a hub and two mains running from the hub to the culet at the centre. 43 facets.
-
-## Triangular Brilliant, Straight Sides
-
-*Template: Trillion, straight sides (starting point)*
-
-The same arrangement as the curved-sided triangular brilliant on a straight-sided equilateral triangle with one girdle facet per side: on each side six crown triangles meet at a hub, and the pavilion has one facet over the girdle and two mains per side. 25 facets.
-
-## Triangular Brilliant, Corner Facets
-
-*Template: Trillion, brilliant (starting point)*
-
-A triangular brilliant with bowed sides and a small girdle facet at each corner. On each side of the crown a hub beside each corner carries a triangle to the table corner and two narrow facets along the girdle, with a triangle between the hubs and a star along each table edge. The pavilion has, per side, four facets over the girdle meeting at a hub and two mains to the culet. 55 facets.
+Three sides, three points and a blaze of light: the triangular brilliant is pure geometry, with a wide, flat spread that makes it look far larger than its weight. Striking on its own and the classic companion to a larger centre stone, its bold outline and brilliant facets make it a cut for someone who wants to be noticed.
 
 ## Single Cut
 
-*Template: Single cut (eight cut), round (starting point)*
-
-The simplest brilliant: a round girdle with eight facets on the crown and eight on the pavilion, a table and (as drawn here) a pointed culet, 18 facets in all. Because the girdle is round and the facets are flat, the girdle is thinnest where each facet touches it and thickest where two facets meet. Used for the smallest stones, where a full brilliant’s facets would be too small to polish.
+The single cut is the brilliant stripped to its essentials: eight facets above, eight below, a table and a point. Cut this way, the tiniest stones keep crisp, bright flashes where a full brilliant’s facets would be too small to see, which is why it has set the sparkle in pavé work for a century.
 
 ## Old Mine Cut
 
-*Template: Old mine cut, cushion (starting point)*
-
-The brilliant as it was cut by hand before the modern round: a squarish cushion outline, a small table, a high and steep crown, a deep pavilion and a large flat culet that shows face up as a small square. The 58 facets are the modern brilliant’s (bezel and main kites at the sides, the ends and the corners, stars, and upper and lower girdle facets in pairs), with the lower girdle facets short and the girdle thick.
+The old mine cut is the brilliant as it was cut by candlelight: a squarish cushion with a small table, a high crown, a deep pavilion and an open culet, every one shaped by hand to the crystal it came from. It throws big, soft flashes rather than a modern glitter, and carries the romance of antique jewellery in every facet.
 
 ## Round Preform
 
-*Template: Blank: round preform only*
-
-A round girdle preform with no crown or pavilion facets: the starting shape for a design built facet by facet.
+A round preform with no facets yet: the beginning of a design.
 
