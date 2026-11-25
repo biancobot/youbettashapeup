@@ -11,10 +11,10 @@
 // outline normal as azimuth, the rest pass through meet points. One mirror line: fold 1 + mirror.
 //
 // Orientation: width 2 along x, length along y, top edge at +y, point at -y (radial azimuth 270).
-import { newTier } from '../design.js?v=113';
+import { newTier } from '../design.js?v=114';
 import {
   rad, deg, norm360, polygonSupport, girdleVertices, vertexNear, vertexNearY, lift,
-  planeThrough, mirrorX, zPlane, yPlane, azPlane, perpPlane, classTier, girdleEqualLength, plane3, intersect3 } from '../shapebuild.js?v=113';
+  planeThrough, mirrorX, zPlane, yPlane, azPlane, perpPlane, classTier, girdleEqualLength, plane3, intersect3 } from '../shapebuild.js?v=114';
 
 /**
  * Shield outline, half-width 1 at the widest point, length 2 * ratio: a head arc of large radius
@@ -79,7 +79,7 @@ export function shieldStart({
   sideContact = null, wingContact = 330, starHeight = 0.6, lowerDepth = 0.6, culetPos = 0.5,
   gear = 96, girdleFacets = 128,
   frenchTip = true, tipHubHeight = 0.8, tipTable = 0.28, tipGirdle = 0.08,
-  junctions = null, ridgeJunctions = null, singleTip = false, cornerDepths = null, bendOffsets = [0, 0],
+  junctions = null, ridgeJunctions = null, singleTip = false, cornerDepths = null, bendOffsets = [0, 0], halfway = false,
   pavilion = 'mains8', keelHead = 0.38, keelPoint = 0.34, keelTip = 0.84, sideCorners = [0.36, 0.32],
 } = {}) {
   const W = 2, L = ratio * W, H = crownHeight * W, g = girdle * W, Pd = pavilionDepth * W;
@@ -134,8 +134,15 @@ export function shieldStart({
   const jAz = (i, dflt) => (junctions && junctions[i] != null ? vertexNear(verts, junctions[i]) : dflt());
   // (bendOffsets: degrees from those two bends, head-shoulder towards the head and shoulder-belly towards
   // the belly being positive and negative; a few degrees keeps the chords off most of the tight bend)
-  const J1v = jAz(0, () => vertexNear(verts, azT2 + bendOffsets[0])), J2v = jAz(1, () => vertexNear(verts, azT1 + bendOffsets[1]));
-  const J3v = jAz(2, () => between(sideAz, wingContact, 0.5)), J4v = jAz(3, () => between(wingContact, 270, 0.5));
+  let J1v = jAz(0, () => vertexNear(verts, azT2 + bendOffsets[0])), J2v = jAz(1, () => vertexNear(verts, azT1 + bendOffsets[1]));
+  let J3v = jAz(2, () => between(sideAz, wingContact, 0.5)), J4v = jAz(3, () => between(wingContact, 270, 0.5));
+  // halfway: every junction midway along the girdle (by length) between the contacts either side of it
+  // (true for all four, or an array of four booleans)
+  const hw = (i) => (Array.isArray(halfway) ? !!halfway[i] : !!halfway);
+  if (hw(0)) J1v = between(90, Shv.az, 0.5);
+  if (hw(1)) J2v = between(Shv.az, Sv.az, 0.5);
+  if (hw(2)) J3v = between(Sv.az, Wv.az, 0.5);
+  if (hw(3)) J4v = between(Wv.az, 270, 0.5);
   const zs = zPlane(starHeight * H);
   const Ths = intersect3(head, shoulderB, zs), Tsb = intersect3(shoulderB, belly, zs), Tbw = intersect3(belly, wing, zs);
   const chord = (name, vA, vB, apex, z, up) => addClass(name, plane3(lift(vA, z), lift(vB, z), apex, up));
@@ -299,10 +306,12 @@ const french = [
 // wing contacts lower; junctions midway between the contacts; the mains' side corners pushed out to
 // even their widths; one upper girdle facet each side of a French tip)
 const revised = { headRadius: 3.0, sideContact: 20, wingContact: 308.5, junctions: [null, null, 345, 295], ridgeJunctions: null, lowerDepth: 0.75, culetPos: 1 / 3, singleTip: true };
-// the first shield's adjustments, from a second markup: the head-shoulder and shoulder-belly junctions 3
-// degrees off their bends (towards the head and the belly), the wing-point junction nearer the point,
+// the first shield's adjustments, from two markups: the head-shoulder and shoulder-belly junctions 3
+// degrees off their bends (towards the head and the belly: halfway between the bezel contacts the facets
+// across the shoulder bend cut through the girdle), the belly-wing and wing-point junctions halfway
+// between their bezel contacts along the girdle,
 // and the shoulder and point mains widened by moving their corners up the ridges
-const firstShield = { junctions: [null, null, 345, 287], bendOffsets: [3, -3], cornerDepths: [0.6, 0.65, 0.75, 0.5] };
+const firstShield = { junctions: [null, null, 345, 287], bendOffsets: [3, -3], halfway: [false, false, true, true], cornerDepths: [0.6, 0.65, 0.75, 0.5] };
 const revisedParams = [
   ...params.map((p) => (p.key === 'wingContact' ? { ...p, default: revised.wingContact } : p.key === 'headRadius' ? { ...p, default: revised.headRadius, title: 'Radius of the head arc, half-widths (large = nearly flat); below about 3 (with the culet a third of the way down) the upper and lower girdle facets across the head dig through a 4% girdle' } : p.key === 'lowerDepth' ? { ...p, default: revised.lowerDepth, title: 'The mains\' side corners (the lower girdle junctions on the main ridges), all at this fraction of the pavilion depth: deep corners make slim kites that radiate from the culet like a star' } : p.key === 'culetPos' ? { ...p, default: revised.culetPos, title: 'Fraction of the length from the top; a third of the way down puts the culet two thirds of the way from the point to the head' } : p)),
   { key: 'sideContact', label: 'Belly contact', default: revised.sideContact, step: 0.5, title: 'Radial azimuth of the belly bezel and main contact (the widest point is at about 30)' },
