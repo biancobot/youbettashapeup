@@ -9,7 +9,7 @@ import * as THREE from '../vendor/three/three.module.js';
 import { LineSegments2 } from '../vendor/three/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from '../vendor/three/lines/LineSegmentsGeometry.js';
 import { LineMaterial } from '../vendor/three/lines/LineMaterial.js';
-import { CHART_CARATS } from './gemcad/weights.js?v=124';
+import { CHART_CARATS } from './gemcad/weights.js?v=125';
 
 /** Deterministic random numbers so a layout is stable until reseeded. */
 function rng(seed) {
@@ -264,11 +264,12 @@ export function hexafoilStones(hull, area, obstacles, scale, opacity, random, wi
 
 /** Text as a transparent plane: the carat weight centred in an outline stone. */
 function makeLabel(text, worldHeight, opacity, sub = null) {   // worldHeight: label height in world units; sub: a smaller second line (the size in mm)
-  const c = document.createElement('canvas'); c.width = 256; c.height = 128;
-  const ctx = c.getContext('2d'); ctx.clearRect(0, 0, 256, 128);
+  // drawn at 512 x 256 so a label enlarged on a 300 DPI page stays sharp
+  const c = document.createElement('canvas'); c.width = 512; c.height = 256;
+  const ctx = c.getContext('2d'); ctx.clearRect(0, 0, 512, 256);
   ctx.fillStyle = '#000'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  if (sub) { ctx.font = '600 58px system-ui, sans-serif'; ctx.fillText(text, 128, 40); ctx.font = '500 34px system-ui, sans-serif'; ctx.fillText(sub, 128, 92); }
-  else { ctx.font = '600 72px system-ui, sans-serif'; ctx.fillText(text, 128, 64); }
+  if (sub) { ctx.font = '600 116px system-ui, sans-serif'; ctx.fillText(text, 256, 80, 504); ctx.font = '500 68px system-ui, sans-serif'; ctx.fillText(sub, 256, 184, 504); }
+  else { ctx.font = '600 144px system-ui, sans-serif'; ctx.fillText(text, 256, 128, 504); }
   const tex = new THREE.CanvasTexture(c); tex.minFilter = THREE.LinearFilter;
   const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity, depthTest: false });
   const m = new THREE.Mesh(new THREE.PlaneGeometry(worldHeight * 2, worldHeight), mat);
@@ -279,7 +280,7 @@ function makeLabel(text, worldHeight, opacity, sub = null) {   // worldHeight: l
 export { rng };
 export function createPave(scene, occluderMat) {
   const group = new THREE.Group(); group.position.z = -3; scene.add(group);
-  let mats = [], labels = [], labelOpacity = 1, lastKey = null, count = 0, resolution = [1, 1], lineWidth = 1.5;
+  let mats = [], labels = [], labelOpacity = 1, labelSize = 1, lastKey = null, count = 0, resolution = [1, 1], lineWidth = 1.5;
   function clear() {
     for (const ch of [...group.children]) { group.remove(ch); ch.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material && o.material.map) o.material.map.dispose(); }); }
     for (const m of mats) m.dispose();
@@ -310,8 +311,9 @@ export function createPave(scene, occluderMat) {
       const dst = lines[bucketOf(st.opacity)];
       if (st.label) {
         appendTransformed(dst, o.hullEdges, st);
-        // label height: 0.21 of the stone's width; the size in mm under the weight; its own opacity, set apart from the stones'
+        // label height: 0.21 of the stone's width at 100% label size; the size in mm under the weight; its own opacity, set apart from the stones'
         const lbl = makeLabel(`${st.label} ct`, 0.42 * Math.min(...(Array.isArray(st.scale) ? st.scale : [st.scale])), labelOpacity, st.mm || null);
+        lbl.scale.setScalar(labelSize);
         lbl.position.set(st.x, st.y, 0.1);
         group.add(lbl); labels.push(lbl);
       } else {
@@ -346,7 +348,9 @@ export function createPave(scene, occluderMat) {
   function setLineWidth(lw) { const k = lw / (lineWidth || 1); lineWidth = lw; for (const m of mats) m.linewidth = m.linewidth * k; }
   /** Opacity of the carat and size labels (the stones keep their own). */
   function setLabelOpacity(v) { labelOpacity = v; for (const l of labels) l.material.opacity = v; }
-  return { group, build, clear, setResolution, setLineWidth, setLabelOpacity, get count() { return count; }, set visible(v) { group.visible = v; }, get visible() { return group.visible; } };
+  /** Size of the carat and size labels: 1 is a weight line about a fifth of the stone's width high; no repacking. */
+  function setLabelSize(v) { labelSize = v; for (const l of labels) l.scale.setScalar(v); }
+  return { group, build, clear, setResolution, setLineWidth, setLabelOpacity, setLabelSize, get count() { return count; }, set visible(v) { group.visible = v; }, get visible() { return group.visible; } };
 }
 
 /**

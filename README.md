@@ -14,7 +14,7 @@ companion produces STEP solids and exact vector SVG views with OpenCascade.
 npm start
 ```
 
-Then open `http://localhost:8000/`. The preview pane has a menu (the three dots at its top right) with Export PNG, Fit views to page and Fit preview. The page header shows its build number (currently 124); if it
+Then open `http://localhost:8000/`. The preview pane has a menu (the three dots at its top right) with Export PNG, Fit views to page and Fit preview. The page header shows its build number (currently 125); if it
 shows an older one after a `git pull`, hard-reload (Ctrl+Shift+R). Pass another port as `node tools/serve.mjs 8123` if 8000
 is taken. The site is static ES modules, so it must be served over HTTP (not `file://`).
 `diag.html` runs a step-by-step load check if the page does not come up.
@@ -122,14 +122,21 @@ reframe (Ctrl/Cmd+Z undoes the last move of a view, a text block or the arrangem
 free area, right up to the views' outlines, with a cobblestone pavé of the current stone (a tangent
 circle packing: sizes from the largest chosen carat weight down to the smallest, each stone's
 circumscribed circle touching its neighbours, sized by the trade weight estimators, random orientations and opacities, with outline
-stones labelled 0.25 to 5 ct at the trade size chart's dimensions for shapes the estimators cover) or, for the marquise, a hexafoil:
+stones labelled 0.25 to 5 ct at the trade size chart's dimensions for shapes the estimators cover, the weight and size in mm
+at an adjustable label size) or, for the marquise, a hexafoil:
 the flower of life with a marquise in every lens and the construction circles drawn, at one size
 and opacity. Title and description text blocks (font, size, bold, italic, alignment and width, dragged into place
 or snapped to the page's centre, filled by the caption or by the shape notes) sit on the page with the
 views. **Info page** sets the whole sheet up in one click: an 8.5 × 8.5 in page, the shape's title and its
 shape note at the top, and six views (the face-up view with its left, right, above and below projections
 and the pavilion below those) fitted and centred in the space under the text; the gaps, stone width,
-positions and text stay adjustable afterwards. Without a page,
+positions and text stay adjustable afterwards. **Scatter stones** makes a coloring page: copies of the
+current stone placed at random on the page, clear of each other and of the title and description, each
+in its own size (widths in mm on the page, 20 mm at the least, between the chosen minimum and maximum)
+and its own 3D orientation (mostly face-up, tilted between two angles towards a random side as in the
+isometric view, with a chosen share turned over to show the pavilion). The smallest stone is the base
+and the rest are 3D views, so each can still be turned, moved and scaled; a seed reproduces a layout,
+each click draws a new one, and Ctrl+Z goes back to the sheet before it. Without a page,
 Export PNG writes the preview at 1x to 8x. The whole setup (design, form, views, page, grid,
 background, rotation) is kept in the browser's local storage as you work and restored on the next
 load; Save/Load setup writes and reads it as a .json file, Reset to defaults clears it (or open the

@@ -2,17 +2,17 @@ import * as THREE from '../vendor/three/three.module.js';
 import { LineSegments2 } from '../vendor/three/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from '../vendor/three/lines/LineSegmentsGeometry.js';
 import { LineMaterial } from '../vendor/three/lines/LineMaterial.js';
-import { designMesh, stoneStats } from './gemcad/mesh.js?v=124';
-import { createEditor } from './editor.js?v=124';
-import { createUnderlay } from './underlay.js?v=124';
-import { templates, plots } from './gemcad/templates.js?v=124';
+import { designMesh, stoneStats } from './gemcad/mesh.js?v=125';
+import { createEditor } from './editor.js?v=125';
+import { createUnderlay } from './underlay.js?v=125';
+import { templates, plots } from './gemcad/templates.js?v=125';
 window.__templates = { templates, plots };
-import { VIEWS, getView } from './views.js?v=124';
-import { captionFor } from './gemcad/captions.js?v=124';
-import { notesFor } from './gemcad/shapenotes.js?v=124';
-import { createPave, cobblestoneStonesGen, checkPacking, paveSizes, hexafoilStones, convexHull, rng } from './pave.js?v=124';
-import { weightEstimator, weightFamily, chartSize, CHART_SOURCE } from './gemcad/weights.js?v=124';
-import { singleCut } from './gemcad/shapes/oldcuts.js?v=124';
+import { VIEWS, getView } from './views.js?v=125';
+import { captionFor } from './gemcad/captions.js?v=125';
+import { notesFor } from './gemcad/shapenotes.js?v=125';
+import { createPave, cobblestoneStonesGen, checkPacking, paveSizes, hexafoilStones, convexHull, rng } from './pave.js?v=125';
+import { weightEstimator, weightFamily, chartSize, CHART_SOURCE } from './gemcad/weights.js?v=125';
+import { singleCut } from './gemcad/shapes/oldcuts.js?v=125';
 
 // ----------------------------------------------------------------------------- state
 const params = new URLSearchParams(location.search);
@@ -42,7 +42,10 @@ const state = {
     page: { enabled: params.get('page') === '1', width: 8.5, height: 8.5, stoneWidth: 2, dpi: 300, fit: 0.8 },
     // Background: cobblestone pavé of the current stone in random sizes and orientations, or a hexafoil of marquises
     text: { auto: true, source: 'caption', title: { enabled: false, text: '', font: 'Georgia, serif', size: 28, bold: true, italic: false, align: 'center', width: 0.8, pos: null, locked: false }, description: { enabled: false, text: '', font: 'Georgia, serif', size: 12, bold: false, italic: false, align: 'center', width: 0.6, pos: null, locked: false } },
-    pave: { enabled: false, pattern: 'cobblestone', minOpacity: 0.15, maxOpacity: 0.6, maxCarats: 5, minCarats: 0.02, singleBelow: 0.2, mmPerInch: 25.4, margin: 0.03, seedCount: 6, samples: 40, patience: 80, maxCircles: 3000, seed: 1, labels: true, labelOpacity: 1, hexCarats: 3, hexOpacity: 0.35, hexCircles: true },
+    pave: { enabled: false, pattern: 'cobblestone', minOpacity: 0.15, maxOpacity: 0.6, maxCarats: 5, minCarats: 0.02, singleBelow: 0.2, mmPerInch: 25.4, margin: 0.03, seedCount: 6, samples: 40, patience: 80, maxCircles: 3000, seed: 1, labels: true, labelOpacity: 1, labelSize: 2, hexCarats: 3, hexOpacity: 0.35, hexCircles: true },
+    // Scatter: copies of the stone placed at random on the page for coloring pages, each in its own
+    // 3D orientation (mostly face-up, tilted as in the isometric view) and size (widths in mm)
+    scatter: { count: 14, minMM: 20, maxMM: 45, minTilt: 15, maxTilt: 45, backShare: 10, gapIn: 0.15, marginIn: 0.35, seed: 1, placed: 0 },
     nextId: 1,
   },
 };
@@ -427,7 +430,7 @@ function updatePave() {
   const worldPerMm = pageRect().k / pv.mmPerInch;
   const area = paveArea(), obstacles = paveObstacles();
   const r3 = (v) => Math.round(v * 50) / 50;
-  const key = JSON.stringify([state.shapeId, geo.faceCount, state.girdleLines, pattern, { ...pv, labelOpacity: undefined }, [area.minX, area.maxX, area.minY, area.maxY].map(r3), obstacles.map((o) => [o.length, ...o[0].map(r3), ...o[Math.floor(o.length / 2)].map(r3)]), [...instances.values()].map((i) => [i.pos.map(r3), i.scale]), st.W, st.L]);
+  const key = JSON.stringify([state.shapeId, geo.faceCount, state.girdleLines, pattern, { ...pv, labelOpacity: undefined, labelSize: undefined }, [area.minX, area.maxX, area.minY, area.maxY].map(r3), obstacles.map((o) => [o.length, ...o[0].map(r3), ...o[Math.floor(o.length / 2)].map(r3)]), [...instances.values()].map((i) => [i.pos.map(r3), i.scale]), st.W, st.L]);
   // the face-up outline (convex hull of the stone's plan) and its edges
   const pts = []; for (let i = 0; i < geo.vertices.length; i += 3) pts.push([geo.vertices[i], geo.vertices[i + 1]]);
   const hull = convexHull(pts);
@@ -484,7 +487,7 @@ function updatePave() {
     const sg = designMesh(singleCut({ girdleFacets: 64 }));
     updatePave.single = { girdleLines: state.girdleLines, meshPositions: sg.positions, hardEdges: sg.hardEdges, smoothPositions: new Float32Array(smoothEdgesFor(new THREE.Quaternion(), sg)) };
   }
-  pave.setLabelOpacity(pv.labelOpacity);
+  pave.setLabelOpacity(pv.labelOpacity); pave.setLabelSize(pv.labelSize);
   pave.build({ key, stones, circles, circleOpacity: pv.hexOpacity, meshPositions: geo.positions, hardEdges: geo.hardEdges, smoothPositions: new Float32Array(smoothEdgesFor(new THREE.Quaternion())), hullEdges: new Float32Array(hullEdges), single: updatePave.single });
   pave.lastKey = key;
   const singles = stones.filter((q) => q.kind === 'single').length;
@@ -616,13 +619,16 @@ new ResizeObserver(resize).observe(stage);
 // first records the state it changes; Ctrl/Cmd+Z puts the last one back, Ctrl/Cmd+Shift+Z (or Ctrl+Y)
 // redoes it. Panning and zooming the preview are not moves of the drawing and are not recorded.
 const undoStack = [], redoStack = [];
-function viewSnapshot() {
+function viewSnapshot(full = false) {
   const sh = state.sheet;
-  return {
+  const snap = {
     baseQ: baseQ.toArray(), spin: state.spin, viewId: state.viewId, origin: [...sh.origin], stoneWidth: sh.page.stoneWidth,
     views: sh.views.map((v) => ({ id: v.id, kind: v.kind, rot: v.rot ? v.rot.toArray() : null, offset: v.offset ? [...v.offset] : null, scale: v.scale })),
     text: Object.fromEntries(TEXT_IDS.map((id) => { const b = sh.text[id]; return [id, { pos: b.pos ? [...b.pos] : null, size: b.size, width: b.width }]; })),
   };
+  // a full snapshot also keeps the list of views itself, for a change that replaces it (the scatter)
+  if (full) Object.assign(snap, { list: sh.views.map((v) => ({ ...v, rot: v.rot ? v.rot.toArray() : null, offset: v.offset ? [...v.offset] : null })), nextId: sh.nextId, page: sh.page.enabled, baseHidden: sh.base.hidden });
+  return snap;
 }
 const sameSnapshot = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 function updateUndoButtons() {
@@ -631,8 +637,8 @@ function updateUndoButtons() {
   if (r) { r.disabled = !redoStack.length; r.title = redoStack.length ? 'Redo the move just undone (Ctrl+Shift+Z / Cmd+Shift+Z, or Ctrl+Y)' : 'Nothing to redo'; }
 }
 /** Record the current arrangement before a move changes it. */
-function pushUndo() {
-  const snap = viewSnapshot();
+function pushUndo(full = false) {
+  const snap = viewSnapshot(full);
   if (undoStack.length && sameSnapshot(undoStack[undoStack.length - 1], snap)) return;
   undoStack.push(snap); if (undoStack.length > 100) undoStack.shift();
   redoStack.length = 0; updateUndoButtons();
@@ -641,6 +647,11 @@ function applySnapshot(snap) {
   const sh = state.sheet;
   anim = null; baseQ.fromArray(snap.baseQ); state.spin = snap.spin; state.viewId = snap.viewId;
   sh.origin = [...snap.origin];
+  if (snap.list) {
+    sh.views = snap.list.map((v) => ({ ...v, rot: v.rot ? new THREE.Quaternion().fromArray(v.rot) : null, offset: v.offset ? [...v.offset] : null }));
+    sh.nextId = snap.nextId; sh.page.enabled = snap.page; sh.base.hidden = snap.baseHidden;
+    syncInstances(); if (!instances.has(state.selected)) selectView('base');
+  }
   if (sh.page.stoneWidth !== snap.stoneWidth) { sh.page.stoneWidth = snap.stoneWidth; const el = document.getElementById('pagestone'); if (el) el.value = +snap.stoneWidth.toFixed(3); }
   for (const sv of snap.views) {
     const v = sh.views.find((x) => x.id === sv.id); if (!v) continue;   // a view removed since: nothing to put back
@@ -650,8 +661,8 @@ function applySnapshot(snap) {
   const si = document.getElementById('spin'), sn = document.getElementById('spinnum'); if (si) si.value = state.spin; if (sn) sn.value = state.spin;
   markView(); renderViewList(); syncInputs(); layout(true);
 }
-function undoMove() { if (!undoStack.length) return; redoStack.push(viewSnapshot()); applySnapshot(undoStack.pop()); updateUndoButtons(); }
-function redoMove() { if (!redoStack.length) return; undoStack.push(viewSnapshot()); applySnapshot(redoStack.pop()); updateUndoButtons(); }
+function undoMove() { if (!undoStack.length) return; const snap = undoStack.pop(); redoStack.push(viewSnapshot(!!snap.list)); applySnapshot(snap); updateUndoButtons(); }
+function redoMove() { if (!redoStack.length) return; const snap = redoStack.pop(); undoStack.push(viewSnapshot(!!snap.list)); applySnapshot(snap); updateUndoButtons(); }
 document.addEventListener('keydown', (e) => {
   if (!(e.ctrlKey || e.metaKey) || e.altKey || /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName || '')) return;   // text fields keep their own undo
   const k = e.key.toLowerCase();
@@ -1006,6 +1017,107 @@ function infoPage() {
   fitViewsToPage(sh.page.fit);
   fitView();
 }
+/**
+ * Scatter: replace the sheet with copies of the stone placed at random on the page, without
+ * overlapping each other or the title and description, for coloring pages. Each copy gets its own
+ * orientation (a random spin about the table axis, then a tilt of minTilt..maxTilt degrees towards a
+ * random side, so most are seen face-up as in the isometric view; backShare percent are turned over
+ * to show the pavilion) and its own width, minMM..maxMM millimetres on the page. The largest are
+ * placed first; one that does not fit is tried smaller, down to minMM, and left out if it still
+ * does not fit. The smallest placed copy becomes the base (the drawing scale is its width), the
+ * rest are free 3D views, so each can still be turned, moved and scaled. Hidden lines are turned off.
+ */
+function scatterStones(seed = state.sheet.scatter.seed) {
+  if (!geo) return 0;
+  pushUndo(true);
+  const sh = state.sheet, sc = sh.scatter, pg = sh.page;
+  sc.seed = seed;
+  if (!pg.enabled) { pg.enabled = true; syncInputs(); }
+  layout(false);   // current text rectangles
+  const rand = rng(Math.round(seed) * 2654435761 + 12345);
+  const minMM = Math.max(20, sc.minMM), maxMM = Math.max(minMM, sc.maxMM);
+  const count = Math.max(1, Math.min(200, Math.round(sc.count)));
+  // the text blocks on the page, inches about its centre, as obstacles
+  const k0 = pageRect().k, W = pg.width / 2, H = pg.height / 2, m = sc.marginIn, gap = sc.gapIn;
+  const obstacles = [];
+  for (const id of TEXT_IDS) {
+    const t = sh.text[id].rect; if (!t) continue;
+    const o = [t.minX / k0, t.minY / k0, t.maxX / k0, t.maxY / k0];
+    if (o[2] <= -W || o[0] >= W || o[3] <= -H || o[1] >= H) continue;
+    obstacles.push([[o[0], o[1]], [o[2], o[1]], [o[2], o[3]], [o[0], o[3]]]);
+  }
+  // separated by more than `g` along some edge normal of either convex polygon
+  const apart = (A, B, g) => {
+    for (const P of [A, B]) for (let i = 0; i < P.length; i++) {
+      const [x0, y0] = P[i], [x1, y1] = P[(i + 1) % P.length];
+      let nx = y1 - y0, ny = x0 - x1; const l = Math.hypot(nx, ny); if (l < 1e-12) continue; nx /= l; ny /= l;
+      let a0 = Infinity, a1 = -Infinity, b0 = Infinity, b1 = -Infinity;
+      for (const [x, y] of A) { const d = x * nx + y * ny; if (d < a0) a0 = d; if (d > a1) a1 = d; }
+      for (const [x, y] of B) { const d = x * nx + y * ny; if (d < b0) b0 = d; if (d > b1) b1 = d; }
+      if (b0 - a1 > g || a0 - b1 > g) return true;
+    }
+    return false;
+  };
+  const deg = Math.PI / 180, v3 = new THREE.Vector3();
+  const randomQ = () => {
+    const spin = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), rand() * 2 * Math.PI);
+    const az = rand() * 2 * Math.PI, tilt = (sc.minTilt + rand() * Math.max(0, sc.maxTilt - sc.minTilt)) * deg;
+    const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(Math.cos(az), Math.sin(az), 0), tilt);
+    if (rand() * 100 < sc.backShare) q.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI));
+    return q.multiply(spin);
+  };
+  // the outline of the stone under q at unit scale (world units, stone width 2), as a convex hull
+  const hullFor = (q) => { const a = geo.vertices, pts = []; for (let i = 0; i < a.length; i += 3) { v3.set(a[i], a[i + 1], a[i + 2]).applyQuaternion(q); pts.push([v3.x, v3.y]); } return convexHull(pts); };
+  // sizes, largest first; a gentle bias towards the smaller sizes leaves room for more stones
+  const sizes = Array.from({ length: count }, () => minMM + (maxMM - minMM) * rand() ** 1.4).sort((a, b) => b - a);
+  const placed = [];   // { q, mm, at: [x, y] inches, hull inches }
+  for (const want of sizes) {
+    const q = randomQ(), hull = hullFor(q);
+    let done = false;
+    for (let mm = want; !done && mm >= minMM - 1e-9; mm = mm > minMM ? Math.max(minMM, mm * 0.9) : minMM - 1) {
+      const f = mm / 25.4 / 2;   // inches per world unit at this width
+      const h = hull.map(([x, y]) => [x * f, y * f]);
+      const xs = h.map((p) => p[0]), ys = h.map((p) => p[1]);
+      const x0 = -W + m - Math.min(...xs), x1 = W - m - Math.max(...xs), y0 = -H + m - Math.min(...ys), y1 = H - m - Math.max(...ys);
+      if (x1 < x0 || y1 < y0) continue;   // larger than the page at this size
+      for (let tries = 0; tries < 300; tries++) {
+        const at = [x0 + rand() * (x1 - x0), y0 + rand() * (y1 - y0)];
+        const poly = h.map(([x, y]) => [x + at[0], y + at[1]]);
+        if (!placed.every((p) => apart(poly, p.poly, gap)) || !obstacles.every((o) => apart(poly, o, gap))) continue;
+        placed.push({ q, mm, at, poly }); done = true; break;
+      }
+    }
+  }
+  sc.placed = placed.length;
+  if (!placed.length) { syncInputs(); layout(true); return 0; }
+  // the smallest copy is the base and sets the drawing scale; the others are 3D views to the right of it
+  placed.sort((a, b) => a.mm - b.mm);
+  const base = placed[0];
+  setStoneWidth(base.mm / 25.4);
+  const k = pageRect().k;
+  anim = null; baseQ.copy(base.q); state.spin = 0; state.viewId = 'custom';
+  sh.base.hidden = false;
+  sh.origin = [base.at[0] * k, base.at[1] * k];
+  sh.views = []; sh.nextId = 1;
+  const baseInv = base.q.clone().invert();
+  let anchorPos = sh.origin, anchorBox = bboxFor(base.q);
+  for (const p of placed.slice(1)) {
+    const scale = p.mm / base.mm, box = bboxFor(p.q);
+    for (const key of ['minX', 'minY', 'maxX', 'maxY']) box[key] *= scale;
+    // where the layout puts a 3D view to the right of the previous one, and the offset that moves it to its place
+    const natural = [anchorPos[0] + anchorBox.maxX + sh.gaps.right - box.minX, anchorPos[1]];
+    const target = [p.at[0] * k, p.at[1] * k];
+    sh.views.push({ id: `v${sh.nextId++}`, parent: 'base', dir: 'right', gap: null, kind: '3d', rot: p.q.clone().multiply(baseInv), locked: false, hidden: false, offset: [target[0] - natural[0], target[1] - natural[1]], scale });
+    anchorPos = target; anchorBox = box;
+  }
+  selectView('base');
+  const si = document.getElementById('spin'), sn = document.getElementById('spinnum'); if (si) si.value = 0; if (sn) sn.value = 0;
+  markView(); renderViewList(); syncInputs();
+  layout(true);
+  fitView();
+  return placed.length;
+}
+
 /** Put a 3D view back to the isometric tilt of its parent, at its laid-out place and natural size. */
 function resetView3d(id) {
   pushUndo();
@@ -1201,11 +1313,29 @@ if (pageChk) {
   const src = $('tdsource'); if (src) src.addEventListener('change', () => { state.sheet.text.source = src.value; state.sheet.text.auto = true; applyCaption(); layout(true); });
   const ip = $('infopage'); if (ip) ip.addEventListener('click', () => infoPage());
 }
+// scatter controls
+{
+  const $ = (id) => document.getElementById(id);
+  const fields = [['scattercount', 'count', 1, 200], ['scatterseed', 'seed', 1, 1e9], ['scattermin', 'minMM', 20, 1000], ['scattermax', 'maxMM', 20, 1000], ['scattermintilt', 'minTilt', 0, 90], ['scattermaxtilt', 'maxTilt', 0, 90], ['scatterback', 'backShare', 0, 100], ['scattergap', 'gapIn', 0, 10]];
+  const status = () => { const sc = state.sheet.scatter, el = $('scatterstatus'); if (el) el.textContent = sc.placed ? `${sc.placed} of ${Math.round(sc.count)} placed` : ''; };
+  const run = (seed) => { const sc = state.sheet.scatter; if (sc.maxMM < sc.minMM) sc.maxMM = sc.minMM; if (sc.maxTilt < sc.minTilt) sc.maxTilt = sc.minTilt; scatterStones(seed); for (const [id, key] of fields) if ($(id)) $(id).value = +(+sc[key]).toFixed(3); status(); };
+  for (const [id, key, lo, hi] of fields) {
+    const el = $(id); if (!el) continue;
+    el.value = state.sheet.scatter[key];
+    el.addEventListener('change', () => {
+      const sc = state.sheet.scatter, v = parseFloat(el.value);
+      sc[key] = Math.min(hi, Math.max(lo, Number.isFinite(v) ? v : sc[key])); el.value = sc[key];
+      if (key === 'seed') run(sc.seed);   // a typed seed redraws that layout
+    });
+  }
+  const btn = $('scatter'); if (btn) btn.addEventListener('click', () => run(Math.round(state.sheet.scatter.seed) + (state.sheet.scatter.placed ? 1 : 0)));
+}
 // pavé background controls
 {
   const pv = state.sheet.pave, $ = (id) => document.getElementById(id);
   const bind = (id, key, parse = parseFloat, after = () => layout(true)) => { const el = $(id); if (!el) return; if (el.type === 'checkbox') el.checked = pv[key]; else el.value = pv[key]; el.addEventListener(el.type === 'range' ? 'change' : 'change', () => { pv[key] = el.type === 'checkbox' ? el.checked : parse(el.value); after(); }); };
-  bind('pave', 'enabled'); bind('pavepattern', 'pattern', String); bind('pavemin', 'minOpacity'); bind('pavemax', 'maxOpacity'); bind('pavemaxct', 'maxCarats'); bind('paveminct', 'minCarats'); bind('pavesingle', 'singleBelow'); bind('pavescale', 'mmPerInch'); bind('pavemargin', 'margin'); bind('paveseeds', 'seedCount', parseInt); bind('pavelabels', 'labels'); bind('pavelabelop', 'labelOpacity', parseFloat, () => pave.setLabelOpacity(pv.labelOpacity)); bind('pavehexct', 'hexCarats'); bind('pavehexop', 'hexOpacity'); bind('pavehexcircles', 'hexCircles');
+  bind('pave', 'enabled'); bind('pavepattern', 'pattern', String); bind('pavemin', 'minOpacity'); bind('pavemax', 'maxOpacity'); bind('pavemaxct', 'maxCarats'); bind('paveminct', 'minCarats'); bind('pavesingle', 'singleBelow'); bind('pavescale', 'mmPerInch'); bind('pavemargin', 'margin'); bind('paveseeds', 'seedCount', parseInt); bind('pavelabels', 'labels'); bind('pavelabelop', 'labelOpacity', parseFloat, () => pave.setLabelOpacity(pv.labelOpacity));
+  { const el = $('pavelabelsize'); if (el) { el.value = Math.round(pv.labelSize * 100); el.addEventListener('change', () => { pv.labelSize = Math.min(4, Math.max(0.3, (parseFloat(el.value) || 200) / 100)); el.value = Math.round(pv.labelSize * 100); pave.setLabelSize(pv.labelSize); if (typeof autosave === 'function') autosave(); }); } } bind('pavehexct', 'hexCarats'); bind('pavehexop', 'hexOpacity'); bind('pavehexcircles', 'hexCircles');
   for (const id of ['pavemin', 'pavemax', 'pavehexop', 'pavelabelop']) { const el = $(id), v = $(id + 'v'); if (el && v) { v.textContent = `${Math.round(el.value * 100)}%`; el.addEventListener('input', () => { v.textContent = `${Math.round(el.value * 100)}%`; }); } }
   const reseed = $('pavereseed'); if (reseed) reseed.addEventListener('click', () => { pv.seed = (pv.seed + 1) % 100000; layout(true); });
 }
@@ -1306,7 +1436,10 @@ function syncInputs() {
   for (const id of TEXT_IDS) { const b = sh.text[id], p = id === 'title' ? 'tt' : 'td'; set(p + 'on', b.enabled); set(p + 'text', b.text); set(p + 'font', b.font); set(p + 'size', b.size); set(p + 'bold', b.bold); set(p + 'italic', b.italic); set(p + 'align', b.align); set(p + 'width', Math.round(b.width * 100)); set(p + 'lock', b.locked); }
   const pv = sh.pave;
   for (const [id, key] of [['pave', 'enabled'], ['pavepattern', 'pattern'], ['pavemin', 'minOpacity'], ['pavemax', 'maxOpacity'], ['pavemaxct', 'maxCarats'], ['paveminct', 'minCarats'], ['pavesingle', 'singleBelow'], ['pavescale', 'mmPerInch'], ['pavemargin', 'margin'], ['paveseeds', 'seedCount'], ['pavelabels', 'labels'], ['pavelabelop', 'labelOpacity'], ['pavehexct', 'hexCarats'], ['pavehexop', 'hexOpacity'], ['pavehexcircles', 'hexCircles']]) set(id, pv[key]);
+  set('pavelabelsize', Math.round((pv.labelSize || 1) * 100));
   for (const id of ['pavemin', 'pavemax', 'pavehexop', 'pavelabelop']) if ($(id + 'v')) $(id + 'v').textContent = `${Math.round($(id).value * 100)}%`;
+  const sc = sh.scatter;
+  if (sc) for (const [id, key] of [['scattercount', 'count'], ['scatterseed', 'seed'], ['scattermin', 'minMM'], ['scattermax', 'maxMM'], ['scattermintilt', 'minTilt'], ['scattermaxtilt', 'maxTilt'], ['scatterback', 'backShare'], ['scattergap', 'gapIn']]) set(id, sc[key]);
 }
 function applySetup(s) {
   undoStack.length = 0; redoStack.length = 0; updateUndoButtons();
@@ -1321,11 +1454,11 @@ function applySetup(s) {
   // merge the saved sheet into the live settings objects, keeping their identities: the controls'
   // handlers hold references to them (replacing them left the pavé controls writing to a stale copy)
   const sh = s.sheet, cur = state.sheet;
-  for (const k of ['gaps', 'base', 'page', 'pave']) Object.assign(cur[k], sh[k] || {});
+  for (const k of ['gaps', 'base', 'page', 'pave', 'scatter']) Object.assign(cur[k], sh[k] || {});
   for (const id of TEXT_IDS) Object.assign(cur.text[id], (sh.text || {})[id] || {}, { rect: null });
   cur.text.auto = (sh.text || {}).auto !== undefined ? !!sh.text.auto : cur.text.auto;
   cur.text.source = (sh.text || {}).source || cur.text.source;
-  for (const k of Object.keys(sh)) if (!['gaps', 'base', 'page', 'pave', 'text', 'views'].includes(k)) cur[k] = sh[k];
+  for (const k of Object.keys(sh)) if (!['gaps', 'base', 'page', 'pave', 'scatter', 'text', 'views'].includes(k)) cur[k] = sh[k];
   cur.views = (sh.views || []).map((v) => ({ ...v, rot: v.rot ? new THREE.Quaternion().fromArray(v.rot) : null }));
   syncInputs();
   captionKey = editor.templateKey;   // the saved title and description belong to this shape: keep them
@@ -1403,7 +1536,7 @@ requestAnimationFrame(frame);
 
 // Exposed for the screenshot tool and for scripting.
 window.__viewer = {
-  state, setDesign, snapTo, exportPNG, resize, addView, removeView, clearViews, resetView3d, snapCentre, snapCentreText, resetTextPos, hitText, applyCaption, selectView, hitInstance, infoPage, undoMove, redoMove, undoCount: () => undoStack.length, freeRects, fitView, fitViewsToPage, editor, getSetup, applySetup, paveInfo: () => paveInfo, paveStones: () => pave.lastStones, pageRect, instances, camera: () => camera, gridCells: () => gridLines.userData.cells,
+  state, setDesign, snapTo, exportPNG, resize, addView, removeView, clearViews, resetView3d, snapCentre, snapCentreText, resetTextPos, hitText, applyCaption, selectView, hitInstance, infoPage, scatterStones, undoMove, redoMove, undoCount: () => undoStack.length, freeRects, fitView, fitViewsToPage, editor, getSetup, applySetup, paveInfo: () => paveInfo, paveStones: () => pave.lastStones, pageRect, instances, camera: () => camera, gridCells: () => gridLines.userData.cells,
   loadShape(id) { const { templates } = window.__templates; if (templates[id]) editor.design = templates[id].make(); },
   setLineWidth(v) { state.lineWidth = v; lineMat.linewidth = v; hiddenMat.linewidth = v; pave.setLineWidth(v); },
   setGirdleLines(v) { state.girdleLines = v; layout(true); },
