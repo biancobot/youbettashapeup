@@ -19,8 +19,8 @@
 // Crown 18 facets + table, pavilion 15, girdle 9: 43 facets.
 // The drawing gives no heights: crown height, girdle, pavilion depth and the heights of the two
 // hubs are this design's parameters.
-import { newTier } from '../design.js?v=120';
-import { rad, deg, girdleFromPolygon, plane3, planeAz, planeThrough, intersect3, zPlane, classTier } from '../shapebuild.js?v=120';
+import { newTier } from '../design.js?v=121';
+import { rad, deg, girdleFromPolygon, plane3, planeAz, planeThrough, intersect3, zPlane, azPlane, classTier } from '../shapebuild.js?v=121';
 
 const R = 2 / Math.sqrt(3);   // corner radius of an equilateral triangle of width 2
 
@@ -189,7 +189,7 @@ export function trillionBrilliant({
  */
 export function triangleBrilliant({
   bow = 0.12, crownHeight = 0.115, girdle = 0.03, pavilionDepth = 0.39, table = 0.51, tableSide = 0.51,
-  starHeight = 0.5, lowerDepth = 0.85, segments = 16, gear = 96, pointDown = true,
+  starHeight = 0.5, lowerDepth = 0.85, segments = 16, gear = 96, pointDown = true, crownLines = true,
 } = {}) {
   const W = 2, H = crownHeight * W, g = girdle * W, Pd = pavilionDepth * W, fold = 3;
   // point down (as usually drawn): the outline turned half a turn, corners at 270, 30 and 150 degrees
@@ -202,12 +202,40 @@ export function triangleBrilliant({
   const side = poly.slice(0, segments + 1);
   const C = side[0], J = side[Math.round(segments / 4)], M = side[segments / 2], C2 = side[segments];
   const azM = deg(Math.atan2(M[1], M[0])), azC = deg(Math.atan2(C[1], C[0]));
-  // ---- crown: bezels through their girdle contact and their table corner
-  const Tc = [table * C[0], table * C[1], H];
-  const Ts = [tableSide * M[0], tableSide * M[1], H];
-  const cornerB = addClass('A corner', planeAz(at(C, 0), Tc, azC, true));
-  const sideB = addClass('A side', planeAz(at(M, 0), Ts, azM, true));
-  const A = intersect3(cornerB, sideB, zPlane(starHeight * H));   // star tip on the bezel ridge
+  // ---- crown
+  let cornerB, sideB, A, Tc, Ts, linesNote = '';
+  if (crownLines) {
+    // laid out with straight lines, as on the reference drawing: from each corner to the two upper girdle
+    // junctions on the opposite side. Where they cross: the star tips and the table's points. For the
+    // side from C (corner 0) to C1, with C2 the corner opposite it: the star tip beside the junction J
+    // is where the line from C to the junction of the next side nearest C1 crosses the line from C2 to
+    // J; the table point towards C is where the line from C1 to the junction of the third side nearest C
+    // crosses the line from C2 to J; the table point towards the side's middle is where the lines from C
+    // and from C1 cross.
+    const n = segments, Cs = [poly[0], poly[n], poly[2 * n]];
+    const Jat = (k, f) => poly[k * n + Math.round(f * n)];
+    const cross = (p1, p2, q1, q2) => { const d1 = [p2[0] - p1[0], p2[1] - p1[1]], d2 = [q2[0] - q1[0], q2[1] - q1[1]], den = d1[0] * d2[1] - d1[1] * d2[0]; const t = ((q1[0] - p1[0]) * d2[1] - (q1[1] - p1[1]) * d2[0]) / den; return [p1[0] + t * d1[0], p1[1] + t * d1[1]]; };
+    const Aplan = cross(Cs[0], Jat(1, 0.25), Cs[2], Jat(0, 0.25));
+    const TcPlan = cross(Cs[1], Jat(2, 0.75), Cs[2], Jat(0, 0.25));
+    const TsPlan = cross(Cs[0], Jat(1, 0.25), Cs[1], Jat(2, 0.75));
+    Tc = [TcPlan[0], TcPlan[1], H];
+    cornerB = addClass('A corner', planeAz(at(C, 0), Tc, azC, true));
+    // the star tip on the corner bezel; the side bezel, kite-shaped and level across the side, from the
+    // side's middle through the star tips; its table point follows (a level plane through the middle
+    // and the tips cannot also pass through the lines' crossing exactly)
+    const zA = (cornerB.d - cornerB.n[0] * Aplan[0] - cornerB.n[1] * Aplan[1]) / cornerB.n[2];
+    A = [Aplan[0], Aplan[1], zA];
+    sideB = addClass('A side', planeAz(at(M, 0), A, azM, true));
+    Ts = intersect3(sideB, zPlane(H), azPlane(azM));
+    linesNote = ` Laid out with lines from each corner to the upper girdle junctions on the opposite side: their crossings give the star tips and the table's points (the side table point sits ${(100 * Math.hypot(Ts[0] - TsPlan[0], Ts[1] - TsPlan[1]) / 2).toFixed(1)}% of the width from the lines' crossing, where the level side bezel through the side's middle and the star tips meets the table).`;
+  } else {
+    // bezels through their girdle contact and their table corner
+    Tc = [table * C[0], table * C[1], H];
+    Ts = [tableSide * M[0], tableSide * M[1], H];
+    cornerB = addClass('A corner', planeAz(at(C, 0), Tc, azC, true));
+    sideB = addClass('A side', planeAz(at(M, 0), Ts, azM, true));
+    A = intersect3(cornerB, sideB, zPlane(starHeight * H));   // star tip on the bezel ridge
+  }
   addClass('C star', plane3(Tc, Ts, A, true));
   addClass('B corner', plane3(A, at(C, 0), at(J, 0), true));
   addClass('B side', plane3(A, at(J, 0), at(M, 0), true));
@@ -228,7 +256,7 @@ export function triangleBrilliant({
     footnotes: ['Starting point: the round brilliant\'s pattern folded three ways on a curved triangle, with typical angles.'],
     notes: [
       'Ideal dimensions: none published. GIA assigns no cut grade to triangular diamonds and IGI\'s fancy-shape guidelines do not cover them; trade practice favours curved sides for brilliant-cut triangles (straight sides suit step and mixed cuts) and a shallow pavilion, since the corners sit far from the culet.',
-      `This design: sides bowed ${pct(bow)} of their length, crown height ${pct(crownHeight)}, corner bezels ${ang(cornerB)} and side bezels ${ang(sideB)} (each through its girdle contact and its table corner), stars ${pct(starHeight)} of the crown height at the tip, pavilion depth ${pct(pavilionDepth)}, corner mains ${ang(cornerM)} and side mains ${ang(sideM)}, lower girdle junctions at ${pct(lowerDepth)} of the pavilion depth, girdle ${pct(girdle)}.`,
+      `This design: sides bowed ${pct(bow)} of their length, crown height ${pct(crownHeight)}, corner bezels ${ang(cornerB)} and side bezels ${ang(sideB)} (each through its girdle contact and its table corner), stars ${pct(starHeight)} of the crown height at the tip, pavilion depth ${pct(pavilionDepth)}, corner mains ${ang(cornerM)} and side mains ${ang(sideM)}, lower girdle junctions at ${pct(lowerDepth)} of the pavilion depth, girdle ${pct(girdle)}.${linesNote}`,
       'Pattern: crown of table, 6 bezels (3 corners, 3 sides), 6 stars and 12 upper girdle facets; pavilion of 6 mains under the bezels and 12 lower girdle facets; the upper and lower girdle facets meet on the girdle at the same six points, halfway between the bezel contacts.',
     ],
     tiers,
@@ -250,13 +278,10 @@ const params = (o) => [
 export const templates = {
   triangleBrilliant: {
     name: 'Triangular brilliant (starting point)',
-    note: 'The round brilliant\'s pattern folded three ways on a curved triangle: bezels and mains at the corners and the middles of the sides, stars, and upper and lower girdle facets in pairs meeting halfway between the contacts. The L:W field is ignored (equilateral).',
+    note: 'The round brilliant\'s pattern folded three ways on a curved triangle, the crown laid out with lines from each corner to the upper girdle junctions on the opposite side (their crossings give the star tips and the table), the bezels kites to the middles of the curved sides: bezels and mains at the corners and the middles of the sides, stars, and upper and lower girdle facets in pairs meeting halfway between the contacts. The L:W field is ignored (equilateral).',
     params: [
       { key: 'bow', label: 'Side bow', default: 0.12, step: 0.01, min: 0.02, max: 0.2, title: 'Sagitta of each side, fraction of its chord (a brilliant needs curved sides)' },
-      { key: 'table', label: 'Table corners', default: 0.51, step: 0.01, min: 0.3, max: 0.85, title: 'The table\'s points towards the corners, fraction of the way out to the corners' },
-      { key: 'tableSide', label: 'Table sides', default: 0.51, step: 0.01, min: 0.3, max: 0.85, title: 'The table\'s points towards the middles of the sides, fraction of the way out to the girdle there' },
-      { key: 'crownHeight', label: 'Crown height', default: 0.115, step: 0.005, title: 'Fraction of the width' },
-      { key: 'starHeight', label: 'Star tips', default: 0.5, step: 0.05, min: 0.2, max: 0.9, title: 'Fraction of the crown height' },
+      { key: 'crownHeight', label: 'Crown height', default: 0.115, step: 0.005, title: 'Fraction of the width (the reference drawing\'s 11.5% gives corner bezels about 17.5 and side bezels 25; about 17% gives 25 and 34)' },
       { key: 'girdle', label: 'Girdle', default: 0.03, step: 0.005 },
       { key: 'pavilionDepth', label: 'Pavilion depth', default: 0.39, step: 0.005, title: 'Fraction of the width' },
       { key: 'lowerDepth', label: 'Lower junctions', default: 0.85, step: 0.05, min: 0.3, max: 0.95, title: 'Lower girdle junctions on the main ridges, fraction of the pavilion depth' },
