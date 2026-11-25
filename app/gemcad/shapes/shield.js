@@ -11,10 +11,10 @@
 // outline normal as azimuth, the rest pass through meet points. One mirror line: fold 1 + mirror.
 //
 // Orientation: width 2 along x, length along y, top edge at +y, point at -y (radial azimuth 270).
-import { newTier } from '../design.js?v=117';
+import { newTier } from '../design.js?v=118';
 import {
   rad, deg, norm360, polygonSupport, girdleVertices, vertexNear, vertexNearY, lift,
-  planeThrough, mirrorX, zPlane, yPlane, azPlane, perpPlane, classTier, girdleEqualLength, plane3, intersect3 } from '../shapebuild.js?v=117';
+  planeThrough, mirrorX, zPlane, yPlane, azPlane, perpPlane, classTier, girdleEqualLength, plane3, intersect3 } from '../shapebuild.js?v=118';
 
 /**
  * Shield outline, half-width 1 at the widest point, length 2 * ratio: a head arc of large radius
@@ -79,7 +79,7 @@ export function shieldStart({
   sideContact = null, wingContact = 330, starHeight = 0.6, lowerDepth = 0.6, culetPos = 0.5,
   gear = 96, girdleFacets = 128,
   frenchTip = true, tipHubHeight = 0.8, tipTable = 0.28, tipGirdle = 0.08,
-  junctions = null, ridgeJunctions = null, singleTip = false, cornerDepths = null, bendOffsets = [0, 0], halfway = false, onRidges = null,
+  junctions = null, ridgeJunctions = null, singleTip = false, cornerDepths = null, bendOffsets = [0, 0], halfway = false, onRidges = null, shoulderShare = null,
   pavilion = 'mains8', keelHead = 0.38, keelPoint = 0.34, keelTip = 0.84, sideCorners = [0.36, 0.32],
 } = {}) {
   const W = 2, L = ratio * W, H = crownHeight * W, g = girdle * W, Pd = pavilionDepth * W;
@@ -143,6 +143,10 @@ export function shieldStart({
   if (hw(1)) J2v = between(Shv.az, Sv.az, 0.5);
   if (hw(2)) J3v = between(Sv.az, Wv.az, 0.5);
   if (hw(3)) J4v = between(Wv.az, 270, 0.5);
+  // shoulderShare [f1, f2]: the head-shoulder junction f1 of the way along the girdle from the head contact
+  // to the shoulder contact, the shoulder-belly junction f2 of the way from the belly contact to the
+  // shoulder contact (0.5: halfway; smaller: nearer the head or the belly). Applied after onRidges.
+  const applyShares = () => { if (shoulderShare) { if (shoulderShare[0] != null) J1v = between(90, Shv.az, shoulderShare[0]); if (shoulderShare[1] != null) J2v = between(Sv.az, Shv.az, shoulderShare[1]); } };
   // onRidges (four booleans): the junction where the ridge between the two mains either side of it
   // reaches the girdle, so the lower girdle facets' junction on the ridge, the girdle junction and the
   // culet lie on one straight line, as on a round brilliant (a corner on the straight line from a girdle
@@ -157,6 +161,7 @@ export function shieldStart({
     const js = [0, 1, 2, 3].map((i) => (onRidges[i] ? hit(rAz(nm[i], nm[i + 1])) : null));
     if (js[0]) J1v = js[0]; if (js[1]) J2v = js[1]; if (js[2]) J3v = js[2]; if (js[3]) J4v = js[3];
   }
+  applyShares();
   const zs = zPlane(starHeight * H);
   const Ths = intersect3(head, shoulderB, zs), Tsb = intersect3(shoulderB, belly, zs), Tbw = intersect3(belly, wing, zs);
   const chord = (name, vA, vB, apex, z, up) => addClass(name, plane3(lift(vA, z), lift(vB, z), apex, up));
