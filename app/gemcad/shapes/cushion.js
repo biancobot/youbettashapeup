@@ -17,11 +17,11 @@
 // L:W - r (y) including the bows. Least-squares fit of the plot outline: r = 0.60, sides bowed by
 // 0.07, ends by 0.03 (rms 0.010 of the half-width; a plain rectangle plus circle fits best at
 // r = 0.80 with rms 0.018 and leaves flats on which the girdle polygon bulges).
-import { newTier } from '../design.js?v=102';
+import { newTier } from '../design.js?v=103';
 import {
   rad, deg, marquiseSupport, outlineFromSupport, girdleVertices, vertexNear, lift,
   planeThrough, zPlane, yPlane, xPlane, classTier, girdleFromSupport, girdleEqualLength, plane3, intersect3,
-} from '../shapebuild.js?v=102';
+} from '../shapebuild.js?v=103';
 
 /**
  * Support function of a cushion outline: a rectangle with half-sides w and l whose sides bow out
@@ -64,10 +64,10 @@ const CONTACTS = { corner: [0.756, 1.024 / PLOT_L], ue: [0.556, 1.167 / PLOT_L],
  * junctions, normalised plan positions) default to the plot's; the old mine cut passes its own.
  */
 export function cushionBrilliant({
-  ratio = 1.25, corner = 0.6, bowSides = 0.07, bowEnds = 0.03, crownAngle = 35, girdle = 0.05, pavilionDepth = 0.435,
+  ratio = 1.25, corner = 0.6, bowSides = 0.07, bowEnds = 0.03, crownAngle = 35, girdle = 0.04, pavilionDepth = 0.435,
   tableWidth = 0.584, tableLength = 0.690, tableCorner = [0.452, 0.610], starHeight = 0.73,
   culet = [0.032, 0.149], ridgeEnd = 0.489, ridgeSide = 0.415,
-  gear = 96, girdleFacets = 128, contacts = CONTACTS,
+  gear = 96, girdleFacets = 128, contacts = CONTACTS, evenGirdle = true,
 } = {}) {
   const W = 2, l = ratio, g = girdle * W, Pd = pavilionDepth * W;
   // The plot (L:W 1.25) is two-fold symmetric: ends and sides differ. As the ratio approaches 1
@@ -94,7 +94,19 @@ export function cushionBrilliant({
   const addClass = (name, plane) => { const t = classTier(name, plane, gear, 2, true); tiers.push(t); return plane; };
   // Girdle contacts, top-right quadrant (radial azimuths measured on the IGI plots)
   const Ev = vertexNear(verts, 90), Sv = vertexNear(verts, 0), Cv = vertexNear(verts, azOfN(cN));
-  const Uev = vertexNear(verts, azOfN(ueN)), Usv = vertexNear(verts, azOfN(usN));
+  // the upper/lower girdle junctions: the plot's, or (evenGirdle) the girdle vertex between the corner
+  // contact and the end or side contact where the outline bulges equally far beyond the chords on its
+  // two sides, so the facets either side dig equally deep and the valleys match round the stone (the
+  // plot's junctions sit close to the corner contact, leaving shallow valleys at the corners and deep
+  // ones on the sides and ends)
+  const saz = (v) => ((v.az + 180) % 360) - 180;   // signed azimuth, so the side contact at 0 sits between its neighbours
+  const inside = (A, B) => { const [lo, hi] = [Math.min(saz(A), saz(B)), Math.max(saz(A), saz(B))]; return verts.filter((v) => saz(v) > lo + 1e-9 && saz(v) < hi - 1e-9); };
+  const sag = (A, B) => {   // the outline's furthest bulge beyond the chord A-B, plan units
+    const dx = B.p[0] - A.p[0], dy = B.p[1] - A.p[1], len = Math.hypot(dx, dy) || 1;
+    return inside(A, B).reduce((m, v) => Math.max(m, Math.abs((v.p[0] - A.p[0]) * dy - (v.p[1] - A.p[1]) * dx) / len), 0);
+  };
+  const balance = (A, B) => inside(A, B).reduce((best, v) => { const worst = Math.max(sag(A, v), sag(v, B)); return !best || worst < best.worst ? { v, worst } : best; }, null).v;
+  const Uev = evenGirdle ? balance(Cv, Ev) : vertexNear(verts, azOfN(ueN)), Usv = evenGirdle ? balance(Sv, Cv) : vertexNear(verts, azOfN(usN));
   const cornerAz = outline.normalAz(Cv.az);
 
   // ---- crown bezels: through the girdle vertex (azimuth = outline normal there) and the plot's table corner
@@ -144,7 +156,9 @@ export function cushionBrilliant({
       `This design: L:W ${ratio} (the IGI report plot measures 1.25), table ${pct(tw)} of the width and ${pct(tl)} of the length, crown height ${pct(H / W)}, bezels ${crownAngle} (sides), ${angleOf('A end')} (ends), ${angleOf('A corner')} (corners), pavilion depth ${pct(pavilionDepth)}, mains ${angleOf('P side')} (sides), ${angleOf('P end')} (ends), ${angleOf('P corner')} (corners), girdle ${pct(girdle)}, total depth ${pct((H + g + Pd) / W)}. Bezel and main angles are measured in each facet's own slope direction; they vary around a fancy outline at a constant crown height and pavilion depth.`,
       `Culet: ${culet ? `a small rectangle ${pct(2 * cw / W)} x ${pct(2 * cl / W)} of the width along the length, as drawn on the plot (the keel where the side and end mains meet)` : 'pointed, all mains meeting at the culet point'}.`,
       'Plot pattern (IGI template): crown 8 bezels (2 ends, 2 sides, 4 corners at about 54 degrees), 8 stars, 16 upper girdle facets; pavilion 8 mains (corner contacts at about 54 degrees), 16 lower girdle facets with junctions at about 64 and 43 degrees, small rectangular culet. Plot L:W 1.25.',
-      `Girdle: ${pct(girdle)} at the bezels (hills); the upper and lower girdle facets scallop it to about half that at the junctions on the sides, where the outline bows beyond the chord from the side bezel's tip to the junction. Below L:W 1.1 raise the girdle to 6-7% or the girdle facets at those valleys vanish.`,
+      evenGirdle
+        ? `Girdle: ${pct(girdle)} at the bezel and main contacts (hills). The upper and lower girdle junctions are not the plot's (64.5 and 42.1 degrees, close to the corner contact, which left shallow valleys at the corners and deep ones on the sides and ends): each sits at the girdle vertex where the outline bulges equally far beyond the chords on its two sides, so the facets either side dig equally deep and the valleys match round the stone, at about half to two thirds of the hills.`
+        : `Girdle: ${pct(girdle)} at the bezels (hills); with the plot's junctions the upper and lower girdle facets scallop it to about half that on the sides, where the outline bows beyond the chord from the side bezel's tip to the junction, and much less at the corners.`,
       'The plot is two-fold symmetric (ends and sides differ); towards L:W 1 the pattern blends to exact four-fold symmetry, so a square cushion has four identical bezels, stars and corners and a square culet.',
       `Outline: a rectangle with sides bowed out by ${Math.round(bowX * 1000) / 1000} (sides) and ${Math.round(bowY * 1000) / 1000} (ends) of the half-width, corners rounded with a circle of radius ${corner}, fitted to the plot. Facets touch the girdle at the plot positions; each facet azimuth is the outline normal at its contact point.`,
     ],
@@ -165,10 +179,11 @@ export const templates = {
       { key: 'tableLength', label: 'Table length', default: 0.690, step: 0.01, title: 'Table half-length at the ends, fraction of the half-length' },
       { key: 'crownAngle', label: 'Crown angle', default: 35, step: 0.5, title: 'Side bezel angle; sets the crown height with the table width' },
       { key: 'starHeight', label: 'Star tips', default: 0.73, step: 0.05, min: 0.2, max: 0.95, title: 'Fraction of the crown height' },
-      { key: 'girdle', label: 'Girdle', default: 0.05, step: 0.005 },
+      { key: 'girdle', label: 'Girdle', default: 0.04, step: 0.005 },
+      { key: 'evenGirdle', label: 'Even girdle', default: 1, step: 1, min: 0, max: 1, title: '1: each upper/lower girdle junction where the facets either side dig equally deep, so the valleys match round the stone; 0: the plot\'s junctions (64.5 and 42.1 degrees), shallow at the corners and deep on the sides' },
       { key: 'pavilionDepth', label: 'Pavilion depth', default: 0.435, step: 0.005 },
     ],
-    make: (o = {}) => cushionBrilliant({ ratio: 1.1, ...o }),
+    make: (o = {}) => cushionBrilliant({ ratio: 1.1, ...o, evenGirdle: o.evenGirdle === undefined ? true : !!o.evenGirdle }),
   },
   cushionPoint: {
     name: 'Cushion brilliant, pointed culet (starting point)',
@@ -182,10 +197,11 @@ export const templates = {
       { key: 'tableLength', label: 'Table length', default: 0.690, step: 0.01, title: 'Table half-length at the ends, fraction of the half-length' },
       { key: 'crownAngle', label: 'Crown angle', default: 35, step: 0.5, title: 'Side bezel angle; sets the crown height with the table width' },
       { key: 'starHeight', label: 'Star tips', default: 0.73, step: 0.05, min: 0.2, max: 0.95, title: 'Fraction of the crown height' },
-      { key: 'girdle', label: 'Girdle', default: 0.05, step: 0.005 },
+      { key: 'girdle', label: 'Girdle', default: 0.04, step: 0.005 },
+      { key: 'evenGirdle', label: 'Even girdle', default: 1, step: 1, min: 0, max: 1, title: '1: each upper/lower girdle junction where the facets either side dig equally deep, so the valleys match round the stone; 0: the plot\'s junctions (64.5 and 42.1 degrees), shallow at the corners and deep on the sides' },
       { key: 'pavilionDepth', label: 'Pavilion depth', default: 0.435, step: 0.005 },
     ],
-    make: (o = {}) => cushionBrilliant({ ratio: 1.1, ...o, culet: null }),
+    make: (o = {}) => cushionBrilliant({ ratio: 1.1, ...o, culet: null, evenGirdle: o.evenGirdle === undefined ? true : !!o.evenGirdle }),
   },
 };
 

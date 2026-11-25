@@ -2,17 +2,17 @@ import * as THREE from '../vendor/three/three.module.js';
 import { LineSegments2 } from '../vendor/three/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from '../vendor/three/lines/LineSegmentsGeometry.js';
 import { LineMaterial } from '../vendor/three/lines/LineMaterial.js';
-import { designMesh, stoneStats } from './gemcad/mesh.js?v=102';
-import { createEditor } from './editor.js?v=102';
-import { createUnderlay } from './underlay.js?v=102';
-import { templates, plots } from './gemcad/templates.js?v=102';
+import { designMesh, stoneStats } from './gemcad/mesh.js?v=103';
+import { createEditor } from './editor.js?v=103';
+import { createUnderlay } from './underlay.js?v=103';
+import { templates, plots } from './gemcad/templates.js?v=103';
 window.__templates = { templates, plots };
-import { VIEWS, getView } from './views.js?v=102';
-import { captionFor } from './gemcad/captions.js?v=102';
-import { notesFor } from './gemcad/shapenotes.js?v=102';
-import { createPave, cobblestoneStonesGen, checkPacking, paveSizes, hexafoilStones, convexHull, rng } from './pave.js?v=102';
-import { weightEstimator, weightFamily, chartSize, CHART_SOURCE } from './gemcad/weights.js?v=102';
-import { singleCut } from './gemcad/shapes/oldcuts.js?v=102';
+import { VIEWS, getView } from './views.js?v=103';
+import { captionFor } from './gemcad/captions.js?v=103';
+import { notesFor } from './gemcad/shapenotes.js?v=103';
+import { createPave, cobblestoneStonesGen, checkPacking, paveSizes, hexafoilStones, convexHull, rng } from './pave.js?v=103';
+import { weightEstimator, weightFamily, chartSize, CHART_SOURCE } from './gemcad/weights.js?v=103';
+import { singleCut } from './gemcad/shapes/oldcuts.js?v=103';
 
 // ----------------------------------------------------------------------------- state
 const params = new URLSearchParams(location.search);
@@ -812,6 +812,7 @@ function fitViewsToPage(fraction = state.sheet.page.fit) {
   const k = 2 / best.sw, cx = ((best.q[0] + best.q[2]) / 2) * k, cy = ((best.q[1] + best.q[3]) / 2) * k;
   state.sheet.origin[0] += cx - (bb[0] + bb[2]) / 2; state.sheet.origin[1] += cy - (bb[1] + bb[3]) / 2;
   layout(true);
+  fitView();   // and bring the page back into the preview, centred at the original zoom
 }
 
 let anim = null;
