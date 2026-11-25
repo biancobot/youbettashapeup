@@ -81,7 +81,7 @@
   <div id="app">
     <aside id="panel">
       <div>
-        <h1>Gem Facet Designer <span class="build" title="Build number; if it does not match the README, hard-reload or git pull">build 88</span></h1>
+        <h1>Gem Facet Designer <span class="build" title="Build number; if it does not match the README, hard-reload or git pull">build 89</span></h1>
         <div class="hint">GemCad-style facet design: every facet is a plane by angle, index and distance; the stone is their intersection. Drag to rotate, shift-drag to roll, scroll to zoom, right-drag to pan, 0 or Home to reset the zoom and pan, click a vertex to pick a meet point.</div>
       </div>
 
@@ -180,7 +180,7 @@
         </div>
         <div class="hint">To add a projected view, click L, R, A or B beside a view in the list below: it projects a new view to the Left, Right, Above or Below that view under the selected standard. Projected views can be projected from again, and all of them follow the base view as you rotate it. 3D adds an isometric view of that view (choose its side in the row); drag over a 3D view to turn it on its own, shift-drag to roll it, alt-drag (option on a Mac) to move it, wheel over it to scale it, &#8634; to reset it. It still follows its parent when the base turns. Click a view in this list or on the sheet to select it (the last added view is selected): the View buttons above then turn that view instead of the base, a 3D view in place, a projected view becoming a free 3D view at that orientation (&#8634; makes it isometric again, &times; removes it). With the base selected the buttons turn the base as before. <b>lock</b> stops a view being turned by dragging (projected views follow the base, so lock the base for those); alt-drag still moves it, and alt-drag anywhere else on the sheet moves the whole arrangement, base and projected views together, to make room for text; <b>hidden</b> draws that view's hidden lines in light grey. Gaps are in stone widths between view bounding boxes. Sheets are always orthographic.</div>
         <div id="viewlist"></div>
-        <button id="clearviews">Remove all projected views</button>
+        <div class="row"><button id="infopage" title="Set up an 8.5 × 8.5 in page with the shape's title and shape note at the top and six views (left, right, above, below and the pavilion) fitted and centred below them; gaps, stone width, drag and the text stay adjustable">Info page</button><button id="clearviews">Remove all projected views</button></div>
         <div class="row"><label for="page">Page</label><input type="checkbox" id="page"></div>
         <div class="row"><label for="pagesize">Page size</label>
           <select id="pagesize"><option value="square85" selected>Square 8.5 × 8.5 in</option><option value="letter">Letter 8.5 × 11</option><option value="letterL">Letter landscape 11 × 8.5</option><option value="a4">A4 8.27 × 11.69</option><option value="a4L">A4 landscape</option><option value="custom">Custom</option></select></div>
@@ -212,6 +212,7 @@
         <div class="row"><span><label><input type="checkbox" id="ttbold"> bold</label> <label><input type="checkbox" id="ttitalic"> italic</label> <label><input type="checkbox" id="ttlock"> lock</label></span>
           <span><button id="ttcx" title="Centre the title horizontally on the page">&#8660;</button> <button id="ttcy" title="Centre the title vertically on the page">&#8661;</button> <button id="ttreset" title="Put the title back at its default place">&#8634;</button></span></div>
         <div class="row"><label for="tdon">Description</label><input type="checkbox" id="tdon"></div>
+        <div class="row"><label for="tdsource">Description text from</label><select id="tdsource"><option value="caption">The caption (one sentence)</option><option value="notes">The shape notes (a fact or two)</option></select></div>
         <textarea id="tdtext" rows="3" placeholder="Description (the shape's caption until you type)"></textarea>
         <div class="gaps">
           <label>Font <select id="tdfont"><option value="Georgia, serif">Georgia</option><option value="'Times New Roman', Times, serif">Times</option><option value="Garamond, 'EB Garamond', serif">Garamond</option><option value="'Palatino Linotype', Palatino, serif">Palatino</option><option value="Helvetica, Arial, sans-serif">Helvetica / Arial</option><option value="'Gill Sans', 'Trebuchet MS', sans-serif">Gill Sans</option><option value="Futura, 'Century Gothic', sans-serif">Futura</option><option value="'Courier New', Courier, monospace">Courier</option></select></label>
@@ -304,6 +305,6 @@
       const el = document.getElementById('info'); if (el) { el.style.color = '#b00020'; el.textContent = 'Load error: ' + (e.reason && e.reason.message || e.reason); }
     });
   </script>
-  <script type="module" src="./app/main.js?v=88"></script>
+  <script type="module" src="./app/main.js?v=89"></script>
 </body>
 </html>

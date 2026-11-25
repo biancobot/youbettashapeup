@@ -65,3 +65,4 @@ The single cut, also called the eight cut, has only seventeen or eighteen facets
 ## Old Mine Cut
 
 The old mine cut is the brilliant of the eighteenth and nineteenth centuries, cut by hand and eye to the shape of each crystal; the name arose after the South African discoveries of the 1870s, when stones from the "old mines" of India and Brazil needed a name to tell them apart. Its high crown, small table and open culet were made to glitter by candlelight, and antique stones in this cut are now sought after precisely because no two are alike.
+

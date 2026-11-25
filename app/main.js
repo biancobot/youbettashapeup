@@ -2,16 +2,17 @@ import * as THREE from '../vendor/three/three.module.js';
 import { LineSegments2 } from '../vendor/three/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from '../vendor/three/lines/LineSegmentsGeometry.js';
 import { LineMaterial } from '../vendor/three/lines/LineMaterial.js';
-import { designMesh, stoneStats } from './gemcad/mesh.js?v=88';
-import { createEditor } from './editor.js?v=88';
-import { createUnderlay } from './underlay.js?v=88';
-import { templates, plots } from './gemcad/templates.js?v=88';
+import { designMesh, stoneStats } from './gemcad/mesh.js?v=89';
+import { createEditor } from './editor.js?v=89';
+import { createUnderlay } from './underlay.js?v=89';
+import { templates, plots } from './gemcad/templates.js?v=89';
 window.__templates = { templates, plots };
-import { VIEWS, getView } from './views.js?v=88';
-import { captionFor } from './gemcad/captions.js?v=88';
-import { createPave, cobblestoneStonesGen, checkPacking, paveSizes, hexafoilStones, convexHull, rng } from './pave.js?v=88';
-import { weightEstimator, weightFamily, chartSize, CHART_SOURCE } from './gemcad/weights.js?v=88';
-import { singleCut } from './gemcad/shapes/oldcuts.js?v=88';
+import { VIEWS, getView } from './views.js?v=89';
+import { captionFor } from './gemcad/captions.js?v=89';
+import { notesFor } from './gemcad/shapenotes.js?v=89';
+import { createPave, cobblestoneStonesGen, checkPacking, paveSizes, hexafoilStones, convexHull, rng } from './pave.js?v=89';
+import { weightEstimator, weightFamily, chartSize, CHART_SOURCE } from './gemcad/weights.js?v=89';
+import { singleCut } from './gemcad/shapes/oldcuts.js?v=89';
 
 // ----------------------------------------------------------------------------- state
 const params = new URLSearchParams(location.search);
@@ -40,7 +41,7 @@ const state = {
     // Page: a sheet of paper centred on the origin; the stone's width occupies `stoneWidth` inches of it
     page: { enabled: params.get('page') === '1', width: 8.5, height: 8.5, stoneWidth: 2, dpi: 300, fit: 0.8 },
     // Background: cobblestone pavé of the current stone in random sizes and orientations, or a hexafoil of marquises
-    text: { auto: true, title: { enabled: false, text: '', font: 'Georgia, serif', size: 28, bold: true, italic: false, align: 'center', width: 0.8, pos: null, locked: false }, description: { enabled: false, text: '', font: 'Georgia, serif', size: 12, bold: false, italic: false, align: 'center', width: 0.6, pos: null, locked: false } },
+    text: { auto: true, source: 'caption', title: { enabled: false, text: '', font: 'Georgia, serif', size: 28, bold: true, italic: false, align: 'center', width: 0.8, pos: null, locked: false }, description: { enabled: false, text: '', font: 'Georgia, serif', size: 12, bold: false, italic: false, align: 'center', width: 0.6, pos: null, locked: false } },
     pave: { enabled: false, pattern: 'cobblestone', minOpacity: 0.15, maxOpacity: 0.6, maxCarats: 5, minCarats: 0.02, singleBelow: 0.2, mmPerInch: 25.4, margin: 0.03, seedCount: 6, samples: 40, patience: 80, maxCircles: 3000, seed: 1, labels: true, labelOpacity: 1, hexCarats: 3, hexOpacity: 0.35, hexCircles: true },
     nextId: 1,
   },
@@ -361,10 +362,11 @@ function updateText() {
 }
 /** Fill the title and description from the current shape's caption (publishable, descriptive wording). */
 function applyCaption(all = true) {
-  const c = captionFor(typeof editor !== 'undefined' && editor ? editor.templateKey : '', design ? design.name : '');
+  const key = typeof editor !== 'undefined' && editor ? editor.templateKey : '', name = design ? design.name : '';
+  const c = captionFor(key, name), n = state.sheet.text.source === 'notes' ? notesFor(key, name) : null;   // the description: the caption, or the shape note
   const blank = (id) => /^(|Title|Description)$/.test(String(state.sheet.text[id].text).trim());
   if (all || blank('title')) state.sheet.text.title.text = c.title;
-  if (all || blank('description')) state.sheet.text.description.text = c.description;
+  if (all || blank('description')) state.sheet.text.description.text = n ? n.text : c.description;
   const t = document.getElementById('tttext'), d = document.getElementById('tdtext');
   if (t) t.value = state.sheet.text.title.text; if (d) d.value = state.sheet.text.description.text;
   for (const id of TEXT_IDS) { const tb = textBlocks.get(id); if (tb) tb.key = null; }
@@ -868,6 +870,41 @@ function snapCentre(id, axis) {
   else state.sheet.origin[i] -= c;
   layout(false);
 }
+/**
+ * The info page: an 8.5 x 8.5 in page with the shape's title at the top, its shape note under it,
+ * and six views (the base with left, right, above and below projections and the pavilion below
+ * those) fitted into the space under the text and centred. Everything stays editable afterwards:
+ * gaps, stone width, alt-drag, and the text blocks.
+ */
+function infoPage() {
+  const sh = state.sheet;
+  Object.assign(sh.page, { enabled: true, width: 8.5, height: 8.5 });
+  sh.views = []; sh.nextId = 1; sh.origin = [0, 0];
+  for (const dir of ['left', 'right', 'above', 'below']) addView('base', dir);
+  addView(sh.views[3].id, 'below');   // the pavilion, below the view from below
+  selectView('base');
+  Object.assign(sh.text, { auto: true, source: 'notes' });
+  Object.assign(sh.text.title, { enabled: true, pos: null, locked: false, align: 'center', width: 0.8 });
+  Object.assign(sh.text.description, { enabled: true, pos: null, locked: false, align: 'center', width: 0.8 });
+  applyCaption(); syncInputs(); renderViewList();
+  layout(true);
+  // the free region under the description, in inches from the page top, and the arrangement's size in stone widths
+  const r = pageRect(), k = r.k, inch = (w) => w / k;
+  const t = sh.text.title.rect, d = sh.text.description.rect;
+  const textBottom = d ? inch(r.maxY - d.minY) : (t ? inch(r.maxY - t.minY) : 0.6);
+  const top = textBottom + 0.35, bottom = 0.4, side = 0.4;
+  const regionH = sh.page.height - top - bottom, regionW = sh.page.width - 2 * side;
+  const bb = [Infinity, Infinity, -Infinity, -Infinity];
+  for (const inst of instances.values()) { bb[0] = Math.min(bb[0], inst.pos[0] + inst.bbox.minX); bb[1] = Math.min(bb[1], inst.pos[1] + inst.bbox.minY); bb[2] = Math.max(bb[2], inst.pos[0] + inst.bbox.maxX); bb[3] = Math.max(bb[3], inst.pos[1] + inst.bbox.maxY); }
+  const wStone = (bb[2] - bb[0]) / 2, hStone = (bb[3] - bb[1]) / 2;
+  sh.page.stoneWidth = Math.min((0.92 * regionH) / hStone, (0.92 * regionW) / wStone);
+  const el = document.getElementById('pagestone'); if (el) el.value = sh.page.stoneWidth.toFixed(3);
+  // centre the arrangement in the region (its world extent does not change with the stone width; the page's does)
+  const k2 = 2 / sh.page.stoneWidth, pageTop = (sh.page.height / 2) * k2, centreY = pageTop - (top + regionH / 2) * k2;
+  sh.origin[0] -= (bb[0] + bb[2]) / 2; sh.origin[1] += centreY - (bb[1] + bb[3]) / 2;
+  sh.text.title.pos = null; sh.text.description.pos = null;   // the text keeps its place in inches: redo it at the new scale
+  layout(true); fitView();
+}
 /** Put a 3D view back to the isometric tilt of its parent, at its laid-out place and natural size. */
 function resetView3d(id) {
   const v = state.sheet.views.find((x) => x.id === id);
@@ -1058,6 +1095,8 @@ if (pageChk) {
     on('cx', 'click', () => snapCentreText(id, 'x')); on('cy', 'click', () => snapCentreText(id, 'y')); on('reset', 'click', () => resetTextPos(id));
   }
   const cap = $('captionbtn'); if (cap) cap.addEventListener('click', () => { state.sheet.text.auto = true; applyCaption(); layout(true); });
+  const src = $('tdsource'); if (src) src.addEventListener('change', () => { state.sheet.text.source = src.value; state.sheet.text.auto = true; applyCaption(); layout(true); });
+  const ip = $('infopage'); if (ip) ip.addEventListener('click', () => infoPage());
 }
 // pavé background controls
 {
@@ -1158,6 +1197,7 @@ function syncInputs() {
   const pg = sh.page; set('page', pg.enabled); set('pagew', pg.width); set('pageh', pg.height); set('pagestone', pg.stoneWidth); set('pagedpi', pg.dpi); set('pagefit', Math.round(pg.fit * 100));
   const sizes = { 'letter': [8.5, 11], 'letterL': [11, 8.5], 'square85': [8.5, 8.5], 'a4': [8.27, 11.69], 'a4L': [11.69, 8.27] };
   set('pagesize', Object.keys(sizes).find((k) => sizes[k][0] === pg.width && sizes[k][1] === pg.height) || 'custom');
+  set('tdsource', sh.text.source);
   for (const id of TEXT_IDS) { const b = sh.text[id], p = id === 'title' ? 'tt' : 'td'; set(p + 'on', b.enabled); set(p + 'text', b.text); set(p + 'font', b.font); set(p + 'size', b.size); set(p + 'bold', b.bold); set(p + 'italic', b.italic); set(p + 'align', b.align); set(p + 'width', Math.round(b.width * 100)); set(p + 'lock', b.locked); }
   const pv = sh.pave;
   for (const [id, key] of [['pave', 'enabled'], ['pavepattern', 'pattern'], ['pavemin', 'minOpacity'], ['pavemax', 'maxOpacity'], ['pavemaxct', 'maxCarats'], ['paveminct', 'minCarats'], ['pavesingle', 'singleBelow'], ['pavescale', 'mmPerInch'], ['pavemargin', 'margin'], ['paveseeds', 'seedCount'], ['pavelabels', 'labels'], ['pavelabelop', 'labelOpacity'], ['pavehexct', 'hexCarats'], ['pavehexop', 'hexOpacity'], ['pavehexcircles', 'hexCircles']]) set(id, pv[key]);
@@ -1178,6 +1218,7 @@ function applySetup(s) {
   for (const k of ['gaps', 'base', 'page', 'pave']) Object.assign(cur[k], sh[k] || {});
   for (const id of TEXT_IDS) Object.assign(cur.text[id], (sh.text || {})[id] || {}, { rect: null });
   cur.text.auto = (sh.text || {}).auto !== undefined ? !!sh.text.auto : cur.text.auto;
+  cur.text.source = (sh.text || {}).source || cur.text.source;
   for (const k of Object.keys(sh)) if (!['gaps', 'base', 'page', 'pave', 'text', 'views'].includes(k)) cur[k] = sh[k];
   cur.views = (sh.views || []).map((v) => ({ ...v, rot: v.rot ? new THREE.Quaternion().fromArray(v.rot) : null }));
   syncInputs();
@@ -1255,7 +1296,7 @@ requestAnimationFrame(frame);
 
 // Exposed for the screenshot tool and for scripting.
 window.__viewer = {
-  state, setDesign, snapTo, exportPNG, resize, addView, removeView, clearViews, resetView3d, snapCentre, snapCentreText, resetTextPos, hitText, applyCaption, selectView, hitInstance, fitView, fitViewsToPage, editor, getSetup, applySetup, paveInfo: () => paveInfo, paveStones: () => pave.lastStones, pageRect, instances, camera: () => camera, gridCells: () => gridLines.userData.cells,
+  state, setDesign, snapTo, exportPNG, resize, addView, removeView, clearViews, resetView3d, snapCentre, snapCentreText, resetTextPos, hitText, applyCaption, selectView, hitInstance, infoPage, fitView, fitViewsToPage, editor, getSetup, applySetup, paveInfo: () => paveInfo, paveStones: () => pave.lastStones, pageRect, instances, camera: () => camera, gridCells: () => gridLines.userData.cells,
   loadShape(id) { const { templates } = window.__templates; if (templates[id]) editor.design = templates[id].make(); },
   setLineWidth(v) { state.lineWidth = v; lineMat.linewidth = v; hiddenMat.linewidth = v; pave.setLineWidth(v); },
   setGirdleLines(v) { state.girdleLines = v; layout(true); },

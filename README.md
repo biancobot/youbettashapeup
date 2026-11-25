@@ -14,7 +14,7 @@ companion produces STEP solids and exact vector SVG views with OpenCascade.
 npm start
 ```
 
-Then open `http://localhost:8000/`. The preview pane has a menu (the three dots at its top right) with Export PNG, Fit views to page and Fit preview. The page header shows its build number (currently 88); if it
+Then open `http://localhost:8000/`. The preview pane has a menu (the three dots at its top right) with Export PNG, Fit views to page and Fit preview. The page header shows its build number (currently 89); if it
 shows an older one after a `git pull`, hard-reload (Ctrl+Shift+R). Pass another port as `node tools/serve.mjs 8123` if 8000
 is taken. The site is static ES modules, so it must be served over HTTP (not `file://`).
 `diag.html` runs a step-by-step load check if the page does not come up.
@@ -116,7 +116,12 @@ circle packing: sizes from the largest chosen carat weight down to the smallest,
 circumscribed circle touching its neighbours, sized by the trade weight estimators, random orientations and opacities, with outline
 stones labelled 0.25 to 5 ct at the trade size chart's dimensions for shapes the estimators cover) or, for the marquise, a hexafoil:
 the flower of life with a marquise in every lens and the construction circles drawn, at one size
-and opacity. Without a page,
+and opacity. Title and description text blocks (font, size, bold, italic, alignment and width, dragged into place
+or snapped to the page's centre, filled by the caption or by the shape notes) sit on the page with the
+views. **Info page** sets the whole sheet up in one click: an 8.5 × 8.5 in page, the shape's title and its
+shape note at the top, and six views (the face-up view with its left, right, above and below projections
+and the pavilion below those) fitted and centred in the space under the text; the gaps, stone width,
+positions and text stay adjustable afterwards. Without a page,
 Export PNG writes the preview at 1x to 8x. The whole setup (design, form, views, page, grid,
 background, rotation) is kept in the browser's local storage as you work and restored on the next
 load; Save/Load setup writes and reads it as a .json file, Reset to defaults clears it (or open the
@@ -141,7 +146,7 @@ app/main.js                  renderer, rotation, views, sheets, page, meet-point
 app/pave.js                  pavé and hexafoil backgrounds (packing, tiling, rendering)
 app/gemcad/weights.js        diamond weight estimator factors and carat-to-millimetre sizes
 tools/sizes.mjs              writes designs/size-chart.md: estimator sizes per shape beside Stuller's trade chart
-tools/captions.mjs           writes designs/captions.md: the publishable title and description of every design
+tools/captions.mjs           writes designs/captions.md (the publishable title and description of every design) and designs/shape-notes.md (a fact or two per shape)
 app/editor.js                tiers table, symmetry, preforms, .asc import/export
 app/gemcad/design.js         design model, facet planes, index conventions, .asc parser/writer
 app/gemcad/polytope.js       half-space clipping core

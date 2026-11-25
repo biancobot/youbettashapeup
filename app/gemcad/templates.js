@@ -2,10 +2,10 @@
 // Only the round brilliant is derived from published proportion definitions; the others are
 // editable starting points that reproduce the lab plotting template's facet pattern with
 // typical angles, and are labelled as reconstructions.
-import { roundBrilliant, girdleFromSupport, ellipseSupport } from './generators.js?v=88';
-import { newTier, tierFromPlane, expandIndex, azimuthDeg } from './design.js?v=88';
-import { marquiseSupport } from './fancy.js?v=88';
-import { shapeTemplates, shapePlots } from './shapes/index.js?v=88';
+import { roundBrilliant, girdleFromSupport, ellipseSupport } from './generators.js?v=89';
+import { newTier, tierFromPlane, expandIndex, azimuthDeg } from './design.js?v=89';
+import { marquiseSupport } from './fancy.js?v=89';
+import { shapeTemplates, shapePlots } from './shapes/index.js?v=89';
 
 const rad = (d) => (d * Math.PI) / 180;
 
