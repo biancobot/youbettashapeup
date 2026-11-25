@@ -21,8 +21,8 @@
 //     third of the half-width and the last row runs from it to the culet point at the centre
 //   normalised to the girdle line: crown 0.85, 0.70, 0.55; pavilion 0.78, 0.555, 0.333.
 // All ridges (side/corner facet intersections) therefore run straight to the centre in plan.
-import { newTier } from '../design.js?v=75';
-import { rad, girdleFromPolygon, planeThrough, classTier, plane3 } from '../shapebuild.js?v=75';
+import { newTier } from '../design.js?v=76';
+import { rad, girdleFromPolygon, planeThrough, classTier, plane3 } from '../shapebuild.js?v=76';
 
 /**
  * Asscher starting design: step rows parallel to the girdle edges, each row one side class and one

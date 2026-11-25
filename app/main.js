@@ -2,15 +2,16 @@ import * as THREE from '../vendor/three/three.module.js';
 import { LineSegments2 } from '../vendor/three/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from '../vendor/three/lines/LineSegmentsGeometry.js';
 import { LineMaterial } from '../vendor/three/lines/LineMaterial.js';
-import { designMesh, stoneStats } from './gemcad/mesh.js?v=75';
-import { createEditor } from './editor.js?v=75';
-import { createUnderlay } from './underlay.js?v=75';
-import { templates, plots } from './gemcad/templates.js?v=75';
+import { designMesh, stoneStats } from './gemcad/mesh.js?v=76';
+import { createEditor } from './editor.js?v=76';
+import { createUnderlay } from './underlay.js?v=76';
+import { templates, plots } from './gemcad/templates.js?v=76';
 window.__templates = { templates, plots };
-import { VIEWS, getView } from './views.js?v=75';
-import { createPave, cobblestoneStonesGen, checkPacking, paveSizes, hexafoilStones, convexHull, rng } from './pave.js?v=75';
-import { weightEstimator, weightFamily, chartSize, CHART_SOURCE } from './gemcad/weights.js?v=75';
-import { singleCut } from './gemcad/shapes/oldcuts.js?v=75';
+import { VIEWS, getView } from './views.js?v=76';
+import { captionFor } from './gemcad/captions.js?v=76';
+import { createPave, cobblestoneStonesGen, checkPacking, paveSizes, hexafoilStones, convexHull, rng } from './pave.js?v=76';
+import { weightEstimator, weightFamily, chartSize, CHART_SOURCE } from './gemcad/weights.js?v=76';
+import { singleCut } from './gemcad/shapes/oldcuts.js?v=76';
 
 // ----------------------------------------------------------------------------- state
 const params = new URLSearchParams(location.search);
@@ -38,7 +39,7 @@ const state = {
     // Page: a sheet of paper centred on the origin; the stone's width occupies `stoneWidth` inches of it
     page: { enabled: params.get('page') === '1', width: 8.5, height: 8.5, stoneWidth: 2, dpi: 300, fit: 0.8 },
     // Background: cobblestone pavé of the current stone in random sizes and orientations, or a hexafoil of marquises
-    text: { title: { enabled: false, text: 'Title', font: 'Georgia, serif', size: 28, bold: true, italic: false, align: 'center', width: 0.8, pos: null, locked: false }, description: { enabled: false, text: '', font: 'Georgia, serif', size: 12, bold: false, italic: false, align: 'center', width: 0.6, pos: null, locked: false } },
+    text: { auto: true, title: { enabled: false, text: 'Title', font: 'Georgia, serif', size: 28, bold: true, italic: false, align: 'center', width: 0.8, pos: null, locked: false }, description: { enabled: false, text: '', font: 'Georgia, serif', size: 12, bold: false, italic: false, align: 'center', width: 0.6, pos: null, locked: false } },
     pave: { enabled: false, pattern: 'cobblestone', minOpacity: 0.15, maxOpacity: 0.6, maxCarats: 5, minCarats: 0.02, singleBelow: 0.2, mmPerInch: 25.4, margin: 0.03, seedCount: 6, samples: 40, patience: 80, maxCircles: 3000, seed: 1, labels: true, hexCarats: 3, hexOpacity: 0.35, hexCircles: true },
     nextId: 1,
   },
@@ -130,6 +131,7 @@ function setDesign(d) {
   hardGeometry = new LineSegmentsGeometry().setPositions(geo.hardEdges);
   for (const vid of allViewIds()) makeInstance(vid);
   state.shapeId = (d.name || 'design').replace(/[^\w-]+/g, '_').toLowerCase();
+  if (state.sheet.text.auto) applyCaption();   // the shape's publishable caption, until the user writes their own
   selectedVertex = null;
   updateProps();
   layout(true);
@@ -350,6 +352,14 @@ function updateText() {
     const ox = b.rect.minX, oy = b.rect.maxY, k1 = 1 / tb.pxPerWorld;
     b.glyphs = tb.glyphs.map(([x0, y0, x1, y1]) => [[ox + x0 * k1, oy - y1 * k1], [ox + x1 * k1, oy - y1 * k1], [ox + x1 * k1, oy - y0 * k1], [ox + x0 * k1, oy - y0 * k1]]);
   }
+}
+/** Fill the title and description from the current shape's caption (publishable, descriptive wording). */
+function applyCaption() {
+  const c = captionFor(typeof editor !== 'undefined' && editor ? editor.templateKey : '', design ? design.name : '');
+  state.sheet.text.title.text = c.title; state.sheet.text.description.text = c.description;
+  const t = document.getElementById('tttext'), d = document.getElementById('tdtext');
+  if (t) t.value = c.title; if (d) d.value = c.description;
+  for (const id of TEXT_IDS) { const tb = textBlocks.get(id); if (tb) tb.key = null; }
 }
 /** The text block under a screen point, if any. */
 function hitText(clientX, clientY) {
@@ -982,7 +992,7 @@ if (pageChk) {
     const b = state.sheet.text[id], p = id === 'title' ? 'tt' : 'td';
     const on = (sfx, ev, fn) => { const el = $(p + sfx); if (el) el.addEventListener(ev, () => fn(el)); };
     on('on', 'change', (el) => { b.enabled = el.checked; layout(true); });
-    on('text', 'input', (el) => { b.text = el.value; layout(false); }); on('text', 'change', () => layout(true));
+    on('text', 'input', (el) => { b.text = el.value; state.sheet.text.auto = false; layout(false); }); on('text', 'change', () => layout(true));
     on('font', 'change', (el) => { b.font = el.value; layout(true); });
     on('size', 'input', (el) => { b.size = Math.max(4, parseFloat(el.value) || 12); layout(false); }); on('size', 'change', () => layout(true));
     on('bold', 'change', (el) => { b.bold = el.checked; layout(true); });
@@ -992,6 +1002,7 @@ if (pageChk) {
     on('lock', 'change', (el) => { b.locked = el.checked; });
     on('cx', 'click', () => snapCentreText(id, 'x')); on('cy', 'click', () => snapCentreText(id, 'y')); on('reset', 'click', () => resetTextPos(id));
   }
+  const cap = $('captionbtn'); if (cap) cap.addEventListener('click', () => { state.sheet.text.auto = true; applyCaption(); layout(true); });
 }
 // pavé background controls
 {
@@ -1111,6 +1122,7 @@ function applySetup(s) {
   const sh = s.sheet, cur = state.sheet;
   for (const k of ['gaps', 'base', 'page', 'pave']) Object.assign(cur[k], sh[k] || {});
   for (const id of TEXT_IDS) Object.assign(cur.text[id], (sh.text || {})[id] || {}, { rect: null });
+  cur.text.auto = (sh.text || {}).auto !== undefined ? !!sh.text.auto : cur.text.auto;
   for (const k of Object.keys(sh)) if (!['gaps', 'base', 'page', 'pave', 'text', 'views'].includes(k)) cur[k] = sh[k];
   cur.views = (sh.views || []).map((v) => ({ ...v, rot: v.rot ? new THREE.Quaternion().fromArray(v.rot) : null }));
   syncInputs();
@@ -1188,7 +1200,7 @@ requestAnimationFrame(frame);
 
 // Exposed for the screenshot tool and for scripting.
 window.__viewer = {
-  state, setDesign, snapTo, exportPNG, resize, addView, removeView, clearViews, resetView3d, snapCentre, snapCentreText, resetTextPos, hitText, fitView, fitViewsToPage, editor, getSetup, applySetup, paveInfo: () => paveInfo, paveStones: () => pave.lastStones, pageRect, instances, camera: () => camera, gridCells: () => gridLines.userData.cells,
+  state, setDesign, snapTo, exportPNG, resize, addView, removeView, clearViews, resetView3d, snapCentre, snapCentreText, resetTextPos, hitText, applyCaption, fitView, fitViewsToPage, editor, getSetup, applySetup, paveInfo: () => paveInfo, paveStones: () => pave.lastStones, pageRect, instances, camera: () => camera, gridCells: () => gridLines.userData.cells,
   loadShape(id) { const { templates } = window.__templates; if (templates[id]) editor.design = templates[id].make(); },
   setLineWidth(v) { state.lineWidth = v; lineMat.linewidth = v; hiddenMat.linewidth = v; pave.setLineWidth(v); },
   setGirdleLines(v) { state.girdleLines = v; layout(true); },
