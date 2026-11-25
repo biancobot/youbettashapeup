@@ -34,6 +34,10 @@ A heart-shaped diamond is recorded as early as 1562, when Mary, Queen of Scots, 
 
 Oval stones are centuries old, but the modern oval brilliant, with a round brilliant's facets stretched over an ellipse, was worked out in 1957 and quickly became a standard. Its best-known quirk is the bow-tie: a pair of dark triangles across the width, caused by the facets at the ends being flatter than those at the sides, which a careful cutter keeps faint and a careless one leaves black.
 
+## Oval Brilliant, Four Pavilion Mains
+
+As on the four-main marquise, four pavilion mains, one under each shoulder bezel, meet at the culet in a cross, and the lower girdle facets meet along the two axes under the head and belly bezels.
+
 ## Cushion Brilliant
 
 The cushion is the direct descendant of the old mine cut and was the dominant diamond shape for most of the nineteenth century, before the round brilliant took over. Some of the most famous diamonds in the world are cushions, among them the 45.52-carat Hope Diamond in Washington and the 140-carat Regent in the Louvre.
