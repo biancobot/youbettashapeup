@@ -2,17 +2,17 @@ import * as THREE from '../vendor/three/three.module.js';
 import { LineSegments2 } from '../vendor/three/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from '../vendor/three/lines/LineSegmentsGeometry.js';
 import { LineMaterial } from '../vendor/three/lines/LineMaterial.js';
-import { designMesh, stoneStats } from './gemcad/mesh.js?v=123';
-import { createEditor } from './editor.js?v=123';
-import { createUnderlay } from './underlay.js?v=123';
-import { templates, plots } from './gemcad/templates.js?v=123';
+import { designMesh, stoneStats } from './gemcad/mesh.js?v=124';
+import { createEditor } from './editor.js?v=124';
+import { createUnderlay } from './underlay.js?v=124';
+import { templates, plots } from './gemcad/templates.js?v=124';
 window.__templates = { templates, plots };
-import { VIEWS, getView } from './views.js?v=123';
-import { captionFor } from './gemcad/captions.js?v=123';
-import { notesFor } from './gemcad/shapenotes.js?v=123';
-import { createPave, cobblestoneStonesGen, checkPacking, paveSizes, hexafoilStones, convexHull, rng } from './pave.js?v=123';
-import { weightEstimator, weightFamily, chartSize, CHART_SOURCE } from './gemcad/weights.js?v=123';
-import { singleCut } from './gemcad/shapes/oldcuts.js?v=123';
+import { VIEWS, getView } from './views.js?v=124';
+import { captionFor } from './gemcad/captions.js?v=124';
+import { notesFor } from './gemcad/shapenotes.js?v=124';
+import { createPave, cobblestoneStonesGen, checkPacking, paveSizes, hexafoilStones, convexHull, rng } from './pave.js?v=124';
+import { weightEstimator, weightFamily, chartSize, CHART_SOURCE } from './gemcad/weights.js?v=124';
+import { singleCut } from './gemcad/shapes/oldcuts.js?v=124';
 
 // ----------------------------------------------------------------------------- state
 const params = new URLSearchParams(location.search);
@@ -387,13 +387,14 @@ function hitText(clientX, clientY) {
 }
 /** Centre a text block on the page: axis 'x' horizontally, 'y' vertically. */
 function snapCentreText(id, axis) {
+  pushUndo();
   const b = state.sheet.text[id]; if (!b.pos) return;
   const r = pageRect();
   if (axis === 'x') b.pos[0] = (r.minX + r.maxX) / 2; else b.pos[1] = (r.minY + r.maxY) / 2;
   layout(true);
 }
 /** Put a text block back at its default place. */
-function resetTextPos(id) { state.sheet.text[id].pos = null; layout(true); }
+function resetTextPos(id) { pushUndo(); state.sheet.text[id].pos = null; layout(true); }
 
 // ----------------------------------------------------------------------------- pavé background
 let paveInfo = { count: 0, note: '' };
@@ -609,6 +610,55 @@ function updateCamera(w, h) {
 
 new ResizeObserver(resize).observe(stage);
 
+// ----------------------------------------------------------------------------- undo / redo of moves
+// Every move in the preview (turning the base or a 3D view, alt-dragging the arrangement or a 3D view,
+// dragging or resizing a text block, scaling a 3D view, the View buttons, the spin, centring and fitting)
+// first records the state it changes; Ctrl/Cmd+Z puts the last one back, Ctrl/Cmd+Shift+Z (or Ctrl+Y)
+// redoes it. Panning and zooming the preview are not moves of the drawing and are not recorded.
+const undoStack = [], redoStack = [];
+function viewSnapshot() {
+  const sh = state.sheet;
+  return {
+    baseQ: baseQ.toArray(), spin: state.spin, viewId: state.viewId, origin: [...sh.origin], stoneWidth: sh.page.stoneWidth,
+    views: sh.views.map((v) => ({ id: v.id, kind: v.kind, rot: v.rot ? v.rot.toArray() : null, offset: v.offset ? [...v.offset] : null, scale: v.scale })),
+    text: Object.fromEntries(TEXT_IDS.map((id) => { const b = sh.text[id]; return [id, { pos: b.pos ? [...b.pos] : null, size: b.size, width: b.width }]; })),
+  };
+}
+const sameSnapshot = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+function updateUndoButtons() {
+  const u = document.getElementById('menuundo'), r = document.getElementById('menuredo');
+  if (u) { u.disabled = !undoStack.length; u.title = undoStack.length ? `Undo the last move in the preview (Ctrl+Z / Cmd+Z); ${undoStack.length} to undo` : 'Nothing to undo'; }
+  if (r) { r.disabled = !redoStack.length; r.title = redoStack.length ? 'Redo the move just undone (Ctrl+Shift+Z / Cmd+Shift+Z, or Ctrl+Y)' : 'Nothing to redo'; }
+}
+/** Record the current arrangement before a move changes it. */
+function pushUndo() {
+  const snap = viewSnapshot();
+  if (undoStack.length && sameSnapshot(undoStack[undoStack.length - 1], snap)) return;
+  undoStack.push(snap); if (undoStack.length > 100) undoStack.shift();
+  redoStack.length = 0; updateUndoButtons();
+}
+function applySnapshot(snap) {
+  const sh = state.sheet;
+  anim = null; baseQ.fromArray(snap.baseQ); state.spin = snap.spin; state.viewId = snap.viewId;
+  sh.origin = [...snap.origin];
+  if (sh.page.stoneWidth !== snap.stoneWidth) { sh.page.stoneWidth = snap.stoneWidth; const el = document.getElementById('pagestone'); if (el) el.value = +snap.stoneWidth.toFixed(3); }
+  for (const sv of snap.views) {
+    const v = sh.views.find((x) => x.id === sv.id); if (!v) continue;   // a view removed since: nothing to put back
+    v.kind = sv.kind; v.rot = sv.rot ? new THREE.Quaternion().fromArray(sv.rot) : null; v.offset = sv.offset ? [...sv.offset] : null; v.scale = sv.scale;
+  }
+  for (const id of TEXT_IDS) { const b = sh.text[id], t = snap.text[id]; if (!t) continue; b.pos = t.pos ? [...t.pos] : null; b.size = t.size; b.width = t.width; }
+  const si = document.getElementById('spin'), sn = document.getElementById('spinnum'); if (si) si.value = state.spin; if (sn) sn.value = state.spin;
+  markView(); renderViewList(); syncInputs(); layout(true);
+}
+function undoMove() { if (!undoStack.length) return; redoStack.push(viewSnapshot()); applySnapshot(undoStack.pop()); updateUndoButtons(); }
+function redoMove() { if (!redoStack.length) return; undoStack.push(viewSnapshot()); applySnapshot(redoStack.pop()); updateUndoButtons(); }
+document.addEventListener('keydown', (e) => {
+  if (!(e.ctrlKey || e.metaKey) || e.altKey || /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName || '')) return;   // text fields keep their own undo
+  const k = e.key.toLowerCase();
+  if (k === 'z' && !e.shiftKey) { undoMove(); e.preventDefault(); }
+  else if ((k === 'z' && e.shiftKey) || k === 'y') { redoMove(); e.preventDefault(); }
+});
+
 // ----------------------------------------------------------------------------- rotation
 let drag = null;
 /** The 3D view under a pointer position (world-space bounding boxes), or null for the base. */
@@ -657,7 +707,7 @@ function worldPerPixel() { const rect = canvas.getBoundingClientRect(); return (
 canvas.addEventListener('pointermove', (e) => {
   if (!drag) return;
   const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
-  if (Math.abs(dx) + Math.abs(dy) > 2) drag.moved = true;
+  if (Math.abs(dx) + Math.abs(dy) > 2 && !drag.moved) { drag.moved = true; if (!drag.pan) pushUndo(); }
   if (!drag.moved) return;
   if (drag.pan) {   // pan the camera across the sheet
     const wpp = worldPerPixel();
@@ -716,8 +766,10 @@ canvas.addEventListener('pointercancel', endDrag);
 canvas.addEventListener('wheel', (e) => {
   e.preventDefault();
   const tb = hitText(e.clientX, e.clientY);
+  const recordWheel = () => { if (!canvas.undoWheel) pushUndo(); clearTimeout(canvas.undoWheel); canvas.undoWheel = setTimeout(() => { canvas.undoWheel = null; }, 600); };
   if (tb) {   // the wheel over a text block changes its size; with shift, its wrap width
     if (tb.locked) return;
+    recordWheel();
     const f = Math.exp(-e.deltaY * 0.0015);
     if (e.shiftKey) tb.width = Math.min(1, Math.max(0.1, tb.width * f)); else tb.size = Math.min(200, Math.max(4, tb.size * f));
     const p = tb === state.sheet.text.title ? 'tt' : 'td', sz = document.getElementById(p + 'size'), wd = document.getElementById(p + 'width');
@@ -728,6 +780,7 @@ canvas.addEventListener('wheel', (e) => {
   const v = hitView3d(e.clientX, e.clientY);
   if (v) {   // the wheel over a 3D view scales that view; elsewhere it zooms the sheet
     if (v.locked) return;
+    recordWheel();
     v.scale = Math.min(5, Math.max(0.2, (v.scale || 1) * Math.exp(-e.deltaY * 0.0015)));
     renderViewList(); layout(true); return;
   }
@@ -795,6 +848,7 @@ function freeRects(pad = 0.2) {
  * page while text off to the side, beside a full-height column, leaves them as large as before.
  */
 function fitViewsToPage(fraction = state.sheet.page.fit) {
+  pushUndo();
   if (!instances.size) return;
   layout(false);   // current text rectangles
   const bb = arrangementBox();
@@ -822,6 +876,7 @@ function selectView(id) {
   for (const row of document.querySelectorAll('#viewlist .viewrow')) row.classList.toggle('selected', row.dataset.id === state.selected);
 }
 function snapTo(viewId, instant = false) {
+  pushUndo();
   const v = getView(viewId);
   const sel = state.selected !== 'base' && state.sheet.views.find((x) => x.id === state.selected);
   if (sel) {
@@ -921,6 +976,7 @@ function addView(parentId, dir, kind = 'ortho') {
  * arrangement, since projected views are tied to the base.
  */
 function snapCentre(id, axis) {
+  pushUndo();
   const inst = instances.get(id); if (!inst || !inst.bbox) return;
   const v = state.sheet.views.find((x) => x.id === id);
   const c = axis === 'x' ? inst.pos[0] + (inst.bbox.minX + inst.bbox.maxX) / 2 : inst.pos[1] + (inst.bbox.minY + inst.bbox.maxY) / 2;
@@ -952,6 +1008,7 @@ function infoPage() {
 }
 /** Put a 3D view back to the isometric tilt of its parent, at its laid-out place and natural size. */
 function resetView3d(id) {
+  pushUndo();
   const v = state.sheet.views.find((x) => x.id === id);
   if (v && v.kind === '3d') { v.rot = ISO_TILT(); v.offset = [0, 0]; v.scale = 1; renderViewList(); layout(true); }
 }
@@ -1085,9 +1142,10 @@ function setSpin(v) {
   layout(true);
 }
 spinIn.value = state.spin; spinNum.value = state.spin;
+spinIn.addEventListener('pointerdown', () => pushUndo()); spinIn.addEventListener('keydown', () => pushUndo());   // one record per slider gesture
 spinIn.addEventListener('input', () => setSpin(parseFloat(spinIn.value) || 0));
-spinNum.addEventListener('change', () => setSpin(parseFloat(spinNum.value) || 0));
-for (const b of document.querySelectorAll('[data-spin]')) b.addEventListener('click', () => setSpin(state.spin + parseFloat(b.dataset.spin)));
+spinNum.addEventListener('change', () => { pushUndo(); setSpin(parseFloat(spinNum.value) || 0); });
+for (const b of document.querySelectorAll('[data-spin]')) b.addEventListener('click', () => { pushUndo(); setSpin(state.spin + parseFloat(b.dataset.spin)); });
 
 const lw = document.getElementById('lw'), lwv = document.getElementById('lwv');
 lw.value = state.lineWidth;
@@ -1184,6 +1242,8 @@ document.getElementById('export').addEventListener('click', () => exportPNG(stat
     document.addEventListener('click', (e) => { if (!list.hidden && !list.contains(e.target) && e.target !== btn) open(false); });
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') open(false); });
     document.getElementById('menufitviews').addEventListener('click', () => fitViewsToPage());
+    document.getElementById('menuundo').addEventListener('click', () => undoMove());
+    document.getElementById('menuredo').addEventListener('click', () => redoMove());
     document.getElementById('menufitpreview').addEventListener('click', () => fitView());
   }
 }
@@ -1249,6 +1309,7 @@ function syncInputs() {
   for (const id of ['pavemin', 'pavemax', 'pavehexop', 'pavelabelop']) if ($(id + 'v')) $(id + 'v').textContent = `${Math.round($(id).value * 100)}%`;
 }
 function applySetup(s) {
+  undoStack.length = 0; redoStack.length = 0; updateUndoButtons();
   if (!s || s.app !== 'gem-facet-designer' || !s.sheet || !s.design) return false;
   // the template form, then the saved design itself (so hand edits to tiers survive)
   const inputs = editor.setTemplate(s.template);
@@ -1342,7 +1403,7 @@ requestAnimationFrame(frame);
 
 // Exposed for the screenshot tool and for scripting.
 window.__viewer = {
-  state, setDesign, snapTo, exportPNG, resize, addView, removeView, clearViews, resetView3d, snapCentre, snapCentreText, resetTextPos, hitText, applyCaption, selectView, hitInstance, infoPage, freeRects, fitView, fitViewsToPage, editor, getSetup, applySetup, paveInfo: () => paveInfo, paveStones: () => pave.lastStones, pageRect, instances, camera: () => camera, gridCells: () => gridLines.userData.cells,
+  state, setDesign, snapTo, exportPNG, resize, addView, removeView, clearViews, resetView3d, snapCentre, snapCentreText, resetTextPos, hitText, applyCaption, selectView, hitInstance, infoPage, undoMove, redoMove, undoCount: () => undoStack.length, freeRects, fitView, fitViewsToPage, editor, getSetup, applySetup, paveInfo: () => paveInfo, paveStones: () => pave.lastStones, pageRect, instances, camera: () => camera, gridCells: () => gridLines.userData.cells,
   loadShape(id) { const { templates } = window.__templates; if (templates[id]) editor.design = templates[id].make(); },
   setLineWidth(v) { state.lineWidth = v; lineMat.linewidth = v; hiddenMat.linewidth = v; pave.setLineWidth(v); },
   setGirdleLines(v) { state.girdleLines = v; layout(true); },

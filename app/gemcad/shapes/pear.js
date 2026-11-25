@@ -47,12 +47,12 @@
 // 0.019, pavilion 0.015; girdle contacts are quantised to the 128-facet girdle, about 0.03). The one
 // larger residual is the wing-point star tip of the uncorrected variant (0.08): on a stone with planar
 // bezels that tip lies on the wing/point ridge, and the template draws it 0.08 off that ridge.
-import { newTier } from '../design.js?v=123';
+import { newTier } from '../design.js?v=124';
 import {
   rad, deg, norm360, girdleVertices, vertexNear, vertexNearY, lift,
   planeThrough, mirrorX, zPlane, yPlane, xPlane, azPlane, perpPlane, classTier,
   girdleFromSupport, girdleEqualLength, plane3, intersect3,
-} from '../shapebuild.js?v=123';
+} from '../shapebuild.js?v=124';
 
 /**
  * Pear outline, half-width 1, length 2 * ratio: unit circle head centred at the origin (bottom at
