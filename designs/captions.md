@@ -8,7 +8,7 @@ The round brilliant is the shape every other is measured against: fifty-seven fa
 
 ## Marquise Brilliant, French Tips / Marquise Brilliant, Pointed Tips / Marquise Brilliant, Side Hubs, French Tips / Marquise Brilliant, Side Hubs, Pointed Tips
 
-Long, slender and pointed at both ends, the marquise makes a stone look larger than its weight and a hand look longer than it is, with a silhouette that is unmistakable from across a room.
+Long, slender and pointed at both ends, the marquise spreads its light along the whole finger, looks larger than any other cut of the same weight, and has a silhouette that is unmistakable from across a room.
 
 ## Pear Brilliant, French Tip / Pear Brilliant, Pointed Tip
 

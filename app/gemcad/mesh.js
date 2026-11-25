@@ -1,8 +1,8 @@
 // Polytope -> render buffers for the viewer. Girdle facets (angle 90 tiers) share "smooth" edges
 // that are drawn only on the silhouette unless the user asks for every girdle line.
-import { build, topology, unionHalves } from './polytope.js?v=83';
-import { designPlanes, hasHalves } from './design.js?v=83';
-import { triangulate } from '../geometry/core.js?v=83';
+import { build, topology, unionHalves } from './polytope.js?v=84';
+import { designPlanes, hasHalves } from './design.js?v=84';
+import { triangulate } from '../geometry/core.js?v=84';
 
 export function designMesh(design) {
   const planes = designPlanes(design);

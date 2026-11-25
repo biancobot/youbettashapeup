@@ -5,7 +5,7 @@
 // One description per shape (every variant of a shape shares it); the title names the variant.
 const D = {
   round: 'The round brilliant is the shape every other is measured against: fifty-seven facets worked out to return more light to the eye than any other cut, with the fire and flash that have made it the first choice for an engagement ring for a hundred years.',
-  marquise: 'Long, slender and pointed at both ends, the marquise makes a stone look larger than its weight and a hand look longer than it is, with a silhouette that is unmistakable from across a room.',
+  marquise: 'Long, slender and pointed at both ends, the marquise spreads its light along the whole finger, looks larger than any other cut of the same weight, and has a silhouette that is unmistakable from across a room.',
   pear: 'A rounded head tapering to a single point, the pear brings softness and drama together in one teardrop that flatters the hand, lights the whole drop with brilliant facets, and looks larger face up than a round of the same weight.',
   heart: 'The most romantic of all the cuts and the hardest to cut well, the heart is a declaration in a single stone: two matching lobes, a crisp cleft and a clean point, full of light and impossible to mistake for anything else.',
   oval: 'The oval has all the brilliance of a round with a longer, more graceful line, spreading its weight across a larger face and flattering the finger it sits on.',
