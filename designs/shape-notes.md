@@ -48,7 +48,7 @@ This version keeps a culet: rather than meeting at a point, the pavilion mains s
 
 ## Square Cushion Modified Brilliant
 
-The "crushed ice" cushion is a modern variant, developed as cutters looked for more sparkle from square rough: its pavilion is broken into many small facets that scatter light in a glittering, broken pattern rather than the bold flashes of a classic cushion. Grading laboratories distinguish it from the plain cushion brilliant by its facet arrangement, and the two can look quite different side by side.
+The name comes from the grading report: a cushion is called a modified brilliant when it is cut with extra facets beyond the classic brilliant arrangement, usually a further row on the pavilion that breaks the cushion's broad flashes into finer sparkle, and since the line between the two is a judgment, the same stone can be called a cushion brilliant by one laboratory and a cushion modified brilliant by another. "Square" is a measurement too: IGI's cut guidelines count a cushion as square up to a length-to-width ratio of 1.05 and as rectangular from 1.06.
 
 ## Square Modified Brilliant
 

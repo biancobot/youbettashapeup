@@ -10,7 +10,7 @@ const D = {
   heart: 'The heart\u2019s outline is the hardest of any cut to get right, two matching lobes, a crisp cleft and a clean point brought into perfect symmetry before a single facet is polished, and when it is right the stone is full of light and impossible to mistake for anything else.',
   oval: 'The oval has all the brilliance of a round with a longer, more graceful line, spreading its weight across a larger face so that it looks bigger than its carats.',
   cushion: 'With its soft corners and pillow-shaped outline, the cushion glows rather than glitters, throwing broad warm flashes with a feel of candlelight and antique jewelry about it.',
-  cushionModified: 'A square cushion whose pavilion has been cut into a shimmer of small facets, so the stone sparkles the way light plays on crushed ice while keeping the cushion\u2019s gentle, pillow-shaped charm.',
+  cushionModified: 'A square cushion with an extra row of facets on its pavilion, so its soft, pillow-shaped outline comes alive with fine, lively sparkle.',
   princess: 'Crisp, square and sharp-cornered, with a pavilion of chevrons that light it from corner to corner, the square modified brilliant is the clean contemporary answer to the round and puts more of the crystal into the ring than any other brilliant.',
   radiant: 'The cut-cornered rectangle takes the tailored outline of a step cut and fills it with brilliant-cut fire, dazzling from every part of the stone and hard-wearing at every corner.',
   emerald: 'The emerald cut does not sparkle, it gleams: long open step facets turn the stone into a hall of mirrors with a cool, architectural glamour that nothing else can match.',

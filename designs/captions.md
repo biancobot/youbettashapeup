@@ -28,7 +28,7 @@ With its soft corners and pillow-shaped outline, the cushion glows rather than g
 
 ## Square Cushion Modified Brilliant
 
-A square cushion whose pavilion has been cut into a shimmer of small facets, so the stone sparkles the way light plays on crushed ice while keeping the cushion’s gentle, pillow-shaped charm.
+A square cushion with an extra row of facets on its pavilion, so its soft, pillow-shaped outline comes alive with fine, lively sparkle.
 
 ## Square Modified Brilliant
 
