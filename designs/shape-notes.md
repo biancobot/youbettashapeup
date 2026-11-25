@@ -56,7 +56,7 @@ The square brilliant with pointed corners was developed in the 1960s and 1970s a
 
 ## Cut-Cornered Rectangular Modified Brilliant
 
-Introduced in 1977, this was the first cut to put a full brilliant-style pavilion under a step-cut outline, bringing sparkle to the rectangle that had belonged to the emerald cut. Its clipped corners are practical as well as handsome: a square or rectangle with sharp corners is the most easily chipped of all shapes, and the clipped version is one of the most durable.
+Introduced in 1977 and widely known as the radiant cut, this was the first cut to put a full brilliant-style pavilion under a step-cut outline, bringing sparkle to the rectangle that had belonged to the emerald cut. Its clipped corners are practical as well as handsome: a square or rectangle with sharp corners is the most easily chipped of all shapes, and the clipped version is one of the most durable.
 
 ## Emerald Cut
 
