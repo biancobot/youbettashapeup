@@ -39,7 +39,7 @@ const CAPTIONS = {
   oval: ['Oval Brilliant, Eight Mains', D.oval],
   oval8head: ['Oval Brilliant, Mains at the Ends', D.oval],
   oval4: ['Oval Brilliant, Four Mains', D.oval],
-  cushion: ['Cushion Brilliant', D.cushion],
+  cushion: ['Cushion Brilliant, Open Culet', D.cushion],
   cushionPoint: ['Cushion Brilliant, Pointed Culet', D.cushion],
   cushionModified: ['Square Cushion Modified Brilliant', D.cushionModified],
   princess: ['Square Modified Brilliant', D.princess],

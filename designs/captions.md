@@ -22,7 +22,7 @@ The heart’s outline is the hardest of any cut to get right, two matching lobes
 
 The oval has all the brilliance of a round with a longer, more graceful line, spreading its weight across a larger face so that it looks bigger than its carats.
 
-## Cushion Brilliant / Cushion Brilliant, Pointed Culet
+## Cushion Brilliant, Open Culet / Cushion Brilliant, Pointed Culet
 
 With its soft corners and pillow-shaped outline, the cushion glows rather than glitters, throwing broad warm flashes with a feel of candlelight and antique jewelry about it.
 

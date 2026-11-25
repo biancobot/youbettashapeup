@@ -17,11 +17,11 @@
 // L:W - r (y) including the bows. Least-squares fit of the plot outline: r = 0.60, sides bowed by
 // 0.07, ends by 0.03 (rms 0.010 of the half-width; a plain rectangle plus circle fits best at
 // r = 0.80 with rms 0.018 and leaves flats on which the girdle polygon bulges).
-import { newTier } from '../design.js?v=105';
+import { newTier } from '../design.js?v=106';
 import {
   rad, deg, marquiseSupport, outlineFromSupport, girdleVertices, vertexNear, lift,
   planeThrough, zPlane, yPlane, xPlane, classTier, girdleFromSupport, girdleEqualLength, plane3, intersect3,
-} from '../shapebuild.js?v=105';
+} from '../shapebuild.js?v=106';
 
 /**
  * Support function of a cushion outline: a rectangle with half-sides w and l whose sides bow out
@@ -168,7 +168,7 @@ export function cushionBrilliant({
 
 export const templates = {
   cushion: {
-    name: 'Cushion brilliant (starting point)',
+    name: 'Cushion brilliant, open culet (starting point)',
     note: 'IGI plot pattern (8 bezels, 8 stars, 16 uppers; 8 mains, 16 lowers, small culet) on a rounded-rectangle outline with typical angles; trace against the underlay and cut meet points.',
     params: [
       { key: 'ratio', label: 'L:W', default: 1.1, step: 0.01, min: 1, title: 'Length to width; the IGI plot is 1.25' },

@@ -42,7 +42,7 @@ As on the four-main marquise, four pavilion mains, one under each shoulder bezel
 
 The cushion is the direct descendant of the old mine cut and was the dominant diamond shape for most of the nineteenth century, before the round brilliant took over. Some of the most famous diamonds in the world are cushions, among them the 45.52-carat Hope Diamond in Washington and the 140-carat Regent in the Louvre.
 
-## Cushion Brilliant, Large Culet
+## Cushion Brilliant, Open Culet
 
 This version keeps a culet: rather than meeting at a point, the pavilion mains stop at a small flat rectangle along the length, a reminder of the large open culets of the old mine cuts the cushion came from.
 
@@ -64,7 +64,7 @@ The step cut was developed for emeralds, a brittle stone that cracks under the p
 
 ## Square Emerald Cut
 
-The square step cut with deeply clipped corners was first cut in Amsterdam in 1902 and became a signature of art deco jewelry in the 1920s; a reworked version with more facets was introduced in 2001. Seen face up its facets form a stair of concentric squares, an effect sometimes called the hall of mirrors or the windmill.
+The square step cut with deeply clipped corners was first cut in Amsterdam in 1902 by Joseph Asscher, and is still widely known as the Asscher cut; it became a signature of art deco jewelry in the 1920s, and a reworked version with more facets was introduced by the Asscher company in 2001 as the Royal Asscher Cut. Seen face up its facets form a stair of concentric squares, an effect sometimes called the hall of mirrors or the windmill.
 
 ## Shield Brilliant
 
