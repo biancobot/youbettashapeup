@@ -69,7 +69,7 @@ export function expandIndex(index, gear, fold, mirror) {
   }
   return [...set].sort((a, b) => a - b);
 }
-const round6 = (v) => Math.round(v * 1e6) / 1e6;
+const round6 = (v) => Math.round(v * 1e10) / 1e10;   // fine enough that a mirrored facet sits where its twin does (6 places shifted planes by about 1e-7, the mesh tolerance, and could change which facets meet at a contact)
 
 /** Tier (angle, index, distance) that reproduces a given plane { n, d }. */
 export function tierFromPlane(n, d, gear) {
