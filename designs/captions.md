@@ -8,11 +8,11 @@ The round brilliant is the shape every other is measured against: fifty-seven fa
 
 ## Marquise Brilliant, French Tips / Marquise Brilliant, Pointed Tips / Marquise Brilliant, Side Hubs, French Tips / Marquise Brilliant, Side Hubs, Pointed Tips
 
-Long, slender and pointed at both ends, the marquise spreads its light along the whole finger, looks larger than any other cut of the same weight, and has a silhouette that is unmistakable from across a room.
+Long, slender and pointed at both ends, the marquise looks larger than any other cut of the same weight and has a silhouette that is unmistakable from across a room.
 
 ## Pear Brilliant, French Tip / Pear Brilliant, Pointed Tip
 
-A rounded head tapering to a single point, the pear brings softness and drama together in one teardrop that flatters the hand, lights the whole drop with brilliant facets, and looks larger face up than a round of the same weight.
+A rounded head tapering to a single point, the pear brings softness and drama together in one teardrop, lit from end to end by its brilliant facets and looking larger face up than a round of the same weight.
 
 ## Heart Brilliant, French Tip / Heart Brilliant, Straighter Wings, French Tip / Heart Brilliant, Straighter Wings, Pointed Tip / Heart Brilliant, Pointed Tip
 
@@ -20,7 +20,7 @@ The most romantic of all the cuts and the hardest to cut well, the heart is a de
 
 ## Oval Brilliant, Eight Mains / Oval Brilliant, Mains at the Ends / Oval Brilliant, Four Mains
 
-The oval has all the brilliance of a round with a longer, more graceful line, spreading its weight across a larger face and flattering the finger it sits on.
+The oval has all the brilliance of a round with a longer, more graceful line, spreading its weight across a larger face so that it looks bigger than its carats.
 
 ## Cushion Brilliant / Cushion Brilliant, Pointed Culet
 
