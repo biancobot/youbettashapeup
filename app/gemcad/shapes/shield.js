@@ -11,10 +11,10 @@
 // outline normal as azimuth, the rest pass through meet points. One mirror line: fold 1 + mirror.
 //
 // Orientation: width 2 along x, length along y, top edge at +y, point at -y (radial azimuth 270).
-import { newTier } from '../design.js?v=109';
+import { newTier } from '../design.js?v=110';
 import {
   rad, deg, norm360, polygonSupport, girdleVertices, vertexNear, vertexNearY, lift,
-  planeThrough, mirrorX, zPlane, yPlane, azPlane, perpPlane, classTier, girdleEqualLength, plane3, intersect3 } from '../shapebuild.js?v=109';
+  planeThrough, mirrorX, zPlane, yPlane, azPlane, perpPlane, classTier, girdleEqualLength, plane3, intersect3 } from '../shapebuild.js?v=110';
 
 /**
  * Shield outline, half-width 1 at the widest point, length 2 * ratio: a head arc of large radius
@@ -80,6 +80,7 @@ export function shieldStart({
   gear = 96, girdleFacets = 128,
   frenchTip = true, tipHubHeight = 0.8, tipTable = 0.28, tipGirdle = 0.08,
   junctions = null, ridgeJunctions = null, singleTip = false,
+  pavilion = 'mains8', keelHead = 0.38, keelPoint = 0.34, keelTip = 0.84, sideCorners = [0.36, 0.32],
 } = {}) {
   const W = 2, L = ratio * W, H = crownHeight * W, g = girdle * W, Pd = pavilionDepth * W;
   const outline = shieldOutline(ratio, widest, headRadius, shoulder);
@@ -184,43 +185,72 @@ export function shieldStart({
     return planeThrough(-deg(Math.atan2(Pd, h)), az, p);
   };
   const Hg = lift(Hv, -g), Ag = lift(Shv, -g), Sg = lift(Sv, -g), Lg = lift(Wv, -g), Pg = lift(Pv, -g);
-  const mHead = addClass('P head', mainAt(90, Hg));
-  const mCorner = addClass('P shoulder', mainAt(outline.normalAz(Shv.az), Ag));
-  const mSide = addClass('P belly', mainAt(outline.normalAz(Sv.az), Sg));
-  const mLower = addClass('P wing', mainAt(outline.normalAz(Wv.az), Lg));
-  const mPoint = addClass('P point', mainAt(270, Pg));
-  // lower girdle facets in pairs meeting at the same girdle junctions as the uppers, each pair's
-  // junction on the ridge of its two mains at lowerDepth of the pavilion depth
-  const jz = zPlane(-g - lowerDepth * Pd);
-  // ridgeJunctions: the junctions' plan distances from the culet along the four ridges (head-shoulder,
-  // shoulder-belly, belly-wing, wing-point), which set the mains' widths; else all at lowerDepth
-  const onRidge = (a, b, r) => { let d = [a.n[1] * b.n[2] - a.n[2] * b.n[1], a.n[2] * b.n[0] - a.n[0] * b.n[2], a.n[0] * b.n[1] - a.n[1] * b.n[0]]; if (d[2] < 0) d = d.map((x) => -x); const k = r / Math.hypot(d[0], d[1]); return culet.map((c, i) => c + d[i] * k); };
-  const pairs = [[mHead, mCorner], [mCorner, mSide], [mSide, mLower], [mLower, mPoint]];
-  let [Jhs, Jcs, Jsl, Jlp] = pairs.map(([a, b], i) => (Array.isArray(ridgeJunctions) ? onRidge(a, b, ridgeJunctions[i]) : intersect3(a, b, jz)));
-  if (ridgeJunctions === 'even') {
-    // the four junctions placed (each 25-80% of the way from the culet to where its ridge reaches the
-    // girdle) to make the five mains as nearly equally wide as the ridges allow (a main's share depends
-    // on its steepness, so the far, shallow shoulder and point mains stay the narrowest), on average at
-    // lowerDepth of the pavilion depth
-    const ridge = pairs.map(([a, b]) => { let d = [a.n[1] * b.n[2] - a.n[2] * b.n[1], a.n[2] * b.n[0] - a.n[0] * b.n[2], a.n[0] * b.n[1] - a.n[1] * b.n[0]]; if (d[2] < 0) d = d.map((x) => -x); const top = (-g - culet[2]) / d[2]; return (f) => culet.map((c, i) => c + d[i] * f * top); });
-    const fs = []; for (let f = 0.25; f <= 0.8 + 0.001; f += 0.025) fs.push(f);
-    const fTarget = 1 - lowerDepth, widths = (a, b, c, k) => [2 * a[0], Math.hypot(a[0] - b[0], a[1] - b[1]), Math.hypot(b[0] - c[0], b[1] - c[1]), Math.hypot(c[0] - k[0], c[1] - k[1]), 2 * k[0]];
-    let best = null;
-    for (const f1 of fs) { const a = ridge[0](f1); for (const f2 of fs) { const b = ridge[1](f2); for (const f3 of fs) { const c = ridge[2](f3); for (const f4 of fs) { const k = ridge[3](f4);
-      const w = widths(a, b, c, k), mean = w.reduce((x, y) => x + y, 0) / w.length, fm = (f1 + f2 + f3 + f4) / 4;
-      const err = w.reduce((e, x) => e + ((x - mean) / mean) ** 2, 0) + 0.05 * [f1, f2, f3, f4].reduce((e, x) => e + (x - fm) ** 2, 0) + 2 * (fm - fTarget) ** 2;
-      if (!best || err < best.err) best = { err, J: [a, b, c, k] };
-    } } } }
-    [Jhs, Jcs, Jsl, Jlp] = best.J;
+  if (pavilion === 'keel6') {
+    // six mains, under the shoulder, belly and wing bezels, and none at the head or the point: a keel
+    // line runs along the axis at both ends. The two shoulder mains meet along it from the culet up to
+    // the head keel junction A (keelHead half-widths from the culet), and above A two lower girdle
+    // facets each side meet on it under the head bezel; the two wing mains meet along it from the culet
+    // down to C (keelPoint), and below C two lower girdle facets each side reach the point: one from the
+    // wing contact to the wing-point junction with two corners on the keel (C and D, keelTip from the
+    // culet), one from that junction to the point. The mains' other corners sit on the shoulder-belly
+    // and belly-wing ridges at sideCorners half-widths from the culet. Every pavilion girdle point is a
+    // main contact or a lower girdle junction under a crown one.
+    const onRidge6 = (a, b, r) => { let d = [a.n[1] * b.n[2] - a.n[2] * b.n[1], a.n[2] * b.n[0] - a.n[0] * b.n[2], a.n[0] * b.n[1] - a.n[1] * b.n[0]]; if (d[2] < 0) d = d.map((x) => -x); const k = r / Math.hypot(d[0], d[1]); return culet.map((c, i) => c + d[i] * k); };
+    const mCorner = addClass('P shoulder', mainAt(outline.normalAz(Shv.az), Ag));
+    const mSide = addClass('P belly', mainAt(outline.normalAz(Sv.az), Sg));
+    const mLower = addClass('P wing', mainAt(outline.normalAz(Wv.az), Lg));
+    const A = intersect3(mCorner, mirrorX(mCorner), yPlane(cY + keelHead));
+    const C = intersect3(mLower, mirrorX(mLower), yPlane(cY - keelPoint));
+    const X1 = onRidge6(mCorner, mSide, sideCorners[0]), X2 = onRidge6(mSide, mLower, sideCorners[1]);
+    chord('L head', Hv, J1v, A, -g, false);
+    chord('L shoulder a', J1v, Shv, A, -g, false);
+    chord('L shoulder b', Shv, J2v, X1, -g, false);
+    chord('L belly a', J2v, Sv, X1, -g, false);
+    chord('L belly b', Sv, J3v, X2, -g, false);
+    chord('L wing a', J3v, Wv, X2, -g, false);
+    const lw = plane3(lift(Wv, -g), lift(J4v, -g), C, false);
+    addClass('L wing b', lw);
+    const D = intersect3(lw, { n: [1, 0, 0], d: 0 }, yPlane(cY - keelTip));
+    addClass('L point', plane3(lift(J4v, -g), lift(Pv, -g), D, false));
+  } else {
+    const mHead = addClass('P head', mainAt(90, Hg));
+    const mCorner = addClass('P shoulder', mainAt(outline.normalAz(Shv.az), Ag));
+    const mSide = addClass('P belly', mainAt(outline.normalAz(Sv.az), Sg));
+    const mLower = addClass('P wing', mainAt(outline.normalAz(Wv.az), Lg));
+    const mPoint = addClass('P point', mainAt(270, Pg));
+    // lower girdle facets in pairs meeting at the same girdle junctions as the uppers, each pair's
+    // junction on the ridge of its two mains at lowerDepth of the pavilion depth
+    const jz = zPlane(-g - lowerDepth * Pd);
+    // ridgeJunctions: the junctions' plan distances from the culet along the four ridges (head-shoulder,
+    // shoulder-belly, belly-wing, wing-point), which set the mains' widths; else all at lowerDepth
+    const onRidge = (a, b, r) => { let d = [a.n[1] * b.n[2] - a.n[2] * b.n[1], a.n[2] * b.n[0] - a.n[0] * b.n[2], a.n[0] * b.n[1] - a.n[1] * b.n[0]]; if (d[2] < 0) d = d.map((x) => -x); const k = r / Math.hypot(d[0], d[1]); return culet.map((c, i) => c + d[i] * k); };
+    const pairs = [[mHead, mCorner], [mCorner, mSide], [mSide, mLower], [mLower, mPoint]];
+    let [Jhs, Jcs, Jsl, Jlp] = pairs.map(([a, b], i) => (Array.isArray(ridgeJunctions) ? onRidge(a, b, ridgeJunctions[i]) : intersect3(a, b, jz)));
+    if (ridgeJunctions === 'even') {
+      // the four junctions placed (each 25-80% of the way from the culet to where its ridge reaches the
+      // girdle) to make the five mains as nearly equally wide as the ridges allow (a main's share depends
+      // on its steepness, so the far, shallow shoulder and point mains stay the narrowest), on average at
+      // lowerDepth of the pavilion depth
+      const ridge = pairs.map(([a, b]) => { let d = [a.n[1] * b.n[2] - a.n[2] * b.n[1], a.n[2] * b.n[0] - a.n[0] * b.n[2], a.n[0] * b.n[1] - a.n[1] * b.n[0]]; if (d[2] < 0) d = d.map((x) => -x); const top = (-g - culet[2]) / d[2]; return (f) => culet.map((c, i) => c + d[i] * f * top); });
+      const fs = []; for (let f = 0.25; f <= 0.8 + 0.001; f += 0.025) fs.push(f);
+      const fTarget = 1 - lowerDepth, widths = (a, b, c, k) => [2 * a[0], Math.hypot(a[0] - b[0], a[1] - b[1]), Math.hypot(b[0] - c[0], b[1] - c[1]), Math.hypot(c[0] - k[0], c[1] - k[1]), 2 * k[0]];
+      let best = null;
+      for (const f1 of fs) { const a = ridge[0](f1); for (const f2 of fs) { const b = ridge[1](f2); for (const f3 of fs) { const c = ridge[2](f3); for (const f4 of fs) { const k = ridge[3](f4);
+        const w = widths(a, b, c, k), mean = w.reduce((x, y) => x + y, 0) / w.length, fm = (f1 + f2 + f3 + f4) / 4;
+        const err = w.reduce((e, x) => e + ((x - mean) / mean) ** 2, 0) + 0.05 * [f1, f2, f3, f4].reduce((e, x) => e + (x - fm) ** 2, 0) + 2 * (fm - fTarget) ** 2;
+        if (!best || err < best.err) best = { err, J: [a, b, c, k] };
+      } } } }
+      [Jhs, Jcs, Jsl, Jlp] = best.J;
+    }
+    chord('L head a', Hv, J1v, Jhs, -g, false);
+    chord('L head b', J1v, Shv, Jhs, -g, false);
+    chord('L shoulder a', Shv, J2v, Jcs, -g, false);
+    chord('L shoulder b', J2v, Sv, Jcs, -g, false);
+    chord('L belly a', Sv, J3v, Jsl, -g, false);
+    chord('L belly b', J3v, Wv, Jsl, -g, false);
+    chord('L wing a', Wv, J4v, Jlp, -g, false);
+    chord('L wing b', J4v, Pv, Jlp, -g, false);
   }
-  chord('L head a', Hv, J1v, Jhs, -g, false);
-  chord('L head b', J1v, Shv, Jhs, -g, false);
-  chord('L shoulder a', Shv, J2v, Jcs, -g, false);
-  chord('L shoulder b', J2v, Sv, Jcs, -g, false);
-  chord('L belly a', Sv, J3v, Jsl, -g, false);
-  chord('L belly b', J3v, Wv, Jsl, -g, false);
-  chord('L wing a', Wv, J4v, Jlp, -g, false);
-  chord('L wing b', J4v, Pv, Jlp, -g, false);
 
   const pct = (v) => `${Math.round(v * 100)}%`;
   const hubNote = hub ? `Hub at ${pct((hub[1] - yP) / L)} of the length from the point, ${pct(hub[2] / H)} of the crown height.` : '';
@@ -260,15 +290,22 @@ const french = [
 // the hand-drawn revision of the shield (bezels and mains at the head and shoulders kept; belly and
 // wing contacts lower; junctions midway between the contacts; the mains' side corners pushed out to
 // even their widths; one upper girdle facet each side of a French tip)
-const revised = { sideContact: 20, wingContact: 308.5, junctions: [null, null, 345, 295], ridgeJunctions: 'even', singleTip: true };
+const revised = { headRadius: 2.7, sideContact: 20, wingContact: 308.5, junctions: [null, null, 345, 295], ridgeJunctions: 'even', singleTip: true };
 const revisedParams = [
-  ...params.map((p) => (p.key === 'wingContact' ? { ...p, default: revised.wingContact } : p.key === 'lowerDepth' ? { ...p, title: 'The lower girdle junctions on the main ridges sit on average at this fraction of the pavilion depth; their spread evens out the mains\' widths' } : p)),
+  ...params.map((p) => (p.key === 'wingContact' ? { ...p, default: revised.wingContact } : p.key === 'headRadius' ? { ...p, default: revised.headRadius, title: 'Radius of the head arc, half-widths (large = nearly flat); below about 2.6 the upper and lower girdle facets across the head dig through a 4% girdle' } : p.key === 'lowerDepth' ? { ...p, title: 'The lower girdle junctions on the main ridges sit on average at this fraction of the pavilion depth; their spread evens out the mains\' widths' } : p)),
   { key: 'sideContact', label: 'Belly contact', default: revised.sideContact, step: 0.5, title: 'Radial azimuth of the belly bezel and main contact (the widest point is at about 30)' },
   { key: 'junctions', label: 'Girdle junctions', default: revised.junctions, list: true, title: 'Radial azimuths of the four upper/lower girdle junctions: head-shoulder and shoulder-belly ("bend": at the shoulder arc\'s ends, which keeps those chords off the tight bend at any ratio), belly-wing, wing-point' },
 ];
 export const templates = {
   shield: { name: 'Shield brilliant, French tip (starting point)', note: 'Brilliant pattern on a shield outline (no lab template exists); French tip at the point.', params: [...params, ...french], make: (o = {}) => shieldStart({ ...o }) },
   shieldRevised: { name: 'Shield brilliant, French tip, revised (starting point)', note: 'The hand-drawn revision: belly and wing bezels and mains lower, girdle junctions midway between the contacts, mains of even width, one upper girdle facet each side of the French tip.', params: [...revisedParams, ...french.filter((p) => p.key !== 'tipGirdle')], make: (o = {}) => shieldStart({ ...revised, ...o, singleTip: true }) },
+  shieldKeel: { name: 'Shield brilliant, French tip, six-main keel pavilion (starting point)', note: 'The revised crown with a French tip; a pavilion of six mains under the shoulder, belly and wing bezels with a keel line at both ends, the lower girdle facets meeting on it under the head bezel and running down it to the point.', params: [
+    ...revisedParams.filter((p) => p.key !== 'lowerDepth'), ...french.filter((p) => p.key !== 'tipGirdle'),
+    { key: 'keelHead', label: 'Head keel', default: 0.38, step: 0.01, min: 0.05, max: 1.2, title: 'Where the shoulder mains stop meeting along the keel towards the head, half-widths from the culet' },
+    { key: 'keelPoint', label: 'Point keel', default: 0.34, step: 0.01, min: 0.05, max: 1.2, title: 'Where the wing mains stop meeting along the keel towards the point, half-widths from the culet' },
+    { key: 'keelTip', label: 'Tip keel', default: 0.84, step: 0.01, min: 0.1, max: 1.3, title: 'Where the two lower girdle facets below the wing mains meet on the keel, half-widths from the culet' },
+    { key: 'sideCorners', label: 'Main corners', default: [0.36, 0.32], list: true, title: 'Distance from the culet (half-widths) of the mains\' corners on the shoulder-belly and belly-wing ridges' },
+  ], make: (o = {}) => shieldStart({ ...revised, ...o, pavilion: 'keel6', singleTip: true }) },
   shieldStdRevised: { name: 'Shield brilliant, uncorrected point, revised (starting point)', note: 'The hand-drawn revision with a shallow bezel at the point: belly and wing bezels and mains lower, girdle junctions midway between the contacts, mains of even width.', params: [...revisedParams, { key: 'pointAngle', label: 'Point bezel', default: 25, step: 0.5 }], make: (o = {}) => shieldStart({ ...revised, frenchTip: false, ...o }) },
   shieldStd: { name: 'Shield brilliant, uncorrected point (starting point)', note: 'Brilliant pattern on a shield outline with a shallow bezel at the point.', params: [...params, { key: 'pointAngle', label: 'Point bezel', default: 25, step: 0.5 }], make: (o = {}) => shieldStart({ frenchTip: false, ...o }) },
 };

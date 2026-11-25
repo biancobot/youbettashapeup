@@ -49,6 +49,7 @@ const CAPTIONS = {
   shield: ['Shield Brilliant, French Tip', D.shield],
   shieldStd: ['Shield Brilliant, Pointed Tip', D.shield],
   shieldRevised: ['Shield Brilliant, French Tip', D.shield],
+  shieldKeel: ['Shield Brilliant, French Tip', D.shield],
   shieldStdRevised: ['Shield Brilliant, Pointed Tip', D.shield],
   shieldStepKite: ['Kite Shield, Step Cut', D.shieldStep],
   shieldStepLong: ['Hexagonal Shield, Step Cut', D.shieldStep],

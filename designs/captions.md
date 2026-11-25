@@ -46,7 +46,7 @@ The emerald cut does not sparkle, it gleams: long open step facets turn the ston
 
 Deep clipped corners, a high crown and a small table make the square emerald cut the step cut at its most hypnotic, its facets forming a stair of concentric squares turning in to the center with all the poise of art deco jewelry.
 
-## Shield Brilliant, French Tip / Shield Brilliant, French Tip / Shield Brilliant, Pointed Tip / Shield Brilliant, Pointed Tip
+## Shield Brilliant, French Tip / Shield Brilliant, French Tip / Shield Brilliant, French Tip / Shield Brilliant, Pointed Tip / Shield Brilliant, Pointed Tip
 
 With a broad curved top, rounded shoulders and sides that sweep in to a point like the crest on a coat of arms, the shield is a rare, confident shape that fills its whole outline with brilliant light.
 
