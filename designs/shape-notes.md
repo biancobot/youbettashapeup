@@ -8,7 +8,7 @@ The modern proportions were set out in 1919 by Marcel Tolkowsky, a 21-year-old A
 
 ## Marquise Brilliant
 
-Legend has it that Louis XV asked for a diamond cut to the shape of the smile of his mistress, the Marquise de Pompadour, in the 1740s; whatever the truth, the name stuck, and the French court's taste for the shape is why it is also called the navette, the little boat. Of all the shapes it has the largest face for its weight, because so much of the stone sits in the long, shallow centre.
+Legend has it that Louis XV asked for a diamond cut to the shape of the smile of his mistress, the Marquise de Pompadour, in the 1740s; whatever the truth, the name stuck, and the French court's taste for the shape is why it is also called the navette, the little boat. Of all the shapes it has the largest face for its weight, because so much of the stone sits in the long, shallow center.
 
 ## Pear Brilliant
 
@@ -40,19 +40,19 @@ Introduced in 1977, this was the first cut to put a full brilliant-style pavilio
 
 ## Emerald Cut
 
-The step cut was developed for emeralds, a brittle stone that cracks under the pressure needed to polish a brilliant's many small facets, and took its name from them when diamond cutters adopted it in the 1920s. Because its long facets hide nothing, it is the cut that most rewards a clean, well-coloured crystal, and the shape of choice for the great Golconda diamonds of the past.
+The step cut was developed for emeralds, a brittle stone that cracks under the pressure needed to polish a brilliant's many small facets, and took its name from them when diamond cutters adopted it in the 1920s. Because its long facets hide nothing, it is the cut that most rewards a clean, well-colored crystal, and the shape of choice for the great Golconda diamonds of the past.
 
 ## Square Emerald Cut
 
-The square step cut with deeply clipped corners was first cut in Amsterdam in 1902 and became a signature of art deco jewellery in the 1920s; a reworked version with more facets was introduced in 2001. Seen face up its facets form a stair of concentric squares, an effect sometimes called the hall of mirrors or the windmill.
+The square step cut with deeply clipped corners was first cut in Amsterdam in 1902 and became a signature of art deco jewelry in the 1920s; a reworked version with more facets was introduced in 2001. Seen face up its facets form a stair of concentric squares, an effect sometimes called the hall of mirrors or the windmill.
 
 ## Shield Brilliant
 
-The shield has been cut for centuries as a way of saving a crystal whose outline would not yield a round or a pear, which is why no two are quite alike and no laboratory publishes a template for it. It is most often seen as a pair of side stones flanking a larger centre, pointing in toward it, though a well-cut shield holds its own as a centre stone.
+The shield has been cut for centuries as a way of saving a crystal whose outline would not yield a round or a pear, which is why no two are quite alike and no laboratory publishes a template for it. It is most often seen as a pair of side stones flanking a larger center, pointing in toward it, though a well-cut shield holds its own as a center stone.
 
 ## Kite Shield, Hexagonal Shield and Wide Shield, Step Cut
 
-Six-sided step-cut shields are cut to the stone's own outline rather than to a standard, so proportions vary from one to the next; the three drawn here were measured from photographs of cut stones. The flat facets of a step cut show colour and clarity plainly, which makes these shapes a favourite for coloured stones and for the salt-and-pepper diamonds that have come into fashion.
+Six-sided step-cut shields are cut to the stone's own outline rather than to a standard, so proportions vary from one to the next; the three drawn here were measured from photographs of cut stones. The flat facets of a step cut show color and clarity plainly, which makes these shapes a favorite for colored stones and for the salt-and-pepper diamonds that have come into fashion.
 
 ## Triangular Brilliant
 
@@ -60,7 +60,7 @@ The triangular brilliant was first cut in Amsterdam in 1962, and a New York firm
 
 ## Single Cut
 
-The single cut, also called the eight cut, has only seventeen or eighteen facets and is the way the very smallest diamonds have been cut for well over a century, because a full brilliant's fifty-seven facets would be too tiny to polish or to see on a stone a millimetre across. Most of the sparkle in pavé and in watch bezels comes from single cuts, and good ones are still prized by setters for their crisp, even flashes.
+The single cut, also called the eight cut, has only seventeen or eighteen facets and is the way the very smallest diamonds have been cut for well over a century, because a full brilliant's fifty-seven facets would be too tiny to polish or to see on a stone a millimeter across. Most of the sparkle in pavé and in watch bezels comes from single cuts, and good ones are still prized by setters for their crisp, even flashes.
 
 ## Old Mine Cut
 

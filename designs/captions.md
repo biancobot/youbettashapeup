@@ -24,7 +24,7 @@ The oval has all the brilliance of a round with a longer, more graceful line, sp
 
 ## Cushion Brilliant / Cushion Brilliant, Pointed Culet
 
-With its soft corners and pillow-shaped outline, the cushion glows rather than glitters, throwing broad warm flashes with a feel of candlelight and antique jewellery about it.
+With its soft corners and pillow-shaped outline, the cushion glows rather than glitters, throwing broad warm flashes with a feel of candlelight and antique jewelry about it.
 
 ## Square Cushion Modified Brilliant
 
@@ -44,7 +44,7 @@ The emerald cut does not sparkle, it gleams: long open step facets turn the ston
 
 ## Square Emerald Cut
 
-Deep clipped corners, a high crown and a small table make the square emerald cut the step cut at its most hypnotic, its facets forming a stair of concentric squares turning in to the centre with all the poise of art deco jewellery.
+Deep clipped corners, a high crown and a small table make the square emerald cut the step cut at its most hypnotic, its facets forming a stair of concentric squares turning in to the center with all the poise of art deco jewelry.
 
 ## Shield Brilliant, French Tip / Shield Brilliant, Pointed Tip
 
@@ -52,7 +52,7 @@ With a broad curved top, rounded shoulders and sides that sweep in to a point li
 
 ## Kite Shield, Step Cut / Hexagonal Shield, Step Cut / Wide Shield, Step Cut
 
-Six straight sides, a pointed base and rows of flat step facets that catch the light in bold clean flashes make the step-cut shield more armour than ornament, as modern as anything cut this year.
+Six straight sides, a pointed base and rows of flat step facets that catch the light in bold clean flashes make the step-cut shield more armor than ornament, as modern as anything cut this year.
 
 ## Triangular Brilliant, Curved Sides / Triangular Brilliant, Straight Sides / Triangular Brilliant, Corner Facets
 
@@ -64,7 +64,7 @@ The single cut is the brilliant stripped to its essentials, eight facets above a
 
 ## Old Mine Cut
 
-The old mine cut is the brilliant as it was cut by candlelight, a squarish cushion with a small table, high crown, deep pavilion and open culet that throws big soft flashes and carries the romance of antique jewellery in every facet.
+The old mine cut is the brilliant as it was cut by candlelight, a squarish cushion with a small table, high crown, deep pavilion and open culet that throws big soft flashes and carries the romance of antique jewelry in every facet.
 
 ## Round Preform
 
