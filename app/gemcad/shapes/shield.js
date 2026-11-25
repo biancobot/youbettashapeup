@@ -11,10 +11,10 @@
 // outline normal as azimuth, the rest pass through meet points. One mirror line: fold 1 + mirror.
 //
 // Orientation: width 2 along x, length along y, top edge at +y, point at -y (radial azimuth 270).
-import { newTier } from '../design.js?v=111';
+import { newTier } from '../design.js?v=112';
 import {
   rad, deg, norm360, polygonSupport, girdleVertices, vertexNear, vertexNearY, lift,
-  planeThrough, mirrorX, zPlane, yPlane, azPlane, perpPlane, classTier, girdleEqualLength, plane3, intersect3 } from '../shapebuild.js?v=111';
+  planeThrough, mirrorX, zPlane, yPlane, azPlane, perpPlane, classTier, girdleEqualLength, plane3, intersect3 } from '../shapebuild.js?v=112';
 
 /**
  * Shield outline, half-width 1 at the widest point, length 2 * ratio: a head arc of large radius
@@ -79,7 +79,7 @@ export function shieldStart({
   sideContact = null, wingContact = 330, starHeight = 0.6, lowerDepth = 0.6, culetPos = 0.5,
   gear = 96, girdleFacets = 128,
   frenchTip = true, tipHubHeight = 0.8, tipTable = 0.28, tipGirdle = 0.08,
-  junctions = null, ridgeJunctions = null, singleTip = false,
+  junctions = null, ridgeJunctions = null, singleTip = false, cornerDepths = null,
   pavilion = 'mains8', keelHead = 0.38, keelPoint = 0.34, keelTip = 0.84, sideCorners = [0.36, 0.32],
 } = {}) {
   const W = 2, L = ratio * W, H = crownHeight * W, g = girdle * W, Pd = pavilionDepth * W;
@@ -228,7 +228,10 @@ export function shieldStart({
     // shoulder-belly, belly-wing, wing-point), which set the mains' widths; else all at lowerDepth
     const onRidge = (a, b, r) => { let d = [a.n[1] * b.n[2] - a.n[2] * b.n[1], a.n[2] * b.n[0] - a.n[0] * b.n[2], a.n[0] * b.n[1] - a.n[1] * b.n[0]]; if (d[2] < 0) d = d.map((x) => -x); const k = r / Math.hypot(d[0], d[1]); return culet.map((c, i) => c + d[i] * k); };
     const pairs = [[mHead, mCorner], [mCorner, mSide], [mSide, mLower], [mLower, mPoint]];
-    let [Jhs, Jcs, Jsl, Jlp] = pairs.map(([a, b], i) => (Array.isArray(ridgeJunctions) ? onRidge(a, b, ridgeJunctions[i]) : intersect3(a, b, jz)));
+    // cornerDepths: each ridge's corner at its own fraction of the pavilion depth (head-shoulder,
+    // shoulder-belly, belly-wing, wing-point; null entries take lowerDepth)
+    const cz = (i) => (cornerDepths && cornerDepths[i] != null ? zPlane(-g - cornerDepths[i] * Pd) : jz);
+    let [Jhs, Jcs, Jsl, Jlp] = pairs.map(([a, b], i) => (Array.isArray(ridgeJunctions) ? onRidge(a, b, ridgeJunctions[i]) : intersect3(a, b, cz(i))));
     if (ridgeJunctions === 'even') {
       // the four junctions placed (each 25-80% of the way from the culet to where its ridge reaches the
       // girdle) to make the five mains as nearly equally wide as the ridges allow (a main's share depends
@@ -293,9 +296,9 @@ const french = [
 // the hand-drawn revision of the shield (bezels and mains at the head and shoulders kept; belly and
 // wing contacts lower; junctions midway between the contacts; the mains' side corners pushed out to
 // even their widths; one upper girdle facet each side of a French tip)
-const revised = { headRadius: 2.7, sideContact: 20, wingContact: 308.5, junctions: [null, null, 345, 295], ridgeJunctions: null, lowerDepth: 0.75, culetPos: 0.44, singleTip: true };
+const revised = { headRadius: 3.0, sideContact: 20, wingContact: 308.5, junctions: [null, null, 345, 295], ridgeJunctions: null, lowerDepth: 0.75, culetPos: 1 / 3, singleTip: true };
 const revisedParams = [
-  ...params.map((p) => (p.key === 'wingContact' ? { ...p, default: revised.wingContact } : p.key === 'headRadius' ? { ...p, default: revised.headRadius, title: 'Radius of the head arc, half-widths (large = nearly flat); below about 2.6 the upper and lower girdle facets across the head dig through a 4% girdle' } : p.key === 'lowerDepth' ? { ...p, default: revised.lowerDepth, title: 'The mains\' side corners (the lower girdle junctions on the main ridges), all at this fraction of the pavilion depth: deep corners make slim kites that radiate from the culet like a star' } : p.key === 'culetPos' ? { ...p, default: revised.culetPos, title: 'Fraction of the length from the top; the culet sits nearer the head than the point' } : p)),
+  ...params.map((p) => (p.key === 'wingContact' ? { ...p, default: revised.wingContact } : p.key === 'headRadius' ? { ...p, default: revised.headRadius, title: 'Radius of the head arc, half-widths (large = nearly flat); below about 3 (with the culet a third of the way down) the upper and lower girdle facets across the head dig through a 4% girdle' } : p.key === 'lowerDepth' ? { ...p, default: revised.lowerDepth, title: 'The mains\' side corners (the lower girdle junctions on the main ridges), all at this fraction of the pavilion depth: deep corners make slim kites that radiate from the culet like a star' } : p.key === 'culetPos' ? { ...p, default: revised.culetPos, title: 'Fraction of the length from the top; a third of the way down puts the culet two thirds of the way from the point to the head' } : p)),
   { key: 'sideContact', label: 'Belly contact', default: revised.sideContact, step: 0.5, title: 'Radial azimuth of the belly bezel and main contact (the widest point is at about 30)' },
   { key: 'junctions', label: 'Girdle junctions', default: revised.junctions, list: true, title: 'Radial azimuths of the four upper/lower girdle junctions: head-shoulder and shoulder-belly ("bend": at the shoulder arc\'s ends, which keeps those chords off the tight bend at any ratio), belly-wing, wing-point' },
 ];
@@ -303,10 +306,10 @@ export const templates = {
   shield: { name: 'Shield brilliant, French tip (starting point)', note: 'Brilliant pattern on a shield outline (no lab template exists); French tip at the point.', params: [...params, ...french], make: (o = {}) => shieldStart({ ...o }) },
   shieldRevised: { name: 'Shield brilliant, French tip, revised (starting point)', note: 'The hand-drawn revision: belly and wing bezels and mains lower, girdle junctions midway between the contacts, mains of even width, one upper girdle facet each side of the French tip.', params: [...revisedParams, ...french.filter((p) => p.key !== 'tipGirdle')], make: (o = {}) => shieldStart({ ...revised, ...o, singleTip: true }) },
   shieldKeel: { name: 'Shield brilliant, French tip, six-main keel pavilion (starting point)', note: 'The revised crown with a French tip; a pavilion of six mains under the shoulder, belly and wing bezels with a keel line at both ends, the lower girdle facets meeting on it under the head bezel and running down it to the point.', params: [
-    ...revisedParams.map((p) => (p.key === 'culetPos' ? { ...p, default: 0.46 } : p)), ...french.filter((p) => p.key !== 'tipGirdle'),
-    { key: 'keelHead', label: 'Head keel', default: 0.2, step: 0.01, min: 0.05, max: 1.2, title: 'Where the shoulder mains stop meeting along the keel towards the head, half-widths from the culet (further out, the head lower girdle facets grow steeper and dig into the girdle)' },
+    ...revisedParams, ...french.filter((p) => p.key !== 'tipGirdle'),
+    { key: 'keelHead', label: 'Head keel', default: 0.15, step: 0.01, min: 0.05, max: 1.2, title: 'Where the shoulder mains stop meeting along the keel towards the head, half-widths from the culet (further out, the head lower girdle facets grow steeper and dig into the girdle)' },
     { key: 'keelTip', label: 'Tip keel', default: 0.84, step: 0.01, min: 0.1, max: 1.3, title: 'Where the two lower girdle facets below the wing mains meet on the keel, half-widths from the culet' },
-  ], make: (o = {}) => shieldStart({ ...revised, culetPos: 0.46, keelHead: 0.2, ...o, keelPoint: null, sideCorners: null, pavilion: 'keel6', singleTip: true }) },
+  ], make: (o = {}) => shieldStart({ ...revised, keelHead: 0.15, ...o, keelPoint: null, sideCorners: null, pavilion: 'keel6', singleTip: true }) },
   shieldStdRevised: { name: 'Shield brilliant, uncorrected point, revised (starting point)', note: 'The hand-drawn revision with a shallow bezel at the point: belly and wing bezels and mains lower, girdle junctions midway between the contacts, mains of even width.', params: [...revisedParams, { key: 'pointAngle', label: 'Point bezel', default: 25, step: 0.5 }], make: (o = {}) => shieldStart({ ...revised, frenchTip: false, ...o }) },
   shieldStd: { name: 'Shield brilliant, uncorrected point (starting point)', note: 'Brilliant pattern on a shield outline with a shallow bezel at the point.', params: [...params, { key: 'pointAngle', label: 'Point bezel', default: 25, step: 0.5 }], make: (o = {}) => shieldStart({ frenchTip: false, ...o }) },
 };
