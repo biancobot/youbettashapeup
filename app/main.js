@@ -2,16 +2,16 @@ import * as THREE from '../vendor/three/three.module.js';
 import { LineSegments2 } from '../vendor/three/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from '../vendor/three/lines/LineSegmentsGeometry.js';
 import { LineMaterial } from '../vendor/three/lines/LineMaterial.js';
-import { designMesh, stoneStats } from './gemcad/mesh.js?v=80';
-import { createEditor } from './editor.js?v=80';
-import { createUnderlay } from './underlay.js?v=80';
-import { templates, plots } from './gemcad/templates.js?v=80';
+import { designMesh, stoneStats } from './gemcad/mesh.js?v=81';
+import { createEditor } from './editor.js?v=81';
+import { createUnderlay } from './underlay.js?v=81';
+import { templates, plots } from './gemcad/templates.js?v=81';
 window.__templates = { templates, plots };
-import { VIEWS, getView } from './views.js?v=80';
-import { captionFor } from './gemcad/captions.js?v=80';
-import { createPave, cobblestoneStonesGen, checkPacking, paveSizes, hexafoilStones, convexHull, rng } from './pave.js?v=80';
-import { weightEstimator, weightFamily, chartSize, CHART_SOURCE } from './gemcad/weights.js?v=80';
-import { singleCut } from './gemcad/shapes/oldcuts.js?v=80';
+import { VIEWS, getView } from './views.js?v=81';
+import { captionFor } from './gemcad/captions.js?v=81';
+import { createPave, cobblestoneStonesGen, checkPacking, paveSizes, hexafoilStones, convexHull, rng } from './pave.js?v=81';
+import { weightEstimator, weightFamily, chartSize, CHART_SOURCE } from './gemcad/weights.js?v=81';
+import { singleCut } from './gemcad/shapes/oldcuts.js?v=81';
 
 // ----------------------------------------------------------------------------- state
 const params = new URLSearchParams(location.search);
@@ -332,7 +332,7 @@ function defaultTextPos(id, h) {
 }
 function updateText() {
   const r = pageRect(), k = r.k;
-  const wrapWorld = state.sheet.page.enabled ? r.maxX - r.minX : Math.max(2, isFinite(overall.maxX) ? overall.maxX - overall.minX : 2);
+  const wrapWorld = r.maxX - r.minX;   // the page's width (the page size applies even when the page is not drawn)
   for (const id of TEXT_IDS) {
     const b = state.sheet.text[id];
     let tb = textBlocks.get(id);
@@ -1012,7 +1012,7 @@ if (pageChk) {
     on('bold', 'change', (el) => { b.bold = el.checked; layout(true); });
     on('italic', 'change', (el) => { b.italic = el.checked; layout(true); });
     on('align', 'change', (el) => { b.align = el.value; layout(true); });
-    on('width', 'change', (el) => { b.width = Math.min(1, Math.max(0.1, (parseFloat(el.value) || 60) / 100)); layout(true); });
+    on('width', 'input', (el) => { b.width = Math.min(1, Math.max(0.1, (parseFloat(el.value) || 60) / 100)); layout(false); }); on('width', 'change', (el) => { b.width = Math.min(1, Math.max(0.1, (parseFloat(el.value) || 60) / 100)); layout(true); });
     on('lock', 'change', (el) => { b.locked = el.checked; });
     on('cx', 'click', () => snapCentreText(id, 'x')); on('cy', 'click', () => snapCentreText(id, 'y')); on('reset', 'click', () => resetTextPos(id));
   }
