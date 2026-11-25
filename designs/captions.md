@@ -6,7 +6,7 @@ A publishable title per design and one description per shape (its variants share
 
 The round brilliant is the shape every other is measured against: fifty-seven facets worked out to return more light to the eye than any other cut, with the fire and flash that have made it the first choice for an engagement ring for a hundred years.
 
-## Marquise Brilliant, French Tips / Marquise Brilliant, Pointed Tips / Marquise Brilliant, Side Hubs, French Tips / Marquise Brilliant, Side Hubs, Pointed Tips
+## Marquise Brilliant, French Tips / Marquise Brilliant, Pointed Tips / Marquise Brilliant, Pointed Tips / Marquise Brilliant, Pointed Tips / Marquise Brilliant, Side Hubs, French Tips / Marquise Brilliant, Side Hubs, Pointed Tips
 
 Long, slender and pointed at both ends, the marquise looks larger than any other cut of the same weight and has a silhouette that is unmistakable from across a room.
 

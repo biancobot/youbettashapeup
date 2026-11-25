@@ -26,6 +26,8 @@ const CAPTIONS = {
   round: ['Round Brilliant', D.round],
   marquiseGia: ['Marquise Brilliant, French Tips', D.marquise],
   marquiseStd: ['Marquise Brilliant, Pointed Tips', D.marquise],
+  marquise8: ['Marquise Brilliant, Pointed Tips', D.marquise],
+  marquise4: ['Marquise Brilliant, Pointed Tips', D.marquise],
   marquiseSideHub: ['Marquise Brilliant, Side Hubs, French Tips', D.marquise],
   marquiseSideHubStd: ['Marquise Brilliant, Side Hubs, Pointed Tips', D.marquise],
   pear: ['Pear Brilliant, French Tip', D.pear],

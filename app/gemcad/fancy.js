@@ -1,10 +1,10 @@
 // Marquise brilliant starting design. Other fancy shapes live in ./shapes/.
-import { newTier } from './design.js?v=95';
+import { newTier } from './design.js?v=96';
 import {
   rad, deg, marquiseSupport, marquiseOutline, girdleVertices, vertexNear, vertexNearY, lift,
   planeThrough, mirrorX, mirrorY, zPlane, yPlane, xPlane, azPlane, perpPlane, classTier,
   girdleFromSupport, girdleEqualLength, plane3, intersect3,
-} from './shapebuild.js?v=95';
+} from './shapebuild.js?v=96';
 export { marquiseSupport, marquiseOutline, girdleVertices };
 
 /**
@@ -26,7 +26,7 @@ export function marquiseStart({
   ratio = 2.0, crownAngle = 35, wingAngle = crownAngle, pointAngle = 21.5, crownHeight = 0.14, girdle = 0.038, pavilionDepth = 0.435,
   starHeight = 0.65, lowerDepth = 0, gear = 96, girdleFacets = 128,
   frenchTips = true, tipHubHeight = 0.75, tipTable = 0.30, tipGirdle = 0.16,
-  crown = 'sideBezel', sideHub = 0.82, pavilion = 'igi', keelJunction = 0.25,
+  crown = 'sideBezel', sideHub = 0.82, pavilion = 'igi', keelJunction = 0.25, pointJunction = 0.48, bellyJunction = 0.35,
 } = {}) {
   const W = 2, l = ratio, H = crownHeight * W, g = girdle * W, Pd = pavilionDepth * W;
   const sideHubs = crown === 'sideHub';
@@ -140,7 +140,38 @@ export function marquiseStart({
     return planeThrough(-ang, az, p);
   };
   const bellyMains = pavilion === 'bellyMains';
-  if (bellyMains) {
+  if (pavilion === 'mains8') {
+    // ---- eight mains, one under every bezel (2 points, 4 wings, 2 sides), with two lower girdle
+    // facets between each pair of mains meeting on the girdle under the upper girdle junctions:
+    // every crown girdle point has a pavilion point below it and the reverse. The lower girdle
+    // junctions on the ridges between mains: beside the point main at pointJunction of the
+    // half-length from the centre, beside the side main at bellyJunction of the half-width
+    // (the diagram's 0.48 and 0.35).
+    const Uv0 = under.between, Ug = lift(Uv0, -g);
+    const mP = addClass('P point', mainThrough(Pv, Pg));
+    const mW = addClass('P wing', mainThrough(Uv0, Ug));
+    const mS = addClass('P side', mainThrough(Sv, Sg));
+    const Kp = intersect3(mP, mW, yPlane(pointJunction * l)), Ks = intersect3(mW, mS, xPlane(bellyJunction));
+    addClass('L point a', plane3(Kp, Pg, A, false));
+    addClass('L point b', plane3(Kp, A, Ug, false));
+    addClass('L side a', plane3(Ks, Ug, C, false));
+    addClass('L side b', plane3(Ks, C, Sg, false));
+  } else if (pavilion === 'mains4') {
+    // ---- four mains, under the wing bezels only, meeting at the culet: the keel line runs from the
+    // culet to each point and the belly line to each side. The two wing mains of a point meet along
+    // the keel up to the keel junction K (keelJunction of the half-length from the centre); the two
+    // wing mains of a side meet along the belly line up to J (bellyJunction of the half-width). Beyond K and J the lines
+    // are ridges between lower girdle facets, so the point and side bezels sit above lower girdle
+    // junctions; the other lower junctions sit under the upper girdle junctions.
+    const Uv0 = under.between, Ug = lift(Uv0, -g);
+    const mW = addClass('P wing', mainThrough(Uv0, Ug));
+    const K = intersect3(mW, mirrorX(mW), yPlane(keelJunction * l));
+    const J = intersect3(mW, mirrorY(mW), xPlane(bellyJunction));
+    addClass('L point', plane3(K, Pg, A, false));
+    addClass('L wing a', plane3(K, A, Ug, false));
+    addClass('L wing b', plane3(J, Ug, C, false));
+    addClass('L side', plane3(J, C, Sg, false));
+  } else if (bellyMains) {
     // ---- six mains, under the bezels on the belly (GIA wireframe): a main under each side bezel and
     // each wing bezel; none at the points. The two wing mains of a point meet along the keel line
     // (the axis) from the culet up to the keel junction K; from K to the point the keel is the ridge
@@ -189,7 +220,11 @@ export function marquiseStart({
       'IGI Excellent ranges (marquise brilliant): L:W 1.80-2.20, table 57-62%, crown height 11.5-16.5%, crown angle 33-38.5, pavilion depth 41.5-46%, pavilion angle 39.5-42.5, girdle thin to slightly thick.',
       `This design: L:W ${ratio}, crown height ${pct(crownHeight)}, wing and side bezels ${crownAngle}, pavilion depth ${pct(pavilionDepth)}, girdle ${pct(girdle)}. Bezel angles are measured in each facet's own slope direction; they vary around a fancy outline at a constant crown height.`,
       `Points: ${frenchTips ? 'French tips (GIA 4Cs wireframe). No bezel at the point. Eight facets meet at a hub on the axis: two tip facets forming the point, two small upper girdle facets, the two wing bezels and two half-bezels that run to the table corner. ' + hubNote : 'uncorrected, a shallow bezel at each point (' + pointAngle + ') with a star either side.'}${sideNote}`,
-      bellyMains
+      pavilion === 'mains8'
+        ? `Plot pattern: ${crownPattern}; pavilion 8 mains, one under every bezel (2 points, 4 wings, 2 sides), 16 lower girdle facets meeting on the girdle under the upper girdle junctions and on the ridges between mains, ${pct(pointJunction)} of the half-length from the centre beside the point mains and ${pct(bellyJunction)} of the half-width beside the side mains. Every pavilion girdle point sits under a crown one.`
+        : pavilion === 'mains4'
+        ? `Plot pattern: ${crownPattern}; pavilion 4 mains under the wing bezels, meeting at the culet along the keel line (up to ${pct(keelJunction)} of the half-length from the centre) and the belly line (up to ${pct(bellyJunction)} of the half-width); 16 lower girdle facets, two meeting on the keel under each point bezel and two on the belly line under each side bezel. Every pavilion girdle point sits under a crown one.`
+        : bellyMains
         ? `Plot pattern: ${crownPattern}; pavilion (GIA wireframe) 6 mains, each under a side or wing bezel, the wing mains meeting along the keel line up to ${pct(keelJunction)} of the half-length from the centre; 16 lower girdle facets, two meeting on the keel under each point. Every pavilion girdle point sits under a crown one.`
         : `Plot pattern (IGI template): ${crownPattern}; pavilion 8 mains meeting at the culet (contacts about 21% and 65% of the half-length from the point), 16 lower girdle facets with junctions on the axis, the diagonals and the sides. The same pavilion template is drawn on IGI reports FDR689598882, FDR779652382 and FDR762535113.`,
       'Facets touch the girdle at the plot positions; each facet azimuth is the outline normal at its contact point.',
