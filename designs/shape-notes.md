@@ -80,7 +80,7 @@ Six-sided step-cut shields are cut to the stone's own outline rather than to a s
 
 ## Triangular Brilliant
 
-The triangular brilliant was first cut in Amsterdam in 1962, and a New York firm registered a trademark on a version in 1978, which is why the shape goes by several different names in the trade. It is one of the shallowest of all cuts, often only a third as deep as it is wide, so a triangular stone looks far larger face up than its weight suggests.
+The triangular brilliant was first cut in Amsterdam in 1962, and the shape goes by several different names in the trade. It is one of the shallowest of all cuts, often only a third as deep as it is wide, so a triangular stone looks far larger face up than its weight suggests.
 
 ## Single Cut
 
