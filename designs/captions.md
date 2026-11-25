@@ -54,7 +54,7 @@ With a broad curved top, rounded shoulders and sides that sweep in to a point li
 
 Six straight sides, a pointed base and rows of flat step facets that catch the light in bold clean flashes make the step-cut shield more armor than ornament, as modern as anything cut this year.
 
-## Triangular Brilliant, Curved Sides / Triangular Brilliant, Straight Sides / Triangular Brilliant, Corner Facets
+## Triangular Brilliant / Triangular Brilliant, Curved Sides / Triangular Brilliant, Straight Sides / Triangular Brilliant, Corner Facets
 
 Three sides, three points and a blaze of light: the triangular brilliant is pure geometry, with a wide flat spread that makes it look far larger than its weight.
 

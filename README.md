@@ -14,7 +14,7 @@ companion produces STEP solids and exact vector SVG views with OpenCascade.
 npm start
 ```
 
-Then open `http://localhost:8000/`. The preview pane has a menu (the three dots at its top right) with Export PNG, Fit views to page and Fit preview. The page header shows its build number (currently 118); if it
+Then open `http://localhost:8000/`. The preview pane has a menu (the three dots at its top right) with Export PNG, Fit views to page and Fit preview. The page header shows its build number (currently 119); if it
 shows an older one after a `git pull`, hard-reload (Ctrl+Shift+R). Pass another port as `node tools/serve.mjs 8123` if 8000
 is taken. The site is static ES modules, so it must be served over HTTP (not `file://`).
 `diag.html` runs a step-by-step load check if the page does not come up.
@@ -74,8 +74,9 @@ pear's pattern since no lab template exists, and a revised pair from a hand-draw
 belly and wing bezels lower, mains of more even width, one upper girdle facet each side of the French tip;
 and a French tip version with a six-main keel pavilion, the lower girdle facets meeting on the keel at the
 head and the point); step-cut shields in three proportions (a kite shield, a
-hexagonal shield and a wide shield, all six-sided, measured from photographs and face-up silhouettes); trillion (triangular brilliant from a
-reference drawing, bowed or straight sides, and a brilliant-style variant); round single cut (eight cut) and the antique old mine
+hexagonal shield and a wide shield, all six-sided, measured from photographs and face-up silhouettes); triangular brilliant (the round brilliant's pattern folded three ways on curved sides: bezels and
+mains at the corners and the side middles); trillion (break-facet pattern from a reference drawing, bowed or
+straight sides, and a corner-facet variant); round single cut (eight cut) and the antique old mine
 cut (cushion, small table, high crown, deep pavilion, large culet); the heart also comes with the hand-drawn
 reference profile. The heart is the one non-convex stone: it is built as the union of
 two convex halves split on the mirror plane, with the cleft facets applied to one half each.

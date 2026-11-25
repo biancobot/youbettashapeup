@@ -54,6 +54,7 @@ const CAPTIONS = {
   shieldStepKite: ['Kite Shield, Step Cut', D.shieldStep],
   shieldStepLong: ['Hexagonal Shield, Step Cut', D.shieldStep],
   shieldStepWide: ['Wide Shield, Step Cut', D.shieldStep],
+  triangleBrilliant: ['Triangular Brilliant', D.trillion],
   trillion: ['Triangular Brilliant, Curved Sides', D.trillion],
   trillionStraight: ['Triangular Brilliant, Straight Sides', D.trillion],
   trillionBrilliant: ['Triangular Brilliant, Corner Facets', D.trillion],
