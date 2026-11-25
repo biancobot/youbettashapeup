@@ -2,16 +2,16 @@ import * as THREE from '../vendor/three/three.module.js';
 import { LineSegments2 } from '../vendor/three/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from '../vendor/three/lines/LineSegmentsGeometry.js';
 import { LineMaterial } from '../vendor/three/lines/LineMaterial.js';
-import { designMesh, stoneStats } from './gemcad/mesh.js?v=79';
-import { createEditor } from './editor.js?v=79';
-import { createUnderlay } from './underlay.js?v=79';
-import { templates, plots } from './gemcad/templates.js?v=79';
+import { designMesh, stoneStats } from './gemcad/mesh.js?v=80';
+import { createEditor } from './editor.js?v=80';
+import { createUnderlay } from './underlay.js?v=80';
+import { templates, plots } from './gemcad/templates.js?v=80';
 window.__templates = { templates, plots };
-import { VIEWS, getView } from './views.js?v=79';
-import { captionFor } from './gemcad/captions.js?v=79';
-import { createPave, cobblestoneStonesGen, checkPacking, paveSizes, hexafoilStones, convexHull, rng } from './pave.js?v=79';
-import { weightEstimator, weightFamily, chartSize, CHART_SOURCE } from './gemcad/weights.js?v=79';
-import { singleCut } from './gemcad/shapes/oldcuts.js?v=79';
+import { VIEWS, getView } from './views.js?v=80';
+import { captionFor } from './gemcad/captions.js?v=80';
+import { createPave, cobblestoneStonesGen, checkPacking, paveSizes, hexafoilStones, convexHull, rng } from './pave.js?v=80';
+import { weightEstimator, weightFamily, chartSize, CHART_SOURCE } from './gemcad/weights.js?v=80';
+import { singleCut } from './gemcad/shapes/oldcuts.js?v=80';
 
 // ----------------------------------------------------------------------------- state
 const params = new URLSearchParams(location.search);
@@ -39,7 +39,7 @@ const state = {
     // Page: a sheet of paper centred on the origin; the stone's width occupies `stoneWidth` inches of it
     page: { enabled: params.get('page') === '1', width: 8.5, height: 8.5, stoneWidth: 2, dpi: 300, fit: 0.8 },
     // Background: cobblestone pavé of the current stone in random sizes and orientations, or a hexafoil of marquises
-    text: { auto: true, title: { enabled: false, text: 'Title', font: 'Georgia, serif', size: 28, bold: true, italic: false, align: 'center', width: 0.8, pos: null, locked: false }, description: { enabled: false, text: '', font: 'Georgia, serif', size: 12, bold: false, italic: false, align: 'center', width: 0.6, pos: null, locked: false } },
+    text: { auto: true, title: { enabled: false, text: '', font: 'Georgia, serif', size: 28, bold: true, italic: false, align: 'center', width: 0.8, pos: null, locked: false }, description: { enabled: false, text: '', font: 'Georgia, serif', size: 12, bold: false, italic: false, align: 'center', width: 0.6, pos: null, locked: false } },
     pave: { enabled: false, pattern: 'cobblestone', minOpacity: 0.15, maxOpacity: 0.6, maxCarats: 5, minCarats: 0.02, singleBelow: 0.2, mmPerInch: 25.4, margin: 0.03, seedCount: 6, samples: 40, patience: 80, maxCircles: 3000, seed: 1, labels: true, labelOpacity: 1, hexCarats: 3, hexOpacity: 0.35, hexCircles: true },
     nextId: 1,
   },
@@ -131,7 +131,8 @@ function setDesign(d) {
   hardGeometry = new LineSegmentsGeometry().setPositions(geo.hardEdges);
   for (const vid of allViewIds()) makeInstance(vid);
   state.shapeId = (d.name || 'design').replace(/[^\w-]+/g, '_').toLowerCase();
-  if (state.sheet.text.auto) applyCaption();   // the shape's publishable caption, until the user writes their own
+  // the shape's publishable caption, until the user writes their own (a block left empty or at the placeholder gets it anyway)
+  if (state.sheet.text.auto || TEXT_IDS.some((id) => /^(|Title|Description)$/.test(String(state.sheet.text[id].text).trim()))) applyCaption(state.sheet.text.auto);
   selectedVertex = null;
   updateProps();
   layout(true);
@@ -354,11 +355,13 @@ function updateText() {
   }
 }
 /** Fill the title and description from the current shape's caption (publishable, descriptive wording). */
-function applyCaption() {
+function applyCaption(all = true) {
   const c = captionFor(typeof editor !== 'undefined' && editor ? editor.templateKey : '', design ? design.name : '');
-  state.sheet.text.title.text = c.title; state.sheet.text.description.text = c.description;
+  const blank = (id) => /^(|Title|Description)$/.test(String(state.sheet.text[id].text).trim());
+  if (all || blank('title')) state.sheet.text.title.text = c.title;
+  if (all || blank('description')) state.sheet.text.description.text = c.description;
   const t = document.getElementById('tttext'), d = document.getElementById('tdtext');
-  if (t) t.value = c.title; if (d) d.value = c.description;
+  if (t) t.value = state.sheet.text.title.text; if (d) d.value = state.sheet.text.description.text;
   for (const id of TEXT_IDS) { const tb = textBlocks.get(id); if (tb) tb.key = null; }
 }
 /** The text block under a screen point, if any. */
@@ -637,14 +640,14 @@ canvas.addEventListener('pointermove', (e) => {
     if (!drag.text.locked) { const wpp = worldPerPixel(); drag.text.pos[0] += dx * wpp; drag.text.pos[1] -= dy * wpp; layout(false); }
     drag.x = e.clientX; drag.y = e.clientY; return;
   }
-  // locks: a locked 3D view ignores the drag; a locked base ignores drags everywhere else (the projected views follow it)
-  if (drag.view3d ? drag.view3d.locked : state.sheet.base.locked) { drag.x = e.clientX; drag.y = e.clientY; return; }
-  if (drag.move) {   // alt-drag: move the 3D view on the sheet, or the whole arrangement (the base and everything hung off it)
+  if (drag.move) {   // alt-drag: move the 3D view on the sheet, or the whole arrangement (the base and everything hung off it); a lock stops turning, not moving
     const wpp = worldPerPixel();
     if (drag.view3d) { const v = drag.view3d; v.offset = v.offset || [0, 0]; v.offset[0] += dx * wpp; v.offset[1] -= dy * wpp; }
     else { state.sheet.origin[0] += dx * wpp; state.sheet.origin[1] -= dy * wpp; }
     drag.x = e.clientX; drag.y = e.clientY; layout(false); return;
   }
+  // locks: a locked 3D view does not turn; a locked base does not turn when the sheet is dragged (the projected views follow it)
+  if (drag.view3d ? drag.view3d.locked : state.sheet.base.locked) { drag.x = e.clientX; drag.y = e.clientY; return; }
   const rect = canvas.getBoundingClientRect();
   const target = drag.view3d ? drag.view3d.rot : baseQ;   // a 3D view rotates on its own; anything else rotates the base
   if (drag.roll) {
@@ -682,6 +685,16 @@ const endDrag = () => { drag = null; };
 canvas.addEventListener('pointercancel', endDrag);
 canvas.addEventListener('wheel', (e) => {
   e.preventDefault();
+  const tb = hitText(e.clientX, e.clientY);
+  if (tb) {   // the wheel over a text block changes its size; with shift, its wrap width
+    if (tb.locked) return;
+    const f = Math.exp(-e.deltaY * 0.0015);
+    if (e.shiftKey) tb.width = Math.min(1, Math.max(0.1, tb.width * f)); else tb.size = Math.min(200, Math.max(4, tb.size * f));
+    const p = tb === state.sheet.text.title ? 'tt' : 'td', sz = document.getElementById(p + 'size'), wd = document.getElementById(p + 'width');
+    if (sz) sz.value = Math.round(tb.size); if (wd) wd.value = Math.round(tb.width * 100);
+    clearTimeout(canvas.textWheelTimer); canvas.textWheelTimer = setTimeout(() => layout(true), 400);   // repack the pavé once the wheel stops
+    layout(false); return;
+  }
   const v = hitView3d(e.clientX, e.clientY);
   if (v) {   // the wheel over a 3D view scales that view; elsewhere it zooms the sheet
     if (v.locked) return;
@@ -866,7 +879,7 @@ function renderViewList() {
       l.appendChild(c); l.appendChild(document.createTextNode(label)); flags.appendChild(l);
     };
     const holder = v || state.sheet.base;
-    if (!v || v.kind === '3d') check('lock', v ? 'Locked: dragging over this 3D view does nothing' : 'Locked: dragging the sheet does not rotate the base (projected views follow the base, so this locks them too)', () => !!holder.locked, (x) => { holder.locked = x; });
+    if (!v || v.kind === '3d') check('lock', v ? 'Locked: dragging over this 3D view does not turn or scale it (alt-drag still moves it)' : 'Locked: dragging the sheet does not turn the base (projected views follow the base, so this locks them too); alt-drag still moves the whole arrangement', () => !!holder.locked, (x) => { holder.locked = x; });
     check('hidden', 'Draw the hidden lines of this view in light grey', () => !!holder.hidden, (x) => { holder.hidden = x; });
     row.appendChild(flags);
     if (v) {
