@@ -11,10 +11,10 @@
 // outline normal as azimuth, the rest pass through meet points. One mirror line: fold 1 + mirror.
 //
 // Orientation: width 2 along x, length along y, top edge at +y, point at -y (radial azimuth 270).
-import { newTier } from '../design.js?v=81';
+import { newTier } from '../design.js?v=82';
 import {
   rad, deg, norm360, polygonSupport, girdleVertices, vertexNear, vertexNearY, lift,
-  planeThrough, mirrorX, zPlane, yPlane, azPlane, perpPlane, classTier, girdleEqualLength, plane3, intersect3 } from '../shapebuild.js?v=81';
+  planeThrough, mirrorX, zPlane, yPlane, azPlane, perpPlane, classTier, girdleEqualLength, plane3, intersect3 } from '../shapebuild.js?v=82';
 
 /**
  * Shield outline, half-width 1 at the widest point, length 2 * ratio: a head arc of large radius

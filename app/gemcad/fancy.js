@@ -1,10 +1,10 @@
 // Marquise brilliant starting design. Other fancy shapes live in ./shapes/.
-import { newTier } from './design.js?v=81';
+import { newTier } from './design.js?v=82';
 import {
   rad, deg, marquiseSupport, marquiseOutline, girdleVertices, vertexNear, vertexNearY, lift,
   planeThrough, mirrorX, mirrorY, zPlane, yPlane, xPlane, azPlane, perpPlane, classTier,
   girdleFromSupport, girdleEqualLength, plane3, intersect3,
-} from './shapebuild.js?v=81';
+} from './shapebuild.js?v=82';
 export { marquiseSupport, marquiseOutline, girdleVertices };
 
 /**

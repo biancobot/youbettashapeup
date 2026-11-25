@@ -2,16 +2,16 @@ import * as THREE from '../vendor/three/three.module.js';
 import { LineSegments2 } from '../vendor/three/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from '../vendor/three/lines/LineSegmentsGeometry.js';
 import { LineMaterial } from '../vendor/three/lines/LineMaterial.js';
-import { designMesh, stoneStats } from './gemcad/mesh.js?v=81';
-import { createEditor } from './editor.js?v=81';
-import { createUnderlay } from './underlay.js?v=81';
-import { templates, plots } from './gemcad/templates.js?v=81';
+import { designMesh, stoneStats } from './gemcad/mesh.js?v=82';
+import { createEditor } from './editor.js?v=82';
+import { createUnderlay } from './underlay.js?v=82';
+import { templates, plots } from './gemcad/templates.js?v=82';
 window.__templates = { templates, plots };
-import { VIEWS, getView } from './views.js?v=81';
-import { captionFor } from './gemcad/captions.js?v=81';
-import { createPave, cobblestoneStonesGen, checkPacking, paveSizes, hexafoilStones, convexHull, rng } from './pave.js?v=81';
-import { weightEstimator, weightFamily, chartSize, CHART_SOURCE } from './gemcad/weights.js?v=81';
-import { singleCut } from './gemcad/shapes/oldcuts.js?v=81';
+import { VIEWS, getView } from './views.js?v=82';
+import { captionFor } from './gemcad/captions.js?v=82';
+import { createPave, cobblestoneStonesGen, checkPacking, paveSizes, hexafoilStones, convexHull, rng } from './pave.js?v=82';
+import { weightEstimator, weightFamily, chartSize, CHART_SOURCE } from './gemcad/weights.js?v=82';
+import { singleCut } from './gemcad/shapes/oldcuts.js?v=82';
 
 // ----------------------------------------------------------------------------- state
 const params = new URLSearchParams(location.search);
@@ -320,7 +320,11 @@ function renderTextBlock(tb, b, k, wrapWorld) {
     }
   });
   tb.glyphs = glyphs;
-  tb.texture.needsUpdate = true;
+  // a canvas texture whose canvas changed size has to be a new texture: the old one keeps its
+  // allocated size and the new bitmap would be stretched into it
+  tb.texture.dispose();
+  tb.texture = new THREE.CanvasTexture(tb.canvas); tb.texture.colorSpace = THREE.SRGBColorSpace; tb.texture.anisotropy = 4;
+  tb.mesh.material.map = tb.texture; tb.mesh.material.needsUpdate = true;
   tb.w = cw / pxPerWorld; tb.h = ch / pxPerWorld; tb.pxPerWorld = pxPerWorld;
 }
 /** Where a block goes when it has no position yet: the title near the top of the page, the description under it. */

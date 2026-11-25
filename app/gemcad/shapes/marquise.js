@@ -1,5 +1,5 @@
 // Marquise brilliant templates (generator in ../fancy.js).
-import { marquiseStart } from '../fancy.js?v=81';
+import { marquiseStart } from '../fancy.js?v=82';
 
 const base = [
   { key: 'ratio', label: 'L:W', default: 2.0, step: 0.01, min: 1.2 },
