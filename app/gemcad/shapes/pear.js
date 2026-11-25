@@ -47,12 +47,12 @@
 // 0.019, pavilion 0.015; girdle contacts are quantised to the 128-facet girdle, about 0.03). The one
 // larger residual is the wing-point star tip of the uncorrected variant (0.08): on a stone with planar
 // bezels that tip lies on the wing/point ridge, and the template draws it 0.08 off that ridge.
-import { newTier } from '../design.js?v=97';
+import { newTier } from '../design.js?v=98';
 import {
   rad, deg, norm360, girdleVertices, vertexNear, vertexNearY, lift,
   planeThrough, mirrorX, zPlane, yPlane, xPlane, azPlane, perpPlane, classTier,
   girdleFromSupport, girdleEqualLength, plane3, intersect3,
-} from '../shapebuild.js?v=97';
+} from '../shapebuild.js?v=98';
 
 /**
  * Pear outline, half-width 1, length 2 * ratio: unit circle head centred at the origin (bottom at
@@ -100,7 +100,8 @@ export function pearOutline(ratio) {
 export function pearStart({
   ratio = 1.45, crownAngle = 35, bellyAngle = 33.5, wingAngle = 32, pointAngle = 23, crownHeight = 0.15, girdle = 0.038, pavilionDepth = 0.435,
   culetPos = 0.376, starHeight = 0.65, lowerDepth = 0, gear = 96, girdleFacets = 128,
-  frenchTip = true, tipHubHeight = 0.85, tipTable = 0.23, tipGirdle = 0.12,
+  frenchTip = true, tipHubHeight = 0.9, tipTable = 0.23, tipGirdle = 0.12,
+  pavilion = 'bezels', keelJunction = 0.38, lowerJunction = 0.40, shoulderJunction = 340, tipArc = 0.5, pointArc = 0.5,
 } = {}) {
   const W = 2, L = ratio * W, H = crownHeight * W, g = girdle * W, Pd = pavilionDepth * W;
   const outline = pearOutline(ratio), yP = outline.yP;
@@ -136,7 +137,9 @@ export function pearStart({
   addClass('C shoulder', plane3(A1, A2, T2, true));
   addClass('C belly', plane3(A2, A3, T3, true));
   // ---- upper girdle facets: two per gap, meeting the girdle at the plot's junction vertex
-  const J1 = lift(vertexNear(verts, 293.6), 0), J2 = lift(vertexNear(verts, 337.4), 0), J3 = lift(vertexNear(verts, 30.8), 0);
+  const J1v = vertexNear(verts, 293.6), J2v = vertexNear(verts, shoulderJunction), J3v = vertexNear(verts, 30.8);
+  const J1 = lift(J1v, 0), J2 = lift(J2v, 0), J3 = lift(J3v, 0);
+  let tipV;   // the crown's girdle junction between the wing bezel and the point: the pavilion lines up under it
   addClass('B head', plane3(T1, Hd, J1, true));
   addClass('B shoulder a', plane3(T1, J1, Sd, true));
   addClass('B shoulder b', plane3(T2, Sd, J2, true));
@@ -147,7 +150,11 @@ export function pearStart({
   if (!frenchTip) {
     const T4 = intersect3(wing, pt, zs);
     addClass('C wing', plane3(A3, A4, T4, true));
-    const J4 = lift(vertexNear(verts, 74.5), 0);
+    // the wing-point upper girdle junction: at pointArc of the girdle from the point to the wing contact
+    // when given (it follows the ratio, as the French tip's girdle point does), else the plot's 74.5 degrees
+    if (pointArc != null) { const iP = verts.indexOf(Pv), iW = verts.indexOf(Wv); tipV = verts[iP + Math.round(pointArc * (iW - iP))]; }
+    else tipV = vertexNear(verts, 74.5);
+    const J4 = lift(tipV, 0);
     addClass('B wing b', plane3(T4, Wd, J4, true));
     addClass('B point', plane3(T4, J4, P, true));
   } else {
@@ -156,7 +163,14 @@ export function pearStart({
     const yMax = yP - 0.04 * L;
     if (V[1] > yMax) V = intersect3(wing, mirrorX(wing), yPlane(yMax));
     hub = V;
-    const G = lift(vertexNearY(verts, yP - tipGirdle * L, 1), 0);
+    // the tip girdle point: at tipArc of the girdle from the point to the wing contact when given (it
+    // then follows the ratio, keeping the two facets either side of it, and the pavilion's below them,
+    // from spanning too long an arc), else tipGirdle of the length from the point
+    if (tipArc != null) {
+      const iP = verts.indexOf(Pv), iW = verts.indexOf(Wv);
+      tipV = verts[iP + Math.round(tipArc * (iW - iP))];
+    } else tipV = vertexNearY(verts, yP - tipGirdle * L, 1);
+    const G = lift(tipV, 0);
     addClass('C half-bezel', plane3(V, A4, A3, true));
     addClass('B tip', plane3(V, G, Wd, true));
     addClass('tip', plane3(P, V, G, true));
@@ -171,6 +185,33 @@ export function pearStart({
     const h = u[0] * p[0] + u[1] * p[1] - u[1] * cY;  // horizontal run from the culet to the contact along the facet's slope
     return planeThrough(-deg(Math.atan2(Pd, h)), az, p);
   };
+  if (pavilion === 'bezels') {
+    // ---- seven mains, one under every bezel but the point's (head, shoulders, bellies, wings): the
+    // eight-main pattern with the point main collapsed. The two wing mains meet along the keel line
+    // from the culet to the keel junction K (keelJunction half-widths from the culet towards the
+    // point); from K to the point the keel is the ridge between two lower girdle facets, so the point
+    // bezel (or the French tip's point) sits above a lower girdle junction. Two lower girdle facets
+    // between each pair of mains meet on the girdle under the crown's upper girdle junctions (and
+    // the tip junction), on the ridges between mains lowerJunction half-widths from the culet (the
+    // diagram's 0.4, along the ridges at about 32, -22 and -65 degrees). Every pavilion girdle point
+    // sits under a crown one and the reverse.
+    const mH = addClass('P head', mainThrough(Hv));
+    const mS = addClass('P shoulder', mainThrough(Sv));
+    const mB = addClass('P belly', mainThrough(Bv));
+    const mW = addClass('P wing', mainThrough(Wv));
+    const K = intersect3(mW, mirrorX(mW), yPlane(cY + keelJunction));
+    const out = (az) => perpPlane(az, lowerJunction + Math.sin(rad(az)) * cY);   // lowerJunction from the culet along azimuth az
+    const Jhs = intersect3(mH, mS, out(295)), Jsb = intersect3(mS, mB, out(338)), Jbw = intersect3(mB, mW, out(32));
+    const gb = (v) => lift(v, -g), Tg = gb(tipV);
+    addClass('L point a', plane3(K, gb(Pv), Tg, false));
+    addClass('L point b', plane3(K, Tg, gb(Wv), false));
+    addClass('L wing', plane3(Jbw, gb(Wv), gb(J3v), false));
+    addClass('L belly a', plane3(Jbw, gb(J3v), gb(Bv), false));
+    addClass('L belly b', plane3(Jsb, gb(Bv), gb(J2v), false));
+    addClass('L shoulder a', plane3(Jsb, gb(J2v), gb(Sv), false));
+    addClass('L shoulder b', plane3(Jhs, gb(Sv), gb(J1v), false));
+    addClass('L head', plane3(Jhs, gb(J1v), gb(Hv), false));
+  } else {
   const mHead = addClass('P head', mainThrough(Mh));
   const mShoulder = addClass('P shoulder', mainThrough(Ms));
   const mWing = addClass('P wing', mainThrough(Mw));
@@ -195,6 +236,7 @@ export function pearStart({
   addClass('L e', plane3(Jwp, Mwg, L2, false));
   addClass('L f', plane3(Jwp, L2, Mpg, false));
   addClass('L point', plane3(Kp, Mpg, Pg, false));
+  }
 
   const pct = (v) => `${Math.round(v * 100)}%`, pct1 = (v) => `${Math.round(v * 1000) / 10}%`;
   const hubNote = hub ? `Hub at ${pct(( yP - hub[1]) / L)} of the length from the point, ${pct(hub[2] / H)} of the crown height.` : '';
@@ -208,10 +250,12 @@ export function pearStart({
       'IGI Excellent ranges (pear brilliant, "Guidelines for Excellent: Fancy Shape Cut Grading"): L:W 1.40-1.75, total depth 57.5-65%, table 57.5-62%, crown height 11.5-16%, crown angle 33-38, girdle 2-6% (thin to thick), pavilion depth 41-46%, pavilion angle 38-42.5, culet pointed to small, symmetry and polish Very Good or Excellent. Additional requirements: rounded base, even shoulders, no significant bow tie, table and culet proportionately positioned along the L:W axis. The brochure lists no Very Good ranges.',
       `This design: L:W ${ratio}, crown height ${pct(crownHeight)}, head and shoulder bezels ${crownAngle}, belly bezels ${bellyAngle}, wing bezels ${wingAngle}, pavilion depth ${pct(pavilionDepth)}, girdle ${pct(girdle)}, table width ${pct1(tableW / W)} of the width, culet ${pct1(culetPos)} of the length from the head. Bezel angles are measured in each facet's own slope direction; they vary around a fancy outline at a constant crown height.`,
       `Point: ${frenchTip ? 'French tip (GIA 4Cs marquise wireframe arrangement). No bezel at the point. Eight facets meet at a hub on the axis: two tip facets forming the point, two small upper girdle facets, the two wing bezels and two half-bezels that run to the table apex. The hub is the intersection of the two wing bezels on the mirror plane at ' + pct(tipHubHeight) + ' of the crown height. ' + hubNote : 'uncorrected, a shallow bezel at the point (' + pointAngle + ') with a star either side.'}`,
-      'Plot pattern (IGI template, report FDR727566220): crown 8 bezels (head, 2 shoulders, 2 bellies, 2 wings, point), 8 stars, 16 upper girdle facets, eight-sided table with an apex on the axis at each end; pavilion 8 mains meeting at the culet (none on the axis; contacts at 5% and 48% of the length from the head and at 44% and 13% from the point), 16 lower girdle facets with junctions on the axis towards the head and the point, on the two diagonals and on the sides. The plot is drawn at L:W 1.45 whatever the stone measures.',
+      pavilion === 'bezels' ? `Pavilion: 7 mains, one under each head, shoulder, belly and wing bezel (the 8-main pattern with the point main collapsed); the wing mains meet along the keel line to ${keelJunction} half-widths from the culet, and two lower girdle facets meet on the keel under the point. 16 lower girdle facets, their girdle junctions under the upper girdle junctions; ridge junctions ${lowerJunction} half-widths from the culet. Every pavilion girdle point sits under a crown one.` : '',
+      pavilion === 'bezels' ? `Crown pattern (IGI template, report FDR727566220): 8 bezels (head, 2 shoulders, 2 bellies, 2 wings, point), 8 stars, 16 upper girdle facets, eight-sided table with an apex on the axis at each end. Changed from the plot so the facets either side of each girdle junction dig in evenly now that the pavilion lines up under them: the shoulder-belly junction at ${shoulderJunction} degrees (plot 337.4), the ${frenchTip ? 'French tip girdle point' : 'wing-point junction'} at ${frenchTip ? tipArc : pointArc} of the girdle from the point to the wing contact${frenchTip ? ', the hub at ' + pct(tipHubHeight) + ' of the crown height' : ''}. The plot is drawn at L:W 1.45 whatever the stone measures.` : '',
+      pavilion === 'bezels' ? '' : 'Plot pattern (IGI template, report FDR727566220): crown 8 bezels (head, 2 shoulders, 2 bellies, 2 wings, point), 8 stars, 16 upper girdle facets, eight-sided table with an apex on the axis at each end; pavilion 8 mains meeting at the culet (none on the axis; contacts at 5% and 48% of the length from the head and at 44% and 13% from the point), 16 lower girdle facets with junctions on the axis towards the head and the point, on the two diagonals and on the sides. The plot is drawn at L:W 1.45 whatever the stone measures.',
       `Outline: head a circle of the half-width, wings circular arcs of radius ${Math.round(outline.Ra * 100) / 100} half-widths tangent to it at the widest section and meeting at the point with an included angle of ${Math.round(outline.pointAngle)} degrees (fitted to the plot: head radius 0.99, wing radius 2.21).`,
       'Facets touch the girdle at the plot positions; each facet azimuth is the outline normal at its contact point.',
-    ],
+    ].filter(Boolean),
     tiers,
   };
 }
@@ -226,15 +270,20 @@ const base = [
   { key: 'girdle', label: 'Girdle', default: 0.038, step: 0.005 },
   { key: 'pavilionDepth', label: 'Pavilion depth', default: 0.435, step: 0.005 },
 ];
+const pav = [
+  { key: 'shoulderJunction', label: 'Shoulder-belly junction', default: 340, step: 0.5, min: 320, max: 360, title: 'Radial azimuth of the upper girdle junction between the shoulder and belly bezels, with the lower girdle junction under it (the IGI plot has 337.4; 340 splits the head circle more evenly so the facets either side dig less)' },
+  { key: 'keelJunction', label: 'Keel junction', default: 0.38, step: 0.01, min: 0.05, max: 1.2, title: 'Where the wing mains stop meeting along the keel line and the point lower girdle facets take over, half-widths from the culet towards the point' },
+  { key: 'lowerJunction', label: 'Lower junctions', default: 0.40, step: 0.01, min: 0.1, max: 0.8, title: 'Lower girdle junctions on the ridges between the head, shoulder, belly and wing mains, half-widths from the culet' },
+];
 const french = [
-  { key: 'tipHubHeight', label: 'Hub height', default: 0.85, step: 0.01, min: 0.5, max: 0.98, title: 'French tip hub, fraction of the crown height' },
+  { key: 'tipHubHeight', label: 'Hub height', default: 0.9, step: 0.01, min: 0.5, max: 0.98, title: 'French tip hub, fraction of the crown height' },
   { key: 'tipTable', label: 'Tip table corner', default: 0.23, step: 0.01, title: 'Table corner distance from the point, fraction of the length' },
-  { key: 'tipGirdle', label: 'Tip girdle point', default: 0.12, step: 0.01, title: 'Tip facet girdle point from the point, fraction of the length' },
+  { key: 'tipArc', label: 'Tip girdle point', default: 0.5, step: 0.01, min: 0.2, max: 0.8, title: 'Where the tip facet meets the girdle: share of the girdle from the point to the wing bezel contact (it follows the L:W, keeping the facets either side of it from digging into the girdle)' },
 ];
 
 export const templates = {
-  pear: { name: 'Pear brilliant, French tip (starting point)', note: 'IGI plot pattern with typical angles and a GIA-style French tip; trace against the underlay and cut meet points.', params: [...base, ...french], make: (o = {}) => pearStart({ ...o }) },
-  pearStd: { name: 'Pear brilliant, uncorrected point (starting point)', note: 'IGI plot pattern with typical angles and a shallow bezel at the point.', params: base, make: (o = {}) => pearStart({ frenchTip: false, ...o }) },
+  pear: { name: 'Pear brilliant, French tip (starting point)', note: 'IGI crown plot with typical angles and a GIA-style French tip; seven pavilion mains, one under each bezel but the point, the lower girdle facets meeting on the keel under the tip.', params: [...base, ...french, ...pav], make: (o = {}) => pearStart({ ...o }) },
+  pearStd: { name: 'Pear brilliant, uncorrected point (starting point)', note: 'IGI crown plot with typical angles and a shallow bezel at the point; seven pavilion mains, one under each bezel but the point, the lower girdle facets meeting on the keel under the point bezel.', params: [...base, { key: 'pointArc', label: 'Point junction', default: 0.5, step: 0.01, min: 0.2, max: 0.8, title: 'Where the point star\'s two upper girdle facets meet the girdle: share of the girdle from the point to the wing bezel contact (it follows the L:W; the IGI plot has about 0.53 at L:W 1.45)' }, ...pav], make: (o = {}) => pearStart({ frenchTip: false, ...o }) },
 };
 
 /** Built-in plot underlays: { id, label }; the image is designs/plots/<id>.png. */
