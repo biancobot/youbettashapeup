@@ -44,7 +44,7 @@ The cushion is the direct descendant of the old mine cut and was the dominant di
 
 ## Cushion Brilliant, Open Culet
 
-This version keeps a culet: rather than meeting at a point, the pavilion mains stop at a small flat rectangle along the length, a reminder of the large open culets of the old mine cuts the cushion came from.
+This version keeps a culet: rather than meeting at a point, the pavilion mains end at a flat rectangular facet at the bottom of the stone. Seen face-up through the table, it is reminiscent of the large open culets of the old mine cuts the cushion came from.
 
 ## Square Cushion Modified Brilliant
 
