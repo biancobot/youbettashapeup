@@ -2,17 +2,17 @@ import * as THREE from '../vendor/three/three.module.js';
 import { LineSegments2 } from '../vendor/three/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from '../vendor/three/lines/LineSegmentsGeometry.js';
 import { LineMaterial } from '../vendor/three/lines/LineMaterial.js';
-import { designMesh, stoneStats } from './gemcad/mesh.js?v=125';
-import { createEditor } from './editor.js?v=125';
-import { createUnderlay } from './underlay.js?v=125';
-import { templates, plots } from './gemcad/templates.js?v=125';
+import { designMesh, stoneStats } from './gemcad/mesh.js?v=126';
+import { createEditor } from './editor.js?v=126';
+import { createUnderlay } from './underlay.js?v=126';
+import { templates, plots } from './gemcad/templates.js?v=126';
 window.__templates = { templates, plots };
-import { VIEWS, getView } from './views.js?v=125';
-import { captionFor } from './gemcad/captions.js?v=125';
-import { notesFor } from './gemcad/shapenotes.js?v=125';
-import { createPave, cobblestoneStonesGen, checkPacking, paveSizes, hexafoilStones, convexHull, rng } from './pave.js?v=125';
-import { weightEstimator, weightFamily, chartSize, CHART_SOURCE } from './gemcad/weights.js?v=125';
-import { singleCut } from './gemcad/shapes/oldcuts.js?v=125';
+import { VIEWS, getView } from './views.js?v=126';
+import { captionFor } from './gemcad/captions.js?v=126';
+import { notesFor } from './gemcad/shapenotes.js?v=126';
+import { createPave, cobblestoneStonesGen, checkPacking, paveSizes, hexafoilStones, convexHull, rng } from './pave.js?v=126';
+import { weightEstimator, weightFamily, chartSize, CHART_SOURCE } from './gemcad/weights.js?v=126';
+import { singleCut } from './gemcad/shapes/oldcuts.js?v=126';
 
 // ----------------------------------------------------------------------------- state
 const params = new URLSearchParams(location.search);
@@ -1535,6 +1535,34 @@ function frame(now) {
 requestAnimationFrame(frame);
 
 // Exposed for the screenshot tool and for scripting.
+// ----------------------------------------------------------------------------- collapsible panel groups
+// Every group in the panel opens and closes on its heading, so the panel stays short; all start closed
+// and the ones opened are remembered in this browser. Expand all / Collapse all sit under the title.
+{
+  const KEY = 'gfd-open-groups';
+  let open = [];
+  try { open = JSON.parse(localStorage.getItem(KEY) || '[]'); } catch (e) { open = []; }
+  const groups = [...document.querySelectorAll('#panel > .group')].filter((g) => g.querySelector(':scope > h2'));
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(groups.filter((g) => !g.classList.contains('collapsed')).map((g) => g.dataset.group))); } catch (e) { /* storage disabled */ } };
+  const setOpen = (g, on) => { g.classList.toggle('collapsed', !on); g.querySelector(':scope > h2').setAttribute('aria-expanded', String(on)); };
+  for (const g of groups) {
+    const h = g.querySelector(':scope > h2');
+    g.dataset.group = h.textContent.trim();
+    h.classList.add('toggle'); h.tabIndex = 0; h.setAttribute('role', 'button');
+    setOpen(g, open.includes(g.dataset.group));
+    const flip = () => { setOpen(g, g.classList.contains('collapsed')); save(); };
+    h.addEventListener('click', flip);
+    h.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); flip(); } });
+  }
+  const head = document.querySelector('#panel h1'); 
+  if (head) {
+    const bar = document.createElement('div'); bar.className = 'grouptools';
+    bar.innerHTML = '<button type="button" id="expandall">Expand all</button><button type="button" id="collapseall">Collapse all</button>';
+    head.parentElement.appendChild(bar);
+    bar.querySelector('#expandall').addEventListener('click', () => { for (const g of groups) setOpen(g, true); save(); });
+    bar.querySelector('#collapseall').addEventListener('click', () => { for (const g of groups) setOpen(g, false); save(); });
+  }
+}
 window.__viewer = {
   state, setDesign, snapTo, exportPNG, resize, addView, removeView, clearViews, resetView3d, snapCentre, snapCentreText, resetTextPos, hitText, applyCaption, selectView, hitInstance, infoPage, scatterStones, undoMove, redoMove, undoCount: () => undoStack.length, freeRects, fitView, fitViewsToPage, editor, getSetup, applySetup, paveInfo: () => paveInfo, paveStones: () => pave.lastStones, pageRect, instances, camera: () => camera, gridCells: () => gridLines.userData.cells,
   loadShape(id) { const { templates } = window.__templates; if (templates[id]) editor.design = templates[id].make(); },
