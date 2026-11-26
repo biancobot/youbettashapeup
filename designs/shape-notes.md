@@ -56,7 +56,7 @@ The square brilliant with pointed corners, widely known as the princess cut, dat
 
 ## Cut-Cornered Rectangular Modified Brilliant
 
-Introduced in 1977 and widely known as the radiant cut, this was the first cut to put a full brilliant-style pavilion under a step-cut outline, bringing sparkle to the rectangle that had belonged to the emerald cut. Its clipped corners are practical as well as handsome: a square or rectangle with sharp corners is the most easily chipped of all shapes, and the clipped version is one of the most durable.
+Widely known as the radiant cut, this style was introduced in 1977. It shares the clipped rectangular outline of an emerald cut, but its brilliant-style facets produce a finer pattern of sparkle than the broad flashes of an emerald cut’s long, parallel facets. Clipping the four corners also removes sharp points that would otherwise be vulnerable to chipping.
 
 ## Emerald Cut
 
