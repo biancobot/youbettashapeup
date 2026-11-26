@@ -26,6 +26,10 @@
     .group:not(.collapsed) > h2.toggle::before { transform: rotate(90deg); }
     .group > h2.toggle:hover { color: var(--text); }
     .group.collapsed > :not(h2) { display: none !important; }
+    .shapepick { font-size: 12px; } .shapepick .picktitle { color: var(--muted); margin-bottom: 2px; }
+    .shapepick .picklist { max-height: 150px; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px; background: #fff; padding: 4px 6px; }
+    .shapepick .picklist label { display: flex; gap: 6px; align-items: flex-start; padding: 1px 0; } .shapepick .picklist input { margin-top: 2px; }
+    .shapepick .pickall { display: flex; gap: 6px; align-items: center; margin-top: 3px; color: var(--muted); }
     .grouptools { display: flex; gap: 6px; } .grouptools button { padding: 2px 8px; font-size: 12px; }
     select, button, input[type=number] { font: inherit; padding: 6px 8px; border: 1px solid var(--border);
       border-radius: 6px; background: #fff; color: var(--text); }
@@ -104,7 +108,7 @@
   <div id="app">
     <aside id="panel">
       <div>
-        <h1>Gem Facet Designer <span class="build" title="Build number; if it does not match the README, hard-reload or git pull">build 126</span></h1>
+        <h1>Gem Facet Designer <span class="build" title="Build number; if it does not match the README, hard-reload or git pull">build 128</span></h1>
         <div class="hint">GemCad-style facet design: every facet is a plane by angle, index and distance; the stone is their intersection. Drag to rotate, shift-drag to roll, scroll to zoom, right-drag to pan, 0 or Home to reset the zoom and pan, click a vertex to pick a meet point.</div>
       </div>
 
@@ -211,11 +215,12 @@
           <label>Min width (mm) <input type="number" id="scattermin" step="1" min="20" title="The smallest stone width on the page, at least 20 mm"></label>
           <label>Max width (mm) <input type="number" id="scattermax" step="1" min="20"></label>
           <label>Min tilt (&deg;) <input type="number" id="scattermintilt" step="1" min="0" max="90" title="0 is face-up, seen straight on"></label>
-          <label>Max tilt (&deg;) <input type="number" id="scattermaxtilt" step="1" min="0" max="90" title="How far a stone may lean away from face-up; the isometric view is about 45"></label>
+          <label>Max tilt (&deg;) <input type="number" id="scattermaxtilt" step="1" min="0" max="90" title="How far a stone may lean away from face-up: 90 is side-on, the isometric view is about 45. Smaller tilts are drawn more often than larger ones"></label>
           <label>Pavilion up (%) <input type="number" id="scatterback" step="5" min="0" max="100" title="The share of stones turned over to show the pavilion"></label>
           <label>Spacing (in) <input type="number" id="scattergap" step="0.05" min="0" title="The least space between two stones, and between a stone and the text"></label>
         </div>
-        <div class="hint"><b>Scatter stones</b> makes a coloring page: copies of the current stone at random on the page, each in its own size (widths in millimetres on the page, never under 20 mm) and its own 3D orientation, mostly face-up and tilted between the two tilt angles towards a random side, with the chosen share turned over to show the pavilion. Larger stones go down first; one that does not fit is tried smaller and otherwise left out. The smallest stone is the base and the rest are 3D views, so any of them can still be turned, moved (alt-drag) and scaled (wheel); hidden lines are off. The page margin is a third of an inch.</div>
+        <div class="shapepick" id="scattershapes"></div>
+        <div class="hint"><b>Scatter stones</b> makes a coloring page: copies of the current stone at random on the page, each in its own size (widths in millimetres on the page, never under 20 mm) and its own 3D orientation, mostly face-up and tilted between the two tilt angles towards a random side (smaller tilts more often, so most are face-up to isometric and a few nearly side-on), with the chosen share turned over to show the pavilion. Larger stones go down first; one that does not fit is tried smaller and otherwise left out. The smallest stone is the base and the rest are 3D views, so any of them can still be turned, moved (alt-drag) and scaled (wheel); hidden lines are off. The page margin is a third of an inch.</div>
         <div class="row"><label for="page">Page</label><input type="checkbox" id="page"></div>
         <div class="row"><label for="pagesize">Page size</label>
           <select id="pagesize"><option value="square85" selected>Square 8.5 × 8.5 in</option><option value="letter">Letter 8.5 × 11</option><option value="letterL">Letter landscape 11 × 8.5</option><option value="a4">A4 8.27 × 11.69</option><option value="a4L">A4 landscape</option><option value="custom">Custom</option></select></div>
@@ -289,6 +294,7 @@
         <div class="row"><label for="pavehexcircles">Hexafoil circles (the flower-of-life construction lines)</label><input type="checkbox" id="pavehexcircles" checked></div>
         <div class="row"><label for="pavelabels">Carat-size outlines with weights</label><input type="checkbox" id="pavelabels"></div>
         <div class="row"><label for="pavelabelsize">Label size (%)</label><input type="number" id="pavelabelsize" step="10" min="30" max="400" style="width:64px" title="The carat weight and the size in mm inside each chart-size outline, as a percentage of the original size; 100 is a weight line about a fifth of the stone's width high"></div>
+        <div class="shapepick" id="paveshapes"></div>
         <div class="row"><label for="pavelabelop">Label opacity <span id="pavelabelopv"></span></label><input type="range" id="pavelabelop" min="0.05" max="1" step="0.05"></div>
         <div class="row"><span class="hint" id="paveinfo"></span><button id="pavereseed" title="Lay the stones out again at random">Reshuffle</button></div>
         <progress id="paveprogress" hidden style="width:100%;height:6px"></progress>
@@ -347,6 +353,6 @@
       const el = document.getElementById('info'); if (el) { el.style.color = '#b00020'; el.textContent = 'Load error: ' + (e.reason && e.reason.message || e.reason); }
     });
   </script>
-  <script type="module" src="./app/main.js?v=126"></script>
+  <script type="module" src="./app/main.js?v=128"></script>
 </body>
 </html>

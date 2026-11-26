@@ -9,7 +9,7 @@ import * as THREE from '../vendor/three/three.module.js';
 import { LineSegments2 } from '../vendor/three/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from '../vendor/three/lines/LineSegmentsGeometry.js';
 import { LineMaterial } from '../vendor/three/lines/LineMaterial.js';
-import { CHART_CARATS } from './gemcad/weights.js?v=126';
+import { CHART_CARATS } from './gemcad/weights.js?v=128';
 
 /** Deterministic random numbers so a layout is stable until reseeded. */
 function rng(seed) {
@@ -317,10 +317,13 @@ export function createPave(scene, occluderMat) {
         lbl.position.set(st.x, st.y, 0.1);
         group.add(lbl); labels.push(lbl);
       } else {
-        const src = st.kind === 'single' && o.single ? o.single : o;
-        appendTransformed(meshPos, src.meshPositions, st);
-        appendTransformed(dst, src.hardEdges, st);
-        if (src.smoothPositions && src.smoothPositions.length) appendTransformed(dst, src.smoothPositions, st);
+        // variant n > 0: another shape of the family in the same place (o.variants[n - 1]), scaled by its fit
+        const vr = st.kind !== 'single' && st.variant && o.variants ? o.variants[st.variant - 1] : null;
+        const src = st.kind === 'single' && o.single ? o.single : vr || o;
+        const at = vr && vr.fit !== 1 ? { ...st, scale: Array.isArray(st.scale) ? st.scale.map((x) => x * vr.fit) : st.scale * vr.fit } : st;
+        appendTransformed(meshPos, src.meshPositions, at);
+        appendTransformed(dst, src.hardEdges, at);
+        if (src.smoothPositions && src.smoothPositions.length) appendTransformed(dst, src.smoothPositions, at);
       }
     }
     if (meshPos.length) {

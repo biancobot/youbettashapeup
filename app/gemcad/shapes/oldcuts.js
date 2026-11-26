@@ -14,12 +14,12 @@
 // 8 bezels (4 on the sides, 4 on the corners), 8 stars, 16 upper girdle facets, 8 pavilion mains,
 // 16 lower girdle facets, table and culet. Fold 2 + mirror so a slightly rectangular outline
 // keeps its symmetry.
-import { newTier } from '../design.js?v=126';
+import { newTier } from '../design.js?v=128';
 import {
   rad, deg, girdleEqualLength, girdleVertices, vertexNear, lift,
   planeThrough, zPlane, azPlane, perpPlane, classTier, plane3, intersect3, azOf,
-} from '../shapebuild.js?v=126';
-import { cushionOutline, cushionBrilliant } from './cushion.js?v=126';
+} from '../shapebuild.js?v=128';
+import { cushionOutline, cushionBrilliant } from './cushion.js?v=128';
 
 /** Single cut starting point. table: fraction of the diameter; culet: fraction of the diameter (0 = point). */
 export function singleCut({ table = 0.55, crownAngle = 36, pavilionAngle = 41, girdle = 0.03, culet = 0, gear = 96, girdleFacets = 64 } = {}) {

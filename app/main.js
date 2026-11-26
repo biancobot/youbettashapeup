@@ -2,17 +2,17 @@ import * as THREE from '../vendor/three/three.module.js';
 import { LineSegments2 } from '../vendor/three/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from '../vendor/three/lines/LineSegmentsGeometry.js';
 import { LineMaterial } from '../vendor/three/lines/LineMaterial.js';
-import { designMesh, stoneStats } from './gemcad/mesh.js?v=126';
-import { createEditor } from './editor.js?v=126';
-import { createUnderlay } from './underlay.js?v=126';
-import { templates, plots } from './gemcad/templates.js?v=126';
+import { designMesh, stoneStats } from './gemcad/mesh.js?v=128';
+import { createEditor } from './editor.js?v=128';
+import { createUnderlay } from './underlay.js?v=128';
+import { templates, plots } from './gemcad/templates.js?v=128';
 window.__templates = { templates, plots };
-import { VIEWS, getView } from './views.js?v=126';
-import { captionFor } from './gemcad/captions.js?v=126';
-import { notesFor } from './gemcad/shapenotes.js?v=126';
-import { createPave, cobblestoneStonesGen, checkPacking, paveSizes, hexafoilStones, convexHull, rng } from './pave.js?v=126';
-import { weightEstimator, weightFamily, chartSize, CHART_SOURCE } from './gemcad/weights.js?v=126';
-import { singleCut } from './gemcad/shapes/oldcuts.js?v=126';
+import { VIEWS, getView } from './views.js?v=128';
+import { captionFor } from './gemcad/captions.js?v=128';
+import { notesFor } from './gemcad/shapenotes.js?v=128';
+import { createPave, cobblestoneStonesGen, checkPacking, paveSizes, hexafoilStones, convexHull, rng } from './pave.js?v=128';
+import { weightEstimator, weightFamily, chartSize, CHART_SOURCE } from './gemcad/weights.js?v=128';
+import { singleCut } from './gemcad/shapes/oldcuts.js?v=128';
 
 // ----------------------------------------------------------------------------- state
 const params = new URLSearchParams(location.search);
@@ -42,10 +42,10 @@ const state = {
     page: { enabled: params.get('page') === '1', width: 8.5, height: 8.5, stoneWidth: 2, dpi: 300, fit: 0.8 },
     // Background: cobblestone pavé of the current stone in random sizes and orientations, or a hexafoil of marquises
     text: { auto: true, source: 'caption', title: { enabled: false, text: '', font: 'Georgia, serif', size: 28, bold: true, italic: false, align: 'center', width: 0.8, pos: null, locked: false }, description: { enabled: false, text: '', font: 'Georgia, serif', size: 12, bold: false, italic: false, align: 'center', width: 0.6, pos: null, locked: false } },
-    pave: { enabled: false, pattern: 'cobblestone', minOpacity: 0.15, maxOpacity: 0.6, maxCarats: 5, minCarats: 0.02, singleBelow: 0.2, mmPerInch: 25.4, margin: 0.03, seedCount: 6, samples: 40, patience: 80, maxCircles: 3000, seed: 1, labels: true, labelOpacity: 1, labelSize: 2, hexCarats: 3, hexOpacity: 0.35, hexCircles: true },
+    pave: { enabled: false, pattern: 'cobblestone', minOpacity: 0.15, maxOpacity: 0.6, maxCarats: 5, minCarats: 0.02, singleBelow: 0.2, mmPerInch: 25.4, margin: 0.03, seedCount: 6, samples: 40, patience: 80, maxCircles: 3000, seed: 1, labels: true, labelOpacity: 1, labelSize: 2, shapes: [], allShapes: false, hexCarats: 3, hexOpacity: 0.35, hexCircles: true },
     // Scatter: copies of the stone placed at random on the page for coloring pages, each in its own
     // 3D orientation (mostly face-up, tilted as in the isometric view) and size (widths in mm)
-    scatter: { count: 14, minMM: 20, maxMM: 45, minTilt: 15, maxTilt: 45, backShare: 10, gapIn: 0.15, marginIn: 0.35, seed: 1, placed: 0 },
+    scatter: { v: 2, count: 14, minMM: 20, maxMM: 45, minTilt: 10, maxTilt: 80, backShare: 10, gapIn: 0.15, marginIn: 0.35, seed: 1, placed: 0, shapes: [], allShapes: false },
     nextId: 1,
   },
 };
@@ -98,19 +98,22 @@ const ISO_TILT = () => getView('iso').q.clone();
 
 function allViewIds() { return ['base', ...state.sheet.views.map((v) => v.id)]; }
 
+/** The template a view is drawn as: its own shape when it has one other than the current design, else null. */
+function viewShape(id) { const v = id === 'base' ? null : state.sheet.views.find((x) => x.id === id); return v && shapeGeo(v.shape) ? v.shape : null; }
 function makeInstance(id) {
   const group = new THREE.Group();
-  const mesh = new THREE.Mesh(meshGeometry, occluderMat);
-  const hard = new LineSegments2(hardGeometry, lineMat);
+  const shapeKey = viewShape(id), sg = shapeGeo(shapeKey);
+  const mesh = new THREE.Mesh(sg ? sg.meshGeometry : meshGeometry, occluderMat);
+  const hard = new LineSegments2(sg ? sg.hardGeometry : hardGeometry, lineMat);
   const smooth = new LineSegments2(new LineSegmentsGeometry().setPositions(new Float32Array(6)), lineMat);
   smooth.visible = false;
-  const hiddenHard = new LineSegments2(hardGeometry, hiddenMat);
+  const hiddenHard = new LineSegments2(sg ? sg.hardGeometry : hardGeometry, hiddenMat);
   const hiddenSmooth = new LineSegments2(new LineSegmentsGeometry().setPositions(new Float32Array(6)), hiddenMat);
   hiddenHard.visible = false; hiddenSmooth.visible = false;
   mesh.renderOrder = 0; hiddenHard.renderOrder = 1; hiddenSmooth.renderOrder = 1; hard.renderOrder = 2; smooth.renderOrder = 2;
   group.add(mesh, hiddenHard, hiddenSmooth, hard, smooth);
   scene.add(group);
-  const inst = { id, group, mesh, hard, smooth, hiddenHard, hiddenSmooth, lastQ: null, lastMode: null, q: new THREE.Quaternion(), pos: [0, 0], bbox: null, scale: 1 };
+  const inst = { id, group, mesh, hard, smooth, hiddenHard, hiddenSmooth, lastQ: null, lastMode: null, q: new THREE.Quaternion(), pos: [0, 0], bbox: null, scale: 1, shapeKey, geo: sg ? sg.geo : geo };
   instances.set(id, inst);
   return inst;
 }
@@ -122,6 +125,66 @@ function disposeInstances() {
     inst.hiddenSmooth.geometry.dispose();
   }
   instances.clear();
+}
+
+// ----------------------------------------------------------------------------- other shapes
+// A scattered copy or a pavé stone can be another template of the same family; its geometry is built
+// once from the template's defaults and kept. Every template is built 2 units wide, as the current
+// stone is, so a copy's scale means the same thing whatever its shape.
+const shapeCache = new Map();   // template key -> { key, name, geo, meshGeometry, hardGeometry }
+const currentKey = () => { try { return editor.templateKey || ''; } catch (e) { return ''; } };   // the editor is created later in this file
+/** The cached geometry of template `key`, or null for the current design (or an unknown key). */
+function shapeGeo(key) {
+  if (!key || key === currentKey() || !templates[key] || key === 'blank') return null;
+  let e = shapeCache.get(key);
+  if (!e) {
+    const g = designMesh(templates[key].make());
+    const mg = new THREE.BufferGeometry(); mg.setAttribute('position', new THREE.BufferAttribute(g.positions, 3));
+    e = { key, name: templates[key].name, geo: g, meshGeometry: mg, hardGeometry: new LineSegmentsGeometry().setPositions(g.hardEdges) };
+    shapeCache.set(key, e);
+  }
+  return e;
+}
+/** A template's family: the weight chart's, or else the first word of its name (shield). */
+function familyOf(name) { return weightFamily(name) || String(name || '').toLowerCase().split(/[\s,]+/)[0]; }
+/** The other shapes chosen in a picker ({ shapes, allShapes }): same family as the current one unless every shape is shown. */
+function chosenShapes(obj) {
+  const cur = currentKey(), fam = familyOf(templates[cur] ? templates[cur].name : design && design.name);
+  return (obj.shapes || []).filter((k) => templates[k] && k !== cur && k !== 'blank' && (obj.allShapes || familyOf(templates[k].name) === fam));
+}
+
+/**
+ * The two shape pickers (Scatter and the pavé background): a checkbox for each other template of the
+ * current shape's family (every template with "Show every shape"); the current design is always drawn.
+ */
+function renderShapePickers() {
+  const cur = currentKey(), fam = familyOf(templates[cur] ? templates[cur].name : design && design.name);
+  const pickers = [
+    ['scattershapes', state.sheet.scatter, 'Scatter these shapes too (each copy one of them at random; used on the next Scatter)', null],
+    ['paveshapes', state.sheet.pave, 'Draw these shapes in the pavé too (each unlabelled stone one of them at random)', () => layout(true)],
+  ];
+  for (const [id, obj, title, after] of pickers) {
+    const box = document.getElementById(id); if (!box) continue;
+    obj.shapes = obj.shapes || [];
+    const keys = Object.keys(templates).filter((k) => k !== 'blank' && k !== cur && (obj.allShapes || familyOf(templates[k].name) === fam));
+    box.textContent = '';
+    const t = document.createElement('div'); t.className = 'picktitle'; t.textContent = title; box.appendChild(t);
+    const list = document.createElement('div'); list.className = 'picklist';
+    if (!keys.length) { const none = document.createElement('div'); none.className = 'hint'; none.textContent = 'No other shapes in this family.'; list.appendChild(none); }
+    for (const k of keys) {
+      const lab = document.createElement('label'), cb = document.createElement('input'), sp = document.createElement('span');
+      cb.type = 'checkbox'; cb.dataset.key = k; cb.checked = obj.shapes.includes(k);
+      sp.textContent = templates[k].name;
+      cb.addEventListener('change', () => { obj.shapes = obj.shapes.filter((x) => x !== k); if (cb.checked) obj.shapes.push(k); if (after) after(); else if (typeof autosave === 'function') autosave(); });
+      lab.append(cb, sp); list.appendChild(lab);
+    }
+    box.appendChild(list);
+    const all = document.createElement('label'), acb = document.createElement('input');
+    all.className = 'pickall'; acb.type = 'checkbox'; acb.checked = !!obj.allShapes;
+    acb.addEventListener('change', () => { obj.allShapes = acb.checked; renderShapePickers(); if (after) after(); else if (typeof autosave === 'function') autosave(); });
+    all.append(acb, document.createTextNode('Show every shape, not just this family'));
+    box.appendChild(all);
+  }
 }
 
 let design = null;
@@ -145,6 +208,7 @@ function setDesign(d) {
   else if (state.sheet.text.auto || TEXT_IDS.some((id) => /^(|Title|Description)$/.test(String(state.sheet.text[id].text).trim()))) applyCaption(state.sheet.text.auto);
   selectedVertex = null;
   updateProps();
+  renderShapePickers();   // the family may have changed
   layout(true);
   updateMeetPoints();
 }
@@ -184,7 +248,7 @@ function syncInstances() {
   const ids = allViewIds();
   for (const id of ids) if (!instances.has(id)) makeInstance(id);
   for (const id of [...instances.keys()]) {
-    if (!ids.includes(id)) {
+    if (!ids.includes(id) || instances.get(id).shapeKey !== viewShape(id)) {   // gone, or now another shape (rebuilt below)
       const inst = instances.get(id);
       scene.remove(inst.group);
       inst.smooth.geometry.dispose();
@@ -192,6 +256,7 @@ function syncInstances() {
       instances.delete(id);
     }
   }
+  for (const id of ids) if (!instances.has(id)) makeInstance(id);
 }
 
 /** Smooth girdle edges are drawn only where the girdle turns away from the viewer. */
@@ -217,8 +282,8 @@ function updateSilhouette(inst, force) {
   if (!force && inst.lastQ && inst.lastQ.equals(qn) && inst.lastMode === state.girdleLines) return;
   inst.lastQ = qn.clone();
   inst.lastMode = state.girdleLines;
-  const s = geo.smooth;
-  const out = smoothEdgesFor(qn);
+  const g = inst.geo || geo, s = g.smooth;
+  const out = smoothEdgesFor(qn, g);
   inst.smooth.geometry.dispose();
   if (out.length) {
     inst.smooth.geometry = new LineSegmentsGeometry().setPositions(new Float32Array(out));
@@ -239,10 +304,10 @@ function applyHidden(inst, on) {
 }
 
 /** Screen-space bounding box of the stone under rotation q. */
-function bboxFor(q) {
+function bboxFor(q, g = geo) {
   const v = new THREE.Vector3();
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  const a = geo.vertices;
+  const a = g.vertices;
   for (let i = 0; i < a.length; i += 3) {
     v.set(a[i], a[i + 1], a[i + 2]).applyQuaternion(q);
     if (v.x < minX) minX = v.x; if (v.x > maxX) maxX = v.x;
@@ -410,7 +475,7 @@ function paveArea() {
 function paveObstacles() {
   const v = new THREE.Vector3(), out = [];
   for (const inst of instances.values()) {
-    const pts = [], a = geo.vertices, sc = inst.scale || 1;
+    const pts = [], a = (inst.geo || geo).vertices, sc = inst.scale || 1;
     for (let i = 0; i < a.length; i += 3) { v.set(a[i], a[i + 1], a[i + 2]).applyQuaternion(inst.q); pts.push([inst.pos[0] + v.x * sc, inst.pos[1] + v.y * sc]); }
     out.push(convexHull(pts));
   }
@@ -430,7 +495,7 @@ function updatePave() {
   const worldPerMm = pageRect().k / pv.mmPerInch;
   const area = paveArea(), obstacles = paveObstacles();
   const r3 = (v) => Math.round(v * 50) / 50;
-  const key = JSON.stringify([state.shapeId, geo.faceCount, state.girdleLines, pattern, { ...pv, labelOpacity: undefined, labelSize: undefined }, [area.minX, area.maxX, area.minY, area.maxY].map(r3), obstacles.map((o) => [o.length, ...o[0].map(r3), ...o[Math.floor(o.length / 2)].map(r3)]), [...instances.values()].map((i) => [i.pos.map(r3), i.scale]), st.W, st.L]);
+  const key = JSON.stringify([state.shapeId, geo.faceCount, state.girdleLines, pattern, { ...pv, labelOpacity: undefined, labelSize: undefined, shapes: undefined, allShapes: undefined }, [area.minX, area.maxX, area.minY, area.maxY].map(r3), obstacles.map((o) => [o.length, ...o[0].map(r3), ...o[Math.floor(o.length / 2)].map(r3)]), [...instances.values()].map((i) => [i.pos.map(r3), i.scale]), st.W, st.L]);
   // the face-up outline (convex hull of the stone's plan) and its edges
   const pts = []; for (let i = 0; i < geo.vertices.length; i += 3) pts.push([geo.vertices[i], geo.vertices[i + 1]]);
   const hull = convexHull(pts);
@@ -488,7 +553,15 @@ function updatePave() {
     updatePave.single = { girdleLines: state.girdleLines, meshPositions: sg.positions, hardEdges: sg.hardEdges, smoothPositions: new Float32Array(smoothEdgesFor(new THREE.Quaternion(), sg)) };
   }
   pave.setLabelOpacity(pv.labelOpacity); pave.setLabelSize(pv.labelSize);
-  pave.build({ key, stones, circles, circleOpacity: pv.hexOpacity, meshPositions: geo.positions, hardEdges: geo.hardEdges, smoothPositions: new Float32Array(smoothEdgesFor(new THREE.Quaternion())), hullEdges: new Float32Array(hullEdges), single: updatePave.single });
+  // other shapes of the family: the packing keeps the current outline, and each unlabelled stone that
+  // is not a melee single cut draws one of the shapes (the current one among them) at random, sized so
+  // its circumscribed circle is the current shape's (the same for shapes of one outline)
+  const others = chosenShapes(pv);
+  const radius = (g) => { let r = 0; for (let i = 0; i < g.vertices.length; i += 3) r = Math.max(r, Math.hypot(g.vertices[i], g.vertices[i + 1])); return r; };
+  const variants = others.map((k) => { const g = shapeGeo(k).geo; return { meshPositions: g.positions, hardEdges: g.hardEdges, smoothPositions: new Float32Array(smoothEdgesFor(new THREE.Quaternion(), g)), fit: radius(geo) / radius(g) }; });
+  const pick = rng(pv.seed * 7919 + 17);
+  for (const q of stones) q.variant = !q.label && q.kind !== 'single' && variants.length ? Math.floor(pick() * (variants.length + 1)) : 0;
+  pave.build({ key: key + JSON.stringify([others, state.girdleLines]), stones, circles, circleOpacity: pv.hexOpacity, meshPositions: geo.positions, hardEdges: geo.hardEdges, smoothPositions: new Float32Array(smoothEdgesFor(new THREE.Quaternion())), hullEdges: new Float32Array(hullEdges), single: updatePave.single, variants });
   pave.lastKey = key;
   const singles = stones.filter((q) => q.kind === 'single').length;
   const packNote = check ? `${singles ? ` ${singles} stones under ${pv.singleBelow} ct are single cuts.` : ''} Packing: ${check.count} circles, ${check.tangent2} touching two or more boundaries, ${check.overlaps} overlaps, ${check.intrusions} intrusions${check.gapFilled ? `, plus ${check.gapFilled} smaller stones fitted into the circles' corners` : ''} (${check.ms} ms).` : '';
@@ -536,7 +609,7 @@ function layout(force) {
     const inst = instances.get(v.id);
     inst.q.copy(v.kind === '3d' ? v.rot : PROJECT[state.sheet.standard][v.dir]).multiply(parent.q);
     inst.scale = v.kind === '3d' ? v.scale || 1 : 1;
-    inst.bbox = bboxFor(inst.q);
+    inst.bbox = bboxFor(inst.q, inst.geo || geo);
     if (inst.scale !== 1) for (const k of ['minX', 'minY', 'maxX', 'maxY']) inst.bbox[k] *= inst.scale;
     applyHidden(inst, !!v.hidden);
     const gap = v.gap ?? state.sheet.gaps[v.dir];
@@ -569,6 +642,7 @@ function layout(force) {
   updateCamera(stage.clientWidth, stage.clientHeight);
   const b = instances.get('base');
   if (b && geo) underlay.place(geo.bbox, b.pos, state.viewId);
+  followScatter();
   if (typeof autosave === 'function') autosave();
 }
 
@@ -975,7 +1049,8 @@ async function saveFile(filename, dataUrl) {
 // ----------------------------------------------------------------------------- sheet views
 function addView(parentId, dir, kind = 'ortho') {
   const id = `v${state.sheet.nextId++}`;
-  state.sheet.views.push({ id, parent: parentId, dir, gap: null, kind, rot: kind === '3d' ? ISO_TILT() : null, locked: false, hidden: false, offset: [0, 0], scale: 1 });
+  const pv = state.sheet.views.find((x) => x.id === parentId);   // a view of another shape's copy is that shape too
+  state.sheet.views.push({ id, parent: parentId, dir, gap: null, kind, rot: kind === '3d' ? ISO_TILT() : null, locked: false, hidden: false, offset: [0, 0], scale: 1, ...(pv && pv.shape ? { shape: pv.shape } : {}) });
   renderViewList();
   layout(true);
   selectView(id);   // the last added view is the one the View buttons turn
@@ -1032,7 +1107,10 @@ function scatterStones(seed = state.sheet.scatter.seed) {
   pushUndo(true);
   const sh = state.sheet, sc = sh.scatter, pg = sh.page;
   sc.seed = seed;
-  if (!pg.enabled) { pg.enabled = true; syncInputs(); }
+  // turning the page on: the title and description go to their places at the top of the page (their
+  // old places belonged to a sheet without a page), unless they are locked
+  if (!pg.enabled) { pg.enabled = true; for (const id of TEXT_IDS) if (!sh.text[id].locked) sh.text[id].pos = null; syncInputs(); }
+  scattering = true;
   layout(false);   // current text rectangles
   const rand = rng(Math.round(seed) * 2654435761 + 12345);
   const minMM = Math.max(20, sc.minMM), maxMM = Math.max(minMM, sc.maxMM);
@@ -1061,18 +1139,25 @@ function scatterStones(seed = state.sheet.scatter.seed) {
   const deg = Math.PI / 180, v3 = new THREE.Vector3();
   const randomQ = () => {
     const spin = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), rand() * 2 * Math.PI);
-    const az = rand() * 2 * Math.PI, tilt = (sc.minTilt + rand() * Math.max(0, sc.maxTilt - sc.minTilt)) * deg;
+    // tilts weighted towards face-up (u^1.4): with 10..80 degrees about half the stones are face-up to
+    // isometric, a quarter steeper and one in six or so nearly side-on, each towards a random side
+    const az = rand() * 2 * Math.PI, tilt = (sc.minTilt + rand() ** 1.4 * Math.max(0, sc.maxTilt - sc.minTilt)) * deg;
     const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(Math.cos(az), Math.sin(az), 0), tilt);
     if (rand() * 100 < sc.backShare) q.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI));
     return q.multiply(spin);
   };
-  // the outline of the stone under q at unit scale (world units, stone width 2), as a convex hull
-  const hullFor = (q) => { const a = geo.vertices, pts = []; for (let i = 0; i < a.length; i += 3) { v3.set(a[i], a[i + 1], a[i + 2]).applyQuaternion(q); pts.push([v3.x, v3.y]); } return convexHull(pts); };
-  // sizes, largest first; a gentle bias towards the smaller sizes leaves room for more stones
+  // the shapes to draw: the current design (null) and any others chosen, each copy one of them at random
+  const pool = [null, ...chosenShapes(sc)];
+  const geoOf = (key) => (key ? shapeGeo(key).geo : geo);
+  // the outline of a stone under q at unit scale (world units, stone width 2), as a convex hull
+  const hullFor = (q, g) => { const a = g.vertices, pts = []; for (let i = 0; i < a.length; i += 3) { v3.set(a[i], a[i + 1], a[i + 2]).applyQuaternion(q); pts.push([v3.x, v3.y]); } return convexHull(pts); };
+  // sizes, largest first; a gentle bias towards the smaller sizes leaves room for more stones. The
+  // smallest is the base, in the current design, and goes down first so there always is one
   const sizes = Array.from({ length: count }, () => minMM + (maxMM - minMM) * rand() ** 1.4).sort((a, b) => b - a);
-  const placed = [];   // { q, mm, at: [x, y] inches, hull inches }
-  for (const want of sizes) {
-    const q = randomQ(), hull = hullFor(q);
+  const order = [{ mm: sizes.pop(), shape: null, base: true }, ...sizes.map((mm) => ({ mm, shape: pool[Math.floor(rand() * pool.length)] }))];
+  const placed = [];   // { q, mm, at: [x, y] inches, poly inches, shape, base }
+  for (const { mm: want, shape, base } of order) {
+    const q = randomQ(), hull = hullFor(q, geoOf(shape));
     let done = false;
     for (let mm = want; !done && mm >= minMM - 1e-9; mm = mm > minMM ? Math.max(minMM, mm * 0.9) : minMM - 1) {
       const f = mm / 25.4 / 2;   // inches per world unit at this width
@@ -1084,15 +1169,14 @@ function scatterStones(seed = state.sheet.scatter.seed) {
         const at = [x0 + rand() * (x1 - x0), y0 + rand() * (y1 - y0)];
         const poly = h.map(([x, y]) => [x + at[0], y + at[1]]);
         if (!placed.every((p) => apart(poly, p.poly, gap)) || !obstacles.every((o) => apart(poly, o, gap))) continue;
-        placed.push({ q, mm, at, poly }); done = true; break;
+        placed.push({ q, mm, at, poly, shape, base }); done = true; break;
       }
     }
   }
   sc.placed = placed.length;
-  if (!placed.length) { syncInputs(); layout(true); return 0; }
-  // the smallest copy is the base and sets the drawing scale; the others are 3D views to the right of it
-  placed.sort((a, b) => a.mm - b.mm);
-  const base = placed[0];
+  const base = placed.find((p) => p.base);
+  if (!base) { sc.placed = 0; sc.result = null; scattering = false; syncInputs(); layout(true); return 0; }   // the page is too small for even one
+  // the base sets the drawing scale; the others are 3D views to the right of it, each in its own shape
   setStoneWidth(base.mm / 25.4);
   const k = pageRect().k;
   anim = null; baseQ.copy(base.q); state.spin = 0; state.viewId = 'custom';
@@ -1101,21 +1185,49 @@ function scatterStones(seed = state.sheet.scatter.seed) {
   sh.views = []; sh.nextId = 1;
   const baseInv = base.q.clone().invert();
   let anchorPos = sh.origin, anchorBox = bboxFor(base.q);
-  for (const p of placed.slice(1)) {
-    const scale = p.mm / base.mm, box = bboxFor(p.q);
+  for (const p of placed.filter((x) => x !== base)) {
+    const scale = p.mm / base.mm, box = bboxFor(p.q, geoOf(p.shape));
     for (const key of ['minX', 'minY', 'maxX', 'maxY']) box[key] *= scale;
     // where the layout puts a 3D view to the right of the previous one, and the offset that moves it to its place
     const natural = [anchorPos[0] + anchorBox.maxX + sh.gaps.right - box.minX, anchorPos[1]];
     const target = [p.at[0] * k, p.at[1] * k];
-    sh.views.push({ id: `v${sh.nextId++}`, parent: 'base', dir: 'right', gap: null, kind: '3d', rot: p.q.clone().multiply(baseInv), locked: false, hidden: false, offset: [target[0] - natural[0], target[1] - natural[1]], scale });
+    sh.views.push({ id: `v${sh.nextId++}`, parent: 'base', dir: 'right', gap: null, kind: '3d', rot: p.q.clone().multiply(baseInv), locked: false, hidden: false, offset: [target[0] - natural[0], target[1] - natural[1]], scale, ...(p.shape ? { shape: p.shape } : {}) });
     anchorPos = target; anchorBox = box;
   }
   selectView('base');
   const si = document.getElementById('spin'), sn = document.getElementById('spinnum'); if (si) si.value = 0; if (sn) sn.value = 0;
   markView(); renderViewList(); syncInputs();
   layout(true);
+  scattering = false;
+  sc.context = scatterContext(); sc.result = scatterResult();   // see followScatter
   fitView();
   return placed.length;
+}
+/**
+ * A scatter that has not been touched since keeps to its page: when the page's size or the title and
+ * description change (turned on, edited, moved, resized), it is made again with the same seed, so the
+ * stones stay inside the page and off the text. Once a stone has been moved, turned or scaled by
+ * hand, or views added or removed, the sheet is yours and is left alone.
+ */
+var scattering = false;   // var: layout() may run before this line is reached
+const r4 = (x) => Math.round(x * 1e4) / 1e4;
+function scatterContext() {
+  const sh = state.sheet, pg = sh.page, k = pageRect().k;
+  return JSON.stringify([pg.enabled, pg.width, pg.height, TEXT_IDS.map((id) => { const t = sh.text[id].rect; return t ? [t.minX, t.minY, t.maxX, t.maxY].map((x) => Math.round((x / k) * 100) / 100) : null; })]);
+}
+function scatterResult() {
+  const sh = state.sheet;
+  return JSON.stringify([baseQ.toArray().map(r4), state.spin, sh.origin.map(r4), r4(sh.page.stoneWidth), sh.views.map((v) => [v.id, v.shape || '', v.kind, v.offset && v.offset.map(r4), r4(v.scale || 1), v.rot && v.rot.toArray().map(r4)])]);
+}
+var followTimer = null;
+function followScatter() {
+  const sc = state.sheet.scatter;
+  if (scattering || !sc || !sc.result || followTimer) return;
+  if (scatterContext() === sc.context) return;
+  if (scatterResult() !== sc.result) { sc.result = null; return; }   // edited by hand since: leave it
+  // wait until a drag (of the title, say) is over, then lay the stones out again once
+  const run = () => { if (drag) { followTimer = setTimeout(run, 150); return; } followTimer = null; if (sc.result && scatterContext() !== sc.context && scatterResult() === sc.result) scatterStones(sc.seed); };
+  followTimer = setTimeout(run, 150);
 }
 
 /** Put a 3D view back to the isometric tilt of its parent, at its laid-out place and natural size. */
@@ -1146,7 +1258,8 @@ function viewLabel(id) {
   if (id === 'base') return `Base (${state.viewId === 'custom' ? 'custom' : getView(state.viewId).label})`;
   const v = state.sheet.views.find((x) => x.id === id);
   const parentName = v.parent === 'base' ? 'base' : v.parent;
-  return v.kind === '3d' ? `${v.id}: 3D view, ${DIR_LABEL[v.dir].toLowerCase()} ${parentName}` : `${v.id}: ${DIR_LABEL[v.dir]} ${parentName}`;
+  const other = shapeGeo(v.shape) ? ` (${templates[v.shape].name})` : '';
+  return (v.kind === '3d' ? `${v.id}: 3D view, ${DIR_LABEL[v.dir].toLowerCase()} ${parentName}` : `${v.id}: ${DIR_LABEL[v.dir]} ${parentName}`) + other;
 }
 
 function renderViewList() {
@@ -1438,6 +1551,7 @@ function syncInputs() {
   for (const [id, key] of [['pave', 'enabled'], ['pavepattern', 'pattern'], ['pavemin', 'minOpacity'], ['pavemax', 'maxOpacity'], ['pavemaxct', 'maxCarats'], ['paveminct', 'minCarats'], ['pavesingle', 'singleBelow'], ['pavescale', 'mmPerInch'], ['pavemargin', 'margin'], ['paveseeds', 'seedCount'], ['pavelabels', 'labels'], ['pavelabelop', 'labelOpacity'], ['pavehexct', 'hexCarats'], ['pavehexop', 'hexOpacity'], ['pavehexcircles', 'hexCircles']]) set(id, pv[key]);
   set('pavelabelsize', Math.round((pv.labelSize || 1) * 100));
   for (const id of ['pavemin', 'pavemax', 'pavehexop', 'pavelabelop']) if ($(id + 'v')) $(id + 'v').textContent = `${Math.round($(id).value * 100)}%`;
+  renderShapePickers();
   const sc = sh.scatter;
   if (sc) for (const [id, key] of [['scattercount', 'count'], ['scatterseed', 'seed'], ['scattermin', 'minMM'], ['scattermax', 'maxMM'], ['scattermintilt', 'minTilt'], ['scattermaxtilt', 'maxTilt'], ['scatterback', 'backShare'], ['scattergap', 'gapIn']]) set(id, sc[key]);
 }
@@ -1455,6 +1569,7 @@ function applySetup(s) {
   // handlers hold references to them (replacing them left the pavé controls writing to a stale copy)
   const sh = s.sheet, cur = state.sheet;
   for (const k of ['gaps', 'base', 'page', 'pave', 'scatter']) Object.assign(cur[k], sh[k] || {});
+  if ((sh.scatter || {}).v !== 2) Object.assign(cur.scatter, { v: 2, minTilt: 10, maxTilt: 80 });   // the first scatter's 15..45 range looked all alike
   for (const id of TEXT_IDS) Object.assign(cur.text[id], (sh.text || {})[id] || {}, { rect: null });
   cur.text.auto = (sh.text || {}).auto !== undefined ? !!sh.text.auto : cur.text.auto;
   cur.text.source = (sh.text || {}).source || cur.text.source;
