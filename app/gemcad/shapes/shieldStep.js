@@ -10,8 +10,8 @@
 // the azimuth of its girdle edge's outward normal, through the previous row's step line, so the
 // step polygons are exact inward offsets of the girdle polygon and every meet point is exact.
 // One mirror line: fold 1 + mirror. Width 2 along x, length 2 * ratio along y, point at -y.
-import { newTier } from '../design.js?v=133';
-import { rad, deg, girdleFromPolygon, planeThrough, plane3, classTier } from '../shapebuild.js?v=133';
+import { newTier } from '../design.js?v=134';
+import { rad, deg, girdleFromPolygon, planeThrough, plane3, classTier } from '../shapebuild.js?v=134';
 
 /**
  * Outline vertices (counter-clockwise from the point) for the proportions. topWidth: top edge

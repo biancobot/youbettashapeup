@@ -32,7 +32,7 @@ In 1562, Mary, Queen of Scots, sent Elizabeth I of England a ring set with a hea
 
 ## Oval Brilliant
 
-Oval stones are centuries old, but the modern oval brilliant, with a round brilliant's facets stretched over an ellipse, was worked out in 1957 and quickly became a standard. Its best-known quirk is the bow-tie: a pair of dark triangles across the width, caused by the facets at the ends being flatter than those at the sides, which a careful cutter keeps faint and a careless one leaves black.
+In 1750, David Jeffries illustrated an oval brilliant in A Treatise on Diamonds and Pearls. One famous example is the Koh-i-Noor, recut in 1852 into the 105.60-carat oval it is today. Many oval brilliants show a bow-tie across the middle. It appears when facets reflect the viewer’s head, which blocks some of the incoming light.
 
 ## Oval Brilliant, Four Pavilion Mains
 
