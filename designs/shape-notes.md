@@ -20,7 +20,7 @@ Here only four pavilion mains, one under each wing bezel, meet at the culet in a
 
 ## Pear Brilliant
 
-The pear is the oldest of the fancy brilliants: Lodewyk van Berquem of Bruges is credited with cutting the first pendeloque, a faceted teardrop, in the 1450s, soon after the invention of the scaif, the diamond-charged polishing wheel that made symmetrical facets possible. The largest polished diamond in the world, the 530-carat Great Star of Africa cut from the Cullinan in 1908, is a pear.
+A small, faceted pear-shaped diamond adorns the Burgundian Court Goblet, recorded in a 1467 inventory and now in Vienna. By 1750, David Jeffries had illustrated the pear with brilliant faceting. One of the most famous examples is Cullinan I, the Great Star of Africa. Cut in 1908, this 530.2-carat pear is the world’s largest cut natural colourless diamond and is set in the British Sovereign’s Sceptre with Cross.
 
 ## Pear Brilliant, French Tip
 

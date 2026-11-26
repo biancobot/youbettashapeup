@@ -1,18 +1,18 @@
 // Registry of fancy-shape modules. Each module exports `templates` and `plots`.
-import * as marquise from './marquise.js?v=134';
-import * as pear from './pear.js?v=134';
-import * as heart from './heart.js?v=134';
-import * as oval from './oval.js?v=134';
-import * as cushion from './cushion.js?v=134';
-import * as cushionModified from './cushionModified.js?v=134';
-import * as princess from './princess.js?v=134';
-import * as radiant from './radiant.js?v=134';
-import * as emerald from './emerald.js?v=134';
-import * as asscher from './asscher.js?v=134';
-import * as shield from './shield.js?v=134';
-import * as shieldStep from './shieldStep.js?v=134';
-import * as trillion from './trillion.js?v=134';
-import * as oldcuts from './oldcuts.js?v=134';
+import * as marquise from './marquise.js?v=135';
+import * as pear from './pear.js?v=135';
+import * as heart from './heart.js?v=135';
+import * as oval from './oval.js?v=135';
+import * as cushion from './cushion.js?v=135';
+import * as cushionModified from './cushionModified.js?v=135';
+import * as princess from './princess.js?v=135';
+import * as radiant from './radiant.js?v=135';
+import * as emerald from './emerald.js?v=135';
+import * as asscher from './asscher.js?v=135';
+import * as shield from './shield.js?v=135';
+import * as shieldStep from './shieldStep.js?v=135';
+import * as trillion from './trillion.js?v=135';
+import * as oldcuts from './oldcuts.js?v=135';
 
 export const shapeModules = { marquise, pear, heart, oval, cushion, cushionModified, princess, radiant, emerald, asscher, shield, shieldStep, trillion, oldcuts };
 export const shapeTemplates = Object.assign({}, ...Object.values(shapeModules).map((m) => m.templates || {}));
