@@ -15,7 +15,7 @@ npm start
 ```
 
 Then open `http://localhost:8000/`. The panel's groups start closed: click a heading to open or close it (the browser remembers which
-are open), or use Expand all and Collapse all under the title; only the panel scrolls, so the preview stays in view. The preview pane has a menu (the three dots at its top right) with Export PNG, Fit views to page and Fit preview. The page header shows its build number (currently 138); if it
+are open), or use Expand all and Collapse all under the title; only the panel scrolls, so the preview stays in view. The preview pane has a menu (the three dots at its top right) with Export PNG, Fit views to page and Fit preview. The page header shows its build number (currently 139); if it
 shows an older one after a `git pull`, hard-reload (Ctrl+Shift+R). Pass another port as `node tools/serve.mjs 8123` if 8000
 is taken. The site is static ES modules, so it must be served over HTTP (not `file://`).
 `diag.html` runs a step-by-step load check if the page does not come up.
