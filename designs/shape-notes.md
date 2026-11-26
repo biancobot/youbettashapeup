@@ -72,7 +72,7 @@ The shield has been cut for centuries as a way of saving a crystal whose outline
 
 ## Shield Brilliant, French Tip
 
-The point is finished with a French tip, as on the marquise and the pear: small facets meeting at a hub in place of a single bezel.
+Shield-shaped diamonds have been cut for centuries. A 14th-century inventory of the Duke of Anjou’s jewels records one set in a reliquary. Shields vary in proportion and can have step-cut or brilliant-style facets. They are often set in pairs flanking a larger center stone, with their broad ends toward the center and their points extending down the band, though a well-cut shield holds its own as a center stone.
 
 ## Kite Shield, Hexagonal Shield and Wide Shield, Step Cut
 
