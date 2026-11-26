@@ -52,7 +52,7 @@ The name comes from the grading report: a cushion is called a modified brilliant
 
 ## Square Modified Brilliant
 
-The square brilliant with pointed corners was developed in the 1960s and 1970s and by the end of the century had become the most popular fancy shape. It keeps up to about 80% of the weight of an octahedral rough crystal, against roughly half for a round brilliant cut from the same piece, which is why a square stone of a given size costs noticeably less than a round.
+The square brilliant with pointed corners, widely known as the princess cut, was developed in the 1960s and 1970s and by the end of the century had become the most popular fancy shape. It keeps up to about 80% of the weight of an octahedral rough crystal, against roughly half for a round brilliant cut from the same piece, which is why a square stone of a given size costs noticeably less than a round.
 
 ## Cut-Cornered Rectangular Modified Brilliant
 
