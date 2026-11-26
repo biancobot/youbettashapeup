@@ -28,7 +28,7 @@ The point is finished with a French tip, as on the marquise: small facets meetin
 
 ## Heart Brilliant
 
-A heart-shaped diamond is recorded as early as 1562, when Mary, Queen of Scots, sent one in a ring to Elizabeth I of England as a token of goodwill between the two queens. The shape is in effect a pear with a cleft cut into its head, often from the flat, triangular twinned crystals called macles; the cleft is cut after the main faceting, frequently by a different hand, and the symmetry of the two lobes stands or falls on that one cut landing exactly on the stone's axis.
+In 1562, Mary, Queen of Scots, sent Elizabeth I of England a ring set with a heart-shaped diamond as a token of goodwill. The modern heart brilliant resembles a shortened pear with a cleft at its rounded end. Flattened, triangular twinned diamond crystals called macles are well suited to the shape. The cleft must sit directly opposite the point for the two lobes to mirror each other. Once their outer curves are set, an off-center cleft is difficult to correct without reshaping them.
 
 ## Oval Brilliant
 
