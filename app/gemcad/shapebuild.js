@@ -6,8 +6,8 @@
 // girdle bottom at z = -g, culet below. Radial azimuth: degrees counter-clockwise from +x, so
 // the top point of a marquise or pear is at 90. A facet's azimuth is the direction of its
 // outward normal; for a facet touching the girdle that is the outline normal at the contact.
-import { newTier, tierFromPlane, expandIndex, azimuthDeg } from './design.js?v=132';
-import { girdleFromSupport, plane3, intersect3 } from './generators.js?v=132';
+import { newTier, tierFromPlane, expandIndex, azimuthDeg } from './design.js?v=133';
+import { girdleFromSupport, plane3, intersect3 } from './generators.js?v=133';
 
 export { plane3, intersect3, girdleFromSupport };
 export const rad = (d) => (d * Math.PI) / 180;

@@ -8,7 +8,7 @@ The modern proportions were set out in 1919 by Marcel Tolkowsky, a 21-year-old A
 
 ## Marquise Brilliant
 
-Legend has it that Louis XV asked for a diamond cut to the shape of the smile of his mistress, the Marquise de Pompadour, in the 1740s; whatever the truth, the name stuck, and the French court's taste for the shape is why it is also called the navette, the little boat. Of all the shapes it has the largest face for its weight, because so much of the stone sits in the long, shallow center.
+The marquise diamond is also called a navette, or “little boat,” for its outline when seen from above. Its curved sides, called wings, taper to a point at each end. Many marquise diamonds show a bow-tie pattern across the middle, where two dark triangles meet tip to tip. The pattern can become more or less pronounced as the viewing angle changes.
 
 ## Marquise Brilliant, Six Pavilion Mains
 

@@ -17,10 +17,10 @@
 //
 // Orientation: width 2 along x, length along y, point at -y (radial azimuth 270), cleft at +y,
 // as GIA and IGI plots draw a heart; table at z = H, girdle top at z = 0.
-import { newTier, tierFromPlane } from '../design.js?v=132';
+import { newTier, tierFromPlane } from '../design.js?v=133';
 import {
   rad, deg, heartHalfOutline, mirrorSupport, chordAz, girdleVertices, vertexNear, vertexNearY, lift,
-  planeThrough, planeAz, mirrorX, zPlane, yPlane, azPlane, perpPlane, classTier, girdleFromSupport, girdleEqualLength, plane3, intersect3 } from '../shapebuild.js?v=132';
+  planeThrough, planeAz, mirrorX, zPlane, yPlane, azPlane, perpPlane, classTier, girdleFromSupport, girdleEqualLength, plane3, intersect3 } from '../shapebuild.js?v=133';
 
 /*
  * Positions measured on IGI report FDR675586951 (plot 1055 x 530 px; crown left half, centre
