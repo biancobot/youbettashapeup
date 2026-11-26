@@ -2,17 +2,17 @@ import * as THREE from '../vendor/three/three.module.js';
 import { LineSegments2 } from '../vendor/three/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from '../vendor/three/lines/LineSegmentsGeometry.js';
 import { LineMaterial } from '../vendor/three/lines/LineMaterial.js';
-import { designMesh, stoneStats } from './gemcad/mesh.js?v=128';
-import { createEditor } from './editor.js?v=128';
-import { createUnderlay } from './underlay.js?v=128';
-import { templates, plots } from './gemcad/templates.js?v=128';
+import { designMesh, stoneStats } from './gemcad/mesh.js?v=129';
+import { createEditor } from './editor.js?v=129';
+import { createUnderlay } from './underlay.js?v=129';
+import { templates, plots } from './gemcad/templates.js?v=129';
 window.__templates = { templates, plots };
-import { VIEWS, getView } from './views.js?v=128';
-import { captionFor } from './gemcad/captions.js?v=128';
-import { notesFor } from './gemcad/shapenotes.js?v=128';
-import { createPave, cobblestoneStonesGen, checkPacking, paveSizes, hexafoilStones, convexHull, rng } from './pave.js?v=128';
-import { weightEstimator, weightFamily, chartSize, CHART_SOURCE } from './gemcad/weights.js?v=128';
-import { singleCut } from './gemcad/shapes/oldcuts.js?v=128';
+import { VIEWS, getView } from './views.js?v=129';
+import { captionFor } from './gemcad/captions.js?v=129';
+import { notesFor } from './gemcad/shapenotes.js?v=129';
+import { createPave, cobblestoneStonesGen, checkPacking, paveSizes, hexafoilStones, convexHull, rng } from './pave.js?v=129';
+import { weightEstimator, weightFamily, chartSize, CHART_SOURCE } from './gemcad/weights.js?v=129';
+import { singleCut } from './gemcad/shapes/oldcuts.js?v=129';
 
 // ----------------------------------------------------------------------------- state
 const params = new URLSearchParams(location.search);
@@ -145,8 +145,11 @@ function shapeGeo(key) {
   }
   return e;
 }
-/** A template's family: the weight chart's, or else the first word of its name (shield). */
-function familyOf(name) { return weightFamily(name) || String(name || '').toLowerCase().split(/[\s,]+/)[0]; }
+/**
+ * A template's family for the shape pickers: the weight chart's, or else the first word of its name
+ * (shield); the square emerald (Asscher) is listed with the emerald, both step-cut octagons.
+ */
+function familyOf(name) { const f = weightFamily(name); return f === 'asscher' ? 'emerald' : f || String(name || '').toLowerCase().split(/[\s,]+/)[0]; }
 /** The other shapes chosen in a picker ({ shapes, allShapes }): same family as the current one unless every shape is shown. */
 function chosenShapes(obj) {
   const cur = currentKey(), fam = familyOf(templates[cur] ? templates[cur].name : design && design.name);
@@ -554,11 +557,15 @@ function updatePave() {
   }
   pave.setLabelOpacity(pv.labelOpacity); pave.setLabelSize(pv.labelSize);
   // other shapes of the family: the packing keeps the current outline, and each unlabelled stone that
-  // is not a melee single cut draws one of the shapes (the current one among them) at random, sized so
-  // its circumscribed circle is the current shape's (the same for shapes of one outline)
+  // is not a melee single cut draws one of the shapes (the current one among them) at random
   const others = chosenShapes(pv);
-  const radius = (g) => { let r = 0; for (let i = 0; i < g.vertices.length; i += 3) r = Math.max(r, Math.hypot(g.vertices[i], g.vertices[i + 1])); return r; };
-  const variants = others.map((k) => { const g = shapeGeo(k).geo; return { meshPositions: g.positions, hardEdges: g.hardEdges, smoothPositions: new Float32Array(smoothEdgesFor(new THREE.Quaternion(), g)), fit: radius(geo) / radius(g) }; });
+  // fit: the largest scale at which the other shape's face-up outline lies inside the current one's
+  // (support functions compared all round), so a squarer shape in an emerald's place never reaches
+  // past the outline the packing used; shapes of one outline come out at 1
+  const support = (g) => { const h = new Float64Array(180); for (let i = 0; i < g.vertices.length; i += 3) for (let a = 0; a < 180; a++) { const t = (a * Math.PI) / 90, d = g.vertices[i] * Math.cos(t) + g.vertices[i + 1] * Math.sin(t); if (d > h[a]) h[a] = d; } return h; };
+  const hCur = support(geo);
+  const fitOf = (g) => { const h = support(g); let f = Infinity; for (let a = 0; a < 180; a++) if (h[a] > 1e-9) f = Math.min(f, hCur[a] / h[a]); return Math.min(1, f); };
+  const variants = others.map((k) => { const g = shapeGeo(k).geo; return { meshPositions: g.positions, hardEdges: g.hardEdges, smoothPositions: new Float32Array(smoothEdgesFor(new THREE.Quaternion(), g)), fit: fitOf(g) }; });
   const pick = rng(pv.seed * 7919 + 17);
   for (const q of stones) q.variant = !q.label && q.kind !== 'single' && variants.length ? Math.floor(pick() * (variants.length + 1)) : 0;
   pave.build({ key: key + JSON.stringify([others, state.girdleLines]), stones, circles, circleOpacity: pv.hexOpacity, meshPositions: geo.positions, hardEdges: geo.hardEdges, smoothPositions: new Float32Array(smoothEdgesFor(new THREE.Quaternion())), hullEdges: new Float32Array(hullEdges), single: updatePave.single, variants });
